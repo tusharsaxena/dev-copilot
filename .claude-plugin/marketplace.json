@@ -1,0 +1,22 @@
+{
+  "name": "dev-copilot",
+  "description": "Generic development co-pilot — git diff/commit helpers, documentation drift sync, and a principal-engineer review subagent.",
+  "owner": {
+    "name": "Tushar Saxena",
+    "email": "tushar.saxena@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "dev-copilot",
+      "source": "./",
+      "description": "Generic development co-pilot — git diff/commit helpers, documentation drift sync (README, CLAUDE/AGENTS, ARCHITECTURE, CHANGELOG), and a principal-engineer review subagent. Language- and framework-agnostic.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tushar Saxena"
+      },
+      "homepage": "https://github.com/tusharsaxena/dev-copilot",
+      "repository": "https://github.com/tusharsaxena/dev-copilot",
+      "license": "MIT"
+    }
+  ]
+}

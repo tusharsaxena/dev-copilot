@@ -30,34 +30,38 @@ It's a de-WoW'd descendant of the [`wow-addon`](https://github.com/tusharsaxena/
 
 ## Install
 
-This plugin is distributed through the `tushar-local` marketplace directory (`~/.claude-plugins/tushar-local`), the same one `wow-addon` installs from.
+The repo is its own Claude Code marketplace (it ships a `.claude-plugin/marketplace.json`), so installing is three commands. Run these inside any Claude Code session:
 
-**If you already use that marketplace** (e.g. `wow-addon` is installed), it's already registered — just refresh it and install:
+1. **Add this repo as a marketplace:**
 
-```
-/plugin marketplace update tushar-local
-/plugin install dev-copilot@tushar-local
-/reload-plugins
-```
+   ```
+   /plugin marketplace add tusharsaxena/dev-copilot
+   ```
 
-**First time on this machine?** Add the marketplace once, then install. Point `marketplace add` at the **marketplace directory** — the one containing `.claude-plugin/marketplace.json` (i.e. `~/.claude-plugins/tushar-local`), **not** the plugin repo:
+   (`owner/repo` shorthand works for GitHub. You can also use the full URL: `/plugin marketplace add https://github.com/tusharsaxena/dev-copilot.git`)
 
-```
-/plugin marketplace add ~/.claude-plugins/tushar-local
-/plugin install dev-copilot@tushar-local
-/reload-plugins
-```
+2. **Install the plugin:**
 
-When prompted for install scope, choose **user** to enable the plugin in every project on this machine, or **project** to enable it only in the current project.
+   ```
+   /plugin install dev-copilot@dev-copilot
+   ```
+
+   When prompted for install scope, choose **user** to enable it in every project on this machine, or **project** to enable it only in the current project.
+
+3. **Activate it:**
+
+   ```
+   /reload-plugins
+   ```
 
 After install, the commands and the `review` subagent are available in every Claude Code session under the `dev-copilot:` namespace.
 
 ## Updating
 
-When the marketplace contents change (updated commands or agent):
+When the repo changes (updated commands or agent), pull the latest and reactivate:
 
 ```
-/plugin marketplace update tushar-local
+/plugin marketplace update dev-copilot
 /reload-plugins
 ```
 
