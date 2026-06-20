@@ -28,9 +28,42 @@ It's a de-WoW'd descendant of the [`wow-addon`](https://github.com/tusharsaxena/
 - **Stays in its lane.** `sync-docs` doesn't bump versions or delete code; `review` proposes changes but writes findings, not fixes.
 - **Stack-agnostic.** Project type, build/test commands, and conventions are detected from the manifest and config, not assumed.
 
-## Installation
+## Install
 
-Install from your plugin marketplace, or point Claude Code at this directory as a local plugin. The commands appear under the `dev-copilot:` namespace once loaded.
+The repo is its own Claude Code marketplace (it ships a `.claude-plugin/marketplace.json`), so installing is three commands. Run these inside any Claude Code session:
+
+1. **Add this repo as a marketplace:**
+
+   ```
+   /plugin marketplace add tusharsaxena/dev-copilot
+   ```
+
+   (`owner/repo` shorthand works for GitHub. You can also use the full URL: `/plugin marketplace add https://github.com/tusharsaxena/dev-copilot.git`)
+
+2. **Install the plugin:**
+
+   ```
+   /plugin install dev-copilot@dev-copilot
+   ```
+
+   When prompted for install scope, choose **user** to enable it in every project on this machine, or **project** to enable it only in the current project.
+
+3. **Activate it:**
+
+   ```
+   /reload-plugins
+   ```
+
+After install, the commands and the `review` subagent are available in every Claude Code session under the `dev-copilot:` namespace.
+
+## Updating
+
+When the repo changes (updated commands or agent), pull the latest and reactivate:
+
+```
+/plugin marketplace update dev-copilot
+/reload-plugins
+```
 
 ## License
 
