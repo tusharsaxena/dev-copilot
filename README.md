@@ -10,7 +10,7 @@ It's a de-WoW'd descendant of the [`wow-addon`](https://github.com/tusharsaxena/
 |---|---|
 | `/dev-copilot:diff` | Read-only summary of all uncommitted changes — what changed, the likely intent, and risks (dead exports, broken refs, undeclared deps, leftover debug, staged secrets). Never dumps the raw diff. |
 | `/dev-copilot:commit` | Stages named files and commits with a generated, style-matched message. Auto-commits by default; pass `ask` to require approval, or a string to use it verbatim as the subject. Never pushes, amends, or `git add -A`; gates on secret-looking files. |
-| `/dev-copilot:sync-docs` | Deep-analyzes the project and rewrites `README.md`, `CLAUDE.md`/`AGENTS.md`, `ARCHITECTURE.md`, and (conservatively) `CHANGELOG.md` to match the code — eliminating documentation drift. Shows a drift inventory before writing; never bumps versions or auto-deletes code. |
+| `/dev-copilot:sync-docs` | Deep-analyzes the project and rewrites `README.md`, `CLAUDE.md`/`AGENTS.md`, `ARCHITECTURE.md`, `TODO.md`, and (conservatively) `CHANGELOG.md` to match the code — eliminating documentation drift. Shows a drift inventory before writing; never bumps versions or auto-deletes code. |
 | `/dev-copilot:review` | Runs the `dev-copilot:review` subagent. |
 
 ## Sub-agent

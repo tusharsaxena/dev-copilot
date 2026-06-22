@@ -1,6 +1,6 @@
 {
   "name": "dev-copilot",
-  "description": "Generic development co-pilot — git diff/commit helpers, documentation drift sync (README, CLAUDE/AGENTS, ARCHITECTURE, CHANGELOG), and a principal-engineer review subagent. Language- and framework-agnostic.",
+  "description": "Generic development co-pilot — git diff/commit helpers, documentation drift sync (README, CLAUDE/AGENTS, ARCHITECTURE, TODO, CHANGELOG), and a principal-engineer review subagent. Language- and framework-agnostic.",
   "version": "1.0.0",
   "license": "MIT"
 }

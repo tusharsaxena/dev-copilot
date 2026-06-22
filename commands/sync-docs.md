@@ -1,5 +1,5 @@
 ---
-description: Deep-analyze the current state of the project and rewrite README.md, CLAUDE*/AGENTS*.md, ARCHITECTURE*.md, and (conservatively) CHANGELOG.md to match — eliminating documentation drift. Includes count-claim verification, command/script parity, config/env drift, dependency-vs-manifest drift, and dead-export detection.
+description: Deep-analyze the current state of the project and rewrite README.md, CLAUDE*/AGENTS*.md, ARCHITECTURE*.md, TODO.md, and (conservatively) CHANGELOG.md to match — eliminating documentation drift. Includes count-claim verification, command/script parity, config/env drift, dependency-vs-manifest drift, and dead-export detection.
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 ---
 
@@ -50,7 +50,7 @@ If you propose creating either layout (ARCHITECTURE or CLAUDE/AGENTS), ask the u
 
 ## Step 2 — Discover the docs
 
-Find every documentation file: `README.md`, `README.*`, `CLAUDE.md`, `CLAUDE.*.md`, `CLAUDE/*.md`, `AGENTS.md`, `ARCHITECTURE.md`, `ARCHITECTURE.*.md`, `docs/*.md`, `CHANGELOG.md`. List them.
+Find every documentation file: `README.md`, `README.*`, `CLAUDE.md`, `CLAUDE.*.md`, `CLAUDE/*.md`, `AGENTS.md`, `ARCHITECTURE.md`, `ARCHITECTURE.*.md`, `docs/*.md`, `CHANGELOG.md`, `TODO.md`. List them. **Always include `TODO.md` in the sync set** — if it exists, treat it as a first-class doc to reconcile; if it doesn't exist but the code carries `TODO`/`FIXME`/`HACK`/`XXX` markers (from Step 1.3), flag that one could be created (don't scaffold without asking).
 
 For each, read the current contents and build a drift inventory across these axes:
 
@@ -119,6 +119,7 @@ For each doc file:
 - **README.md**: keep its overall shape. Update each section to reflect current state. Don't invent sections that weren't there. Preserve the user's voice — match the existing tone, formatting, and emoji usage (or absence).
 - **CLAUDE.md / AGENTS.md** (and split variants): project context for future AI sessions. Update against your Step 1 map. Keep it concise (it's loaded into every session's context).
 - **ARCHITECTURE.md** (and variants): structural/design documentation. Update component descriptions, dataflow, dependency relationships, lifecycle.
+- **TODO.md**: reconcile against the actual `TODO`/`FIXME`/`HACK`/`XXX` markers found in Step 1.3 and the current feature state. Tick off / remove items that are clearly done in the code, and add entries for in-code markers that aren't tracked yet (cite their `file:line`). Preserve the existing structure, grouping, and any manually-authored items you can't verify either way — don't delete an item just because you can't find a matching marker. Match the file's existing format (checklist, headings, sections).
 - **CHANGELOG.md** (conservative): only reconcile entries against what the code/manifest already states. You may fix wrong dates, broken links, or a misdescribed existing entry, and you may flag that the `Unreleased` section appears out of date relative to recent changes. **Never invent a version number, never bump the version, never fabricate release entries.** If substantial unreleased work is undocumented, surface it for the user rather than writing speculative entries.
 
 Use `Edit` for surgical updates. Only `Write` (full rewrite) if the file is completely out of date or the diff would be larger than the rewrite.
