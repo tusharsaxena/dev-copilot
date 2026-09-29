@@ -113,14 +113,35 @@ know why each file exists; it is the register `/wow-addon:standards-audit` reads
 `ARCHITECTURE.md` a **hub**: under ~400 lines, with any section past ~60 lines spilled into its
 canonical topic doc behind a summary and one link.
 
-## `docs/smoke-tests.md` — the non-English-client step ships with the scaffold
+## `docs/smoke-tests.md` — the non-English-client section ships with the scaffold
 
-**A new addon is born with a locale step, not with a smoke doc that is silent about locale.** Write one
-numbered step into `docs/smoke-tests.md` covering a deDE/frFR client, and give it a row in the doc's
-index table so it is findable by someone planning client time rather than only by someone reading all
-of it.
+**A new addon is born with a locale check, not with a smoke doc that is silent about locale.** Write
+`docs/smoke-tests.md` in the shape every addon in the collection uses (all eleven were rewritten to it
+on 2026-09-29):
 
-It is scaffolded rather than left to the first person who trips over it because the headless harness
+- `# Smoke tests — <Addon display name>`, then one intro paragraph: what the doc is (the in-client
+  checks the headless suite cannot make), how to run it (a clean `/reload`, debug on only where a check
+  says so), how to record a result (each check's `Result:` line), and the ID scheme.
+- `## Index` — a table of `ID range | Theme | What it covers`, one row per theme.
+- `## Before you start` — the setup every theme shares.
+- One `## <Theme>` section per theme, its checks numbered `<THEME>-<n>`. IDs are stable: a new check
+  takes the next free number in its theme, and a retired number is never reused. Keep the prefixes the
+  collection already uses, so an ID means the same kind of check in every addon: INSTALL (install, load,
+  reload, first run), SLASH (commands, help, disabled refusals), PANEL (settings panel and pages),
+  PROFILE (the profiles page and the `profile` verb), STATE (enable/disable, stand-down, lock), COMBAT
+  (lockdown, secret values, restrictions, M+), DIAG (debug console, diagnostics, perf), DEGRADED (the
+  library-absent install), plus one to five feature themes named for the addon (MACRO is
+  ConsumableMaster's, GRID is KickCD's).
+- `## Non-English client` — this exact heading text, holding the `LOC-<n>` checks, the first of which
+  is `LOC-1`, covering a deDE/frFR client. Its row in the Index makes it findable by someone planning
+  client time rather than only by someone reading all of it.
+- `## Pending sign-off` — only while a check has no recorded client pass: a table of ID, origin and why
+  it is owed. A check leaves the table when its `Result:` line records a pass.
+
+Each check is one bullet or short paragraph, `**<ID>. <Title>.** <setup / steps> → <expected>. Result:`,
+covering one behavior, with steps that say exactly what to click or type.
+
+The Non-English client section is scaffolded rather than left to the first person who trips over it because the headless harness
 structurally cannot see this class of bug. The base mock's globals are enUS, so a path that keys off a
 localized string is green in the suite whether it is right or wrong — the test and the bug agree.
 All eleven addons in this collection now carry a locale step (a `locales/` folder loaded from the TOC,
@@ -136,8 +157,8 @@ PrettyChat's entire function is overwriting localized `_G` chat format strings a
 loaded source, against a 120-line `locales/enUS.lua`. Neither gap was visible from inside either repo's
 green suite, and neither was found by a review that ran per-addon.
 
-**Write the body from the addon's own seams, not from a template.** The step is unconditional; what it
-looks at is whatever the addon you just scaffolded actually touches. Enumerate these while you still
+**Write the LOC checks from the addon's own seams, not from a template.** The section is unconditional;
+what it looks at is whatever the addon you just scaffolded actually touches. Enumerate these while you still
 have the code in front of you:
 
 - anything reading a localized `_G` — chat format strings, `ITEM_*` and tooltip constants, mail
@@ -146,23 +167,23 @@ have the code in front of you:
 - anything keying off a display string where a numeric id exists — `subType` instead of
   `classID`/`subClassID` is the collection's worked example;
 - anything writing a **header, token or key another tool parses**, which must be locale-independent by
-  construction and needs the step to say so and prove it.
+  construction and needs a check to say so and prove it.
 
-Where the addon has none of those, the step still ships and says what it checked and why it came back
-empty. "This addon reads no localized global" is a claim the next agent can re-check; an absent step is
-not.
+Where the addon has none of those, the section still ships with `LOC-1` saying what it checked and why
+it came back empty. "This addon reads no localized global" is a claim the next agent can re-check; an
+absent check is not.
 
-**Each step names its failure, not only its pass.** A step whose only outcome is "it works" is
+**Each check names its failure, not only its pass.** A check whose only outcome is "it works" is
 unfalsifiable in a client the operator booted specially. Write the concrete symptom: an English
 sentence rendered on a German client, a stray `%d` or `%s` conversion artifact left by a format string
 that did not match, a bind type that fell back to the English literal and misclassified, a row that
 came back `(none)` where the enUS client fills it.
 
-**Say when it can be signed off without the client.** A step that needs a language pack and offers no
-alternative is skipped forever, which is how the gap gets recorded as coverage. State which headless
-cases stand in for it and which of the numbered sub-steps are sufficient on English —
-`ConsumableMaster/docs/smoke-tests.md` § 3c does exactly this, and `KickCD/docs/smoke-tests.md:229`
-§ 9b is the shape for a step where the client genuinely is the only witness. Copy the shape from those
+**Say when it can be signed off without the client.** A check that needs a language pack and offers
+no alternative is skipped forever, which is how the gap gets recorded as coverage. State which headless
+cases stand in for it and which other checks are sufficient on English —
+`ConsumableMaster/docs/smoke-tests.md` LOC-1 does exactly this, and `KickCD/docs/smoke-tests.md` LOC-1
+is the shape for a check where the client genuinely is the only witness. Copy the shape from those
 two; do not invent a third.
 
 ## Standards source
