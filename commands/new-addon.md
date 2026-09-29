@@ -141,12 +141,13 @@ on 2026-09-29):
 Each check is one bullet or short paragraph, `**<ID>. <Title>.** <setup / steps> → <expected>. Result:`,
 covering one behavior, with steps that say exactly what to click or type.
 
-The Non-English client section is scaffolded rather than left to the first person who trips over it because the headless harness
-structurally cannot see this class of bug. The base mock's globals are enUS, so a path that keys off a
-localized string is green in the suite whether it is right or wrong — the test and the bug agree.
-All eleven addons in this collection now carry a locale step (a `locales/` folder loaded from the TOC,
-re-measured 2026-09-22) — but the step being present is not the step being right, and the two addons
-whose code is most locale-sensitive are still where the worked examples come from.
+The Non-English client section is scaffolded rather than left to the first person who trips over it,
+because the headless harness structurally cannot see this class of bug. The base mock's globals are
+enUS, so a path that keys off a localized string is green in the suite whether it is right or wrong —
+the test and the bug agree. All eleven addons in this collection now carry a Non-English client
+section (each opening with `LOC-1`, re-measured 2026-09-29) — but the section being present is not its
+checks being right, and the two addons whose code is most locale-sensitive are still where the worked
+examples come from.
 `LootHistory/core/Compat.lua:194-201` hard-codes the English
 wordings — `WARBAND_LINES`, `BIND_TO_WARBAND_PREFIX`, `UE_LITERAL = "until equipped"` — as the fallback
 for when the client leaves the `ITEM_ACCOUNTBOUND*` globals nil, reaches them at `:213-214` and `:237`,
