@@ -85,7 +85,7 @@ For each, read the current contents and build a drift inventory across these axe
   - Every entry in the table should appear in the README's slash-command documentation
   - Every slash command the README documents should be in the table
   - Flag both directions
-- **The diagnostics dump has exactly two forms** (`debug-logging-§14`, `slash-commands-§2`): a `diagnostics` row in `COMMANDS`, and the `debug` handler routing `debug diagnostics` (through `DebugVerb`, tested before `on`/`off`). Flag either form missing, and flag any other verb, debug word or descriptor `aliases` entry that runs the report (`diag`, `dump` and the like). The README's `## Reporting a bug` section names `/<slash> diagnostics`, so check it names the addon's real slash.
+- **The diagnostics dump has exactly two forms** (`debug-logging-§14`, `slash-commands-§2`): a `diagnostics` row in `COMMANDS`, and the `debug` handler routing `debug diagnostics` (through `DebugVerb`, tested before `on`/`off`). Flag either form missing, and flag any other verb, debug word or descriptor `aliases` entry that runs the report (`diag`, `dump` and the like). The README's `## Reporting a bug` section names `/<slash> diagnostics`, so check it names the addon's real slash. Since standard v2.71.0 a run turns debug logging on for the session (the library's `SetEnabled(true)`, LibKa0s v1.64.0) unless the DebugLog descriptor sets `diagnosticsEnablesLogging = false`: `docs/debug.md` must say which, so flag a page that still says the report leaves the flag alone, or an opt-out the page does not state.
 
 **Exported API parity**
 - Every function exported on the addon table that docs claim exists → verify it's still there
