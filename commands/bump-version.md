@@ -53,7 +53,7 @@ and corrosive at the other one.
    | Tests | `suites.tests.status == "pass"` **and** `suites.tests.failed == 0` |
    | Perf | `suites.perf.status == "pass"` |
    | Complexity | `suites.complexity.status == "pass"` |
-   | CCN | `suites.complexity.warnings == 0` — no function above CCN 15 |
+   | CCN | `suites.complexity.warnings == 0` — no function above CCN 15 (from kit revision 35 the runner passes `lizard` `-L 1500`, so a warning is a CCN finding and never a length one: `automated-tests-§3`, *What a complexity warning means*) |
    | Sighted | `suites.complexity.blindFiles == 0` — `lizard` saw every function (`automated-tests-§3`, *The complexity gate is sighted*) |
 
    **Print `blindFiles` whatever it is**, in the gate table's Detail column, on a pass as well as a
