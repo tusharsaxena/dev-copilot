@@ -1,5 +1,5 @@
 ---
-description: Bump the addon version to X.Y.Z everywhere it appears — TOC, code constants, README badges, Version History table, CLAUDE*.md — roll the release history for everything since the last tag into the README's "Version History" for an addon (or CHANGELOG.md in a Ka0s-owned library repo, the only place documentation-§1 permits one), and write the release automated-test bundle's ANALYSIS.md and RESULTS.md watch list. Gated: runs the full four-suite battery FIRST and refuses to bump anything unless lint, tests, perf and complexity all pass with zero functions above CCN 15. Asks for the version if not provided.
+description: Bump the addon version to X.Y.Z everywhere it appears — TOC, code constants, README badges, Version History table, CLAUDE*.md — roll the release history for everything since the last tag into the README's "Version History" for an addon (or CHANGELOG.md in a Ka0s-owned library repo, the only place documentation-§1 permits one), and write the release automated-test bundle's ANALYSIS.md and RESULTS.md watch list. Gated: runs the full four-suite battery FIRST and refuses to bump anything unless lint, tests, perf and complexity all pass with zero functions above CCN 15 and no file lizard was blind in (blindFiles 0). Asks for the version if not provided.
 argument-hint: [X.Y.Z]
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 ---
@@ -22,9 +22,9 @@ Otherwise:
 
 ## Step 2 — The release gate (all four suites; STOP on any failure)
 
-A release is gated on **all four** suites plus **zero functions above CCN 15**
-(`automated-tests-§3`, *The release gate*). This runs **before any file is edited**, so a failed gate
-leaves the repo exactly as it was found.
+A release is gated on **all four** suites plus **zero functions above CCN 15**, measured sighted
+(`blindFiles` at 0) (`automated-tests-§3`, *The release gate*). This runs **before any file is
+edited**, so a failed gate leaves the repo exactly as it was found.
 
 This is **not** the commit gate and **MUST NOT** become one. Commits stay gated on lint + the harness
 only (`testing-§4`), the runner's own exit code is unchanged, and `perf`/`complexity` still never fail
@@ -45,7 +45,7 @@ and corrosive at the other one.
    and tell the user adoption is its own change. Do not improvise a gate from loose tool invocations.
 
 2. **Evaluate the gate from `docs/automated-tests/<stamp>/manifest.json`** — read the file, do not
-   infer from console text. All five conditions must hold:
+   infer from console text. All six conditions must hold:
 
    | Gate | Condition |
    |---|---|
@@ -54,6 +54,16 @@ and corrosive at the other one.
    | Perf | `suites.perf.status == "pass"` |
    | Complexity | `suites.complexity.status == "pass"` |
    | CCN | `suites.complexity.warnings == 0` — no function above CCN 15 |
+   | Sighted | `suites.complexity.blindFiles == 0` — `lizard` saw every function (`automated-tests-§3`, *The complexity gate is sighted*) |
+
+   **Print `blindFiles` whatever it is**, in the gate table's Detail column, on a pass as well as a
+   refusal: it is the one figure that says the CCN row measured every function. On kit revision 35 or
+   later a mismatch already makes `suites.complexity.status` a `fail`, so both rows fail together;
+   above 0, name every blind file the run listed (its console line `lizard blind in N file(s): …`, and
+   the **Not sighted** line at the top of `RESULTS.md`'s watch list), since the manifest holds only the
+   count. A manifest with **no** `blindFiles` field was written by a kit older than revision 35: its
+   complexity figures are **unsighted** and undercount whatever `lizard` dropped, so the Sighted row is
+   **NOT EVALUATED** and the remedy is `/wow-addon:revendor-libka0s`, never a local scanner.
 
 3. **A `skip` is not a pass.** A suite that did not run cannot satisfy its gate: a release claiming
    zero CCN > 15 on a run where `lizard` never executed is an unmeasured claim. Report it as
@@ -70,7 +80,7 @@ and corrosive at the other one.
    push. A partial bump is worse than a clean refusal, because the next attempt starts from a state
    nobody chose.
 
-5. **Report every failed gate, not the first.** Evaluate all five and print the full picture, so a
+5. **Report every failed gate, not the first.** Evaluate all six and print the full picture, so a
    release blocked for a lint error that also has four failing tests and a CCN 62 function is
    understood once rather than across three rounds. Use this shape:
 
@@ -84,6 +94,7 @@ and corrosive at the other one.
    | Perf       | PASS         | 6 scenarios                                      |
    | Complexity | PASS         | ran; lizard 1.17.31                              |
    | CCN <= 15  | FAIL         | 14 functions over 15, max CCN 33                 |
+   | Sighted    | PASS         | blindFiles 0                                     |
 
    Failing tests:
      - <case name>  (tests/test_ledger.lua:212)
@@ -100,7 +111,7 @@ and corrosive at the other one.
    worst first — a count alone sends the user back to the bundle to find out what to do, and the
    command has already read it.
 
-6. **Only when all five pass**, print a one-line `RELEASE GATE PASSED` with the same table and
+6. **Only when all six pass**, print a one-line `RELEASE GATE PASSED` with the same table and
    continue to Step 3. The bundle is written either way: it is the evidence for the decision, and a
    refusal with no record is not reviewable.
 
@@ -232,6 +243,12 @@ bundles for one version is a trend line with a fork in it.
    marked as such. A regeneration that yields no disposition for what newly crossed has performed the
    ritual and skipped the point (anti-pattern #51).
 
+   **The first sighted run is not a regression report.** On the first release after the re-vendor to
+   kit revision 35, any function the sighted suite lists that the old record never did was there all
+   along, unseen: mark it **newly measured**, not *newly crossed*. Method names change once, from `a`
+   to `a.b`, and a disposition carried under the old name does not follow it: re-rule it
+   (`automated-tests-§3`).
+
    After a passing gate the **functions** table reads **"None."** by construction — zero CCN > 15 is
    what the gate enforced. That is a result, not an empty section: write "None." rather than dropping
    the heading. The **files** table is unaffected; the LOC band is not part of the gate, so a file in
@@ -255,7 +272,7 @@ bundles for one version is a trend line with a fork in it.
 ## Step 6 — Report
 
 Print:
-- **`RELEASE GATE PASSED`** with the Step 2 table — lint, tests, perf, complexity, CCN ≤ 15 — and, where the perf gate passed because the addon ships no `tests/perf.lua`, say so plainly rather than letting it read as measured
+- **`RELEASE GATE PASSED`** with the Step 2 table — lint, tests, perf, complexity, CCN ≤ 15, sighted (`blindFiles`) — and, where the perf gate passed because the addon ships no `tests/perf.lua`, say so plainly rather than letting it read as measured
 - Old version → New version
 - The `<since>` reference used and the commit count it spanned
 - Every file changed (path + the line that was updated)

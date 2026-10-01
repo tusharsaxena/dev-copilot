@@ -109,6 +109,11 @@ they are the ones under pressure:
 - **Report complexity in full — totals *and* averages.** `manifest.json`'s `suites.complexity` carries
   every field of `lizard`'s footer. A total that rose because the addon grew is a different fact from
   an average that rose because it got denser, and only the second is a complexity signal.
+- **A `blindFiles` above 0 is complexity not passing**, whatever the warnings count says
+  (`automated-tests-§3`, *The complexity gate is sighted*): name every blind file the runner listed.
+  A manifest with no `blindFiles` came from a kit older than revision 35, so its complexity figures
+  are **unsighted**, and the analysis says so. Functions the first sighted run reports above CCN 15
+  are **newly measured**, not regressions.
 - **Never soften a skip into a pass.** "luacheck unavailable" is not "lint clean". If a suite was
   skipped, the analysis says what was not measured and why.
 
@@ -164,6 +169,8 @@ Print:
   **`(recorded, non-gating)`** so nobody reads a complexity count as a gate.
 - The verdict (`green` / `amber` / `red`) and the bundle path.
 - Anything that newly crossed a threshold, with its disposition.
+- `blindFiles`, and every blind file the run named, when it is above 0: complexity did not pass. On a
+  kit older than revision 35, say the complexity figures are unsighted.
 - Every **skipped** suite, with what is missing and its install hint (`sudo luarocks install luacheck`,
   `pipx install lizard`, a Lua 5.1 interpreter). Never let a skip pass silently — recording skips is
   the whole reason a green run can be trusted.
