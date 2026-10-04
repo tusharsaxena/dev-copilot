@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/bounded-runs-hook.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/bounded-runs-hook.sh\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/normalize-eol.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/normalize-eol.sh\""
           }
         ]
       }
