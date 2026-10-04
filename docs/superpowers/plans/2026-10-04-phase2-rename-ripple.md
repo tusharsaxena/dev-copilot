@@ -32,7 +32,7 @@ wow-addon plugin, or `~/.claude/wow-addon/`, except dated history.
 | A4 | Ka0sAddonsCommonTasks README/CLAUDE.md; wow-addon README "moved" notice | done |
 | A5 | dev-copilot — drop transitional wording once the rotation names dev-copilot | done — 1cfe0b5 + CLAUDE.md |
 | A6 | Verify: residual grep across all repos, gates green, branches pushed | done — verifier: all branches pushed, masters untouched, line endings intact |
-| G1 | **User go-ahead:** merge A-branches; tag LibKa0s release | pending |
-| B1 | Re-vendor the LibKa0s tag into the 11 addons (`/dev-copilot:wow-revendor-libka0s`) | pending |
-| G2 | **User go-ahead:** merge B-branches; archive wow-addon on GitHub (ask) | pending |
-| Z | Memory: rewrite `/wow-addon` → `/dev-copilot` in Claude memory files; delete run branches/stashes/worktrees | pending |
+| G1 | **User go-ahead:** merge A-branches; tag LibKa0s release | done — 16 repos + dev-copilot 2.0.1 merged; LibKa0s v1.68.1 tagged and pushed |
+| B1 | Re-vendor the LibKa0s tag into the 11 addons (`/dev-copilot:wow-revendor-libka0s`) | done — 11 addons re-vendored v1.68.1 (byte-identical, gates green, zero adoption candidates) |
+| G2 | **User go-ahead:** merge B-branches; archive wow-addon on GitHub (ask) | done — 11 merged; wow-addon archived on GitHub |
+| Z | Memory: rewrite `/wow-addon` → `/dev-copilot` in Claude memory files; delete run branches/stashes/worktrees | done — 32 memory files rewritten; wow-addon plugin uninstalled, its marketplace/cache/state removed, dev-copilot 2.0.1 installed; journals moved to ~/.claude/dev-copilot/issue-triage; no run branches, stashes or worktrees remain |
