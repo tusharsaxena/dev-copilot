@@ -26,12 +26,12 @@ wow-addon plugin, or `~/.claude/wow-addon/`, except dated history.
 
 | Step | Repo(s) | Status |
 |---|---|---|
-| A1 | WowAddonStandards — text + version bump + changelog entry | pending |
-| A2 | LibKa0s — docs + testkit/ (+ its own tests/_kit copy), kit revision bump, release prep per docs/releasing.md (no tag) | pending |
-| A3 | 12 addons — own docs, own test comments, AuraMaster `.claude/commands` path, Outfitter CLAUDE.md | pending |
-| A4 | Ka0sAddonsCommonTasks README/CLAUDE.md; wow-addon README "moved" notice | pending |
-| A5 | dev-copilot — drop transitional wording once the rotation names dev-copilot | pending |
-| A6 | Verify: residual grep across all repos, gates green, branches pushed | pending |
+| A1 | WowAddonStandards — text + version bump + changelog entry | done — v2.76.0, fa02fb6 |
+| A2 | LibKa0s — docs + testkit/ (+ its own tests/_kit copy), kit revision bump, release prep per docs/releasing.md (no tag) | done — v1.68.1 / kit 36; release record 9000cbd (tag target), all tag preconditions hold |
+| A3 | 12 addons — own docs, own test comments, AuraMaster `.claude/commands` path, Outfitter CLAUDE.md | done — 12 addons, gates green; 7 got a DC-REN-02 for docs/automated-tests/README.md |
+| A4 | Ka0sAddonsCommonTasks README/CLAUDE.md; wow-addon README "moved" notice | done |
+| A5 | dev-copilot — drop transitional wording once the rotation names dev-copilot | done — 1cfe0b5 + CLAUDE.md |
+| A6 | Verify: residual grep across all repos, gates green, branches pushed | done — verifier: all branches pushed, masters untouched, line endings intact |
 | G1 | **User go-ahead:** merge A-branches; tag LibKa0s release | pending |
 | B1 | Re-vendor the LibKa0s tag into the 11 addons (`/dev-copilot:wow-revendor-libka0s`) | pending |
 | G2 | **User go-ahead:** merge B-branches; archive wow-addon on GitHub (ask) | pending |
