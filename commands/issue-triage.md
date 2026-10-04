@@ -1,12 +1,21 @@
 ---
-description: Triage every `state:untriaged` GitHub issue on the addon's repo — one at a time, most severe first, with its evidence in front of you. Each becomes `state:triaged` (not now), `state:will-not-do` (never), or `state:done` (already true). Decision-only: it records your call by swapping the status label, and never changes code. GitHub writes run in background subagents so the interview never waits on the network. Discovery is `/wow-addon:issue-audit`.
+description: Triage every `state:untriaged` GitHub issue on the repo — one at a time, most severe first, with its evidence in front of you. Each becomes `state:triaged` (not now), `state:will-not-do` (never), or `state:done` (already true). Decision-only: it records your call by swapping the status label, and never changes code. GitHub writes run in background subagents so the interview never waits on the network. Discovery is `/dev-copilot:issue-audit`.
 argument-hint: [here|all|<repo>]
 allowed-tools: [Read, Glob, Grep, Bash, AskUserQuestion, Task]
 ---
 
 Put every untriaged item to a human, one at a time, and record what they decide.
 
-This is the second half of the pair. `/wow-addon:issue-audit` sweeps the repo and files what it finds as `state:untriaged` — seen, but explicitly not decided. This command is where those become decisions. It changes **the issue store only**: no code, no docs, no commits.
+## Step 0 — Detect the repo profile
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=wow`** — Read `<root>/profiles/wow/issue-triage.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
+- **`profile=generic`** — follow this spec as written. Do not read the overlay.
+
+This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 1 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the run — its labels, its resolutions, its rules — and a generic repo in the same run follows this spec as written. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
+
+This is the second half of the pair. `/dev-copilot:issue-audit` sweeps the repo and files what it finds as `state:untriaged` — seen, but explicitly not decided. This command is where those become decisions. It changes **the issue store only**: no code, no docs, no commits.
 
 ## The vocabulary
 
@@ -21,10 +30,11 @@ This is the second half of the pair. `/wow-addon:issue-audit` sweeps the repo an
 
 **Severity** — exactly one `severity:` label per issue. It is what this command **orders the queue by**, so it is load-bearing here rather than decorative:
 
+<!-- overlay: severity-ladder -->
 | Severity | Label | Color | Meaning |
 |---|---|---|---|
-| Critical | `severity:critical` | red `110000` | Taint, combat-lockdown breakage, saved-variable corruption or data loss, an error on a common path |
-| High | `severity:high` | orange `110800` | A user-visible defect, or a Ka0s standard deviation carried from an audit bundle |
+| Critical | `severity:critical` | red `110000` | Security exposure, data loss or corruption, a crash or broken build, an error on a common path |
+| High | `severity:high` | orange `110800` | A user-visible defect, or a deviation from a documented project standard carried from an audit or review bundle |
 | Medium | `severity:medium` | yellow `111100` | Maintainability: a stub callers depend on, code/doc drift, a dead path |
 | Low | `severity:low` | green `001100` | Polish, naming, cosmetic, speculative-future notes |
 
@@ -34,28 +44,30 @@ The distinction that carries the most weight: **`state:triaged` keeps an item al
 
 **GitHub API guardrail.** Use the `gh` CLI subcommands — `gh issue list`, `gh issue edit`, `gh issue close`, `gh issue comment`, `gh issue view`, `gh label list`, `gh label create` — with `--json` where structured data is needed. **Never use `gh api graphql`** and never hand-roll GraphQL against `api.github.com/graphql`; if REST is genuinely unavoidable use `gh api repos/{owner}/{repo}/issues`. Listing by status or severity is a plain **`--label` query**, not a title filter.
 
-## Step 0 — Resolve the scope and read the queue
+## Step 1 — Resolve the scope and read the queue
 
 The `$ARGUMENTS` token:
 
+<!-- overlay: scope -->
 - **absent, or `here`** → the repo at the cwd. **This is the default.**
-- **`all`** → every addon repo in the collection, roster read from `WowAddonStandards/standards/ADDONS.md`; if unreachable, fall back to sibling directories with a `.toc` and **say the roster was inferred**.
-- **a repo name** → that repo alone, matched case-insensitively. No match → say so, list the valid names, stop.
+- **`all`** → the repos the user names (in the request, or as further repo tokens after `all`); if none are named, the git checkouts beside the cwd repo in its parent folder — or, when the cwd is not itself inside a repo, the checkouts directly under it — that have a GitHub remote `gh` can resolve. **Show the resolved list and confirm it before the first question**, since every decision lands on one of those repos, and say in the report how the list was formed (named, or discovered on disk).
+- **a repo name** → that repo alone: an `owner/name` is used as given; a bare name is matched case-insensitively against the sibling checkout folders. No match → say so, list the valid names, stop.
 
-If the cwd is not an addon repo and no scope was given, **ask**. Don't guess.
+If the cwd is not a git repo with a GitHub remote and no scope was given, **ask**. Don't guess.
 
 Preflight `gh auth status` and `gh repo view --json nameWithOwner`. Either failing is **fatal** — the queue lives on GitHub and so does the answer. Say so and stop; never write a local file instead.
 
 ### Ensure the label set exists
 
-Before any write, make sure the eight collection labels exist. `gh label create --force` creates a missing label and updates an existing one's color and description, so it is safe to run every time:
+Before any write, make sure the eight `state:`/`severity:` labels exist. `gh label create --force` creates a missing label and updates an existing one's color and description, so it is safe to run every time:
 
+<!-- overlay: label-set -->
 ```
 gh label create "state:untriaged"   --color ff0000 --description "Seen and recorded; nobody has been asked yet"  --force
 gh label create "state:triaged"     --color ffff00 --description "Decided: not now. Still on the books"          --force
 gh label create "state:done"        --color 00ff00 --description "Implemented. Terminal"                          --force
 gh label create "state:will-not-do" --color 0000ff --description "Will never be done. Terminal"                   --force
-gh label create "severity:critical" --color 110000 --description "Taint, lockdown, data loss, common-path error"  --force
+gh label create "severity:critical" --color 110000 --description "Security, data loss, crash, common-path error"  --force
 gh label create "severity:high"     --color 110800 --description "User-visible defect, or a standard deviation"   --force
 gh label create "severity:medium"   --color 111100 --description "Maintainability: stub, drift, dead path"        --force
 gh label create "severity:low"      --color 001100 --description "Polish, naming, cosmetic, speculative"          --force
@@ -73,14 +85,14 @@ Take the issues carrying `state:untriaged`. Also pick up **stray issues** — op
 
 ### Resume check — before the first question, always
 
-List `~/.claude/wow-addon/issue-triage/`. Any journal **missing its `complete` line** is a run that recorded decisions and never confirmed they landed — a crashed session, a killed process, a machine that went away mid-run.
+List `~/.claude/dev-copilot/issue-triage/`, and also the legacy journal directory `~/.claude/wow-addon/issue-triage/` (written by the plugin before it was renamed) when it exists. Any journal in either **missing its `complete` line** is a run that recorded decisions and never confirmed they landed — a crashed session, a killed process, a machine that went away mid-run. A legacy journal is reconciled in place, exactly like a current one; new runs never write there.
 
 For each such journal, read its `decision` lines and match them against its `outcome` lines. Decisions with no successful outcome are **unconfirmed**: the user made them, and nobody knows whether GitHub received them.
 
 **Check the real state before offering anything.** For each unconfirmed decision, read the live issue (`gh issue view <n> -R <owner>/<repo> --json title,state,labels,comments`). Three cases:
 
 - **Already applied** — the issue carries the decided `state:` label and the decision comment is present. The write landed and only the outcome line was lost. Append the missing `outcome` line and move on; **do not re-apply and do not re-ask**.
-- **Not applied** — offer to replay it, showing the decision, its rationale and the issue. Replay is the same idempotent write as Step 3b.
+- **Not applied** — offer to replay it, showing the decision, its rationale and the issue. Replay is the same idempotent write as Step 4b.
 - **Applied differently** — the issue now carries a different `state:` label than the journal records. Somebody or something changed it in between. **Do not overwrite it.** Report both values and leave it; a stale journal must never be allowed to revert a newer decision.
 
 Then write the `complete` line to that old journal so it stops being offered.
@@ -91,7 +103,7 @@ If no journals are incomplete, say nothing about it — a clean resume check is 
 
 **On an `all`-scope run, do one repo at a time and say which repo you're in before its first question.** Twenty questions with no sense of place is how people lose track of what they just agreed to.
 
-## Step 1 — Order the queue
+## Step 2 — Order the queue
 
 **Sort by the `severity:` label, most severe first** (`severity:critical`, `severity:high`, `severity:medium`, `severity:low`), and within a severity, oldest first — an item that has been sitting for months has earned its turn ahead of one filed this morning. An issue with no severity label sorts **last** and is flagged in the queue table, because an unranked item is one nobody has sized, not one that is unimportant.
 
@@ -101,15 +113,16 @@ Print the queue as a table — number, severity, location, one-line summary — 
 
 **If the user disputes a severity, change it.** `gh issue edit <n> --remove-label "severity:low" --add-label "severity:high"` is a legitimate write for this command and it re-orders the rest of the queue. Record the change in the journal and the report like any other write. Severity is a judgment call the label captured on the user's behalf; the user overruling it is the system working, not an exception to it.
 
-## Step 2 — Interview
+## Step 3 — Interview
 
 One item at a time, using `AskUserQuestion`. **Never batch.** Never summarize a group as "and 12 more like this" and ask for one blanket call — per-item judgment is the entire point of this command.
 
 For each item, show its **severity**, its **verbatim evidence** and its **location** first, then offer:
 
-- **2–3 concrete resolutions specific to that item.** Not "fix it" / "don't fix it" — say what fixing it would mean *here*. For a stub: implement it / delete it and its callers / leave it and document the limitation. For an unexecuted audit deviation: apply the remediation the bundle already designed / apply a different fix you describe / accept the deviation.
+<!-- overlay: resolutions -->
+- **2–3 concrete resolutions specific to that item.** Not "fix it" / "don't fix it" — say what fixing it would mean *here*. For a stub: implement it / delete it and its callers / leave it and document the limitation. For an unexecuted review or audit plan item: apply the remediation the bundle already designed / apply a different fix you describe / accept the finding as it stands.
 - **"Keep it open — real work, not now"** — always present. The issue stays open as `state:triaged` and comes back as a collapsed count, not a question. (All three options below are triage outcomes; this is the one that leaves the work on the books.)
-- **"Will not do"** — always present, always last. A permanent close. Say plainly in the option text that it is permanent, and say what stays behind (the `TODO` still sits in the code, the deviation stays in the frozen bundle) so the choice is made with eyes open.
+- **"Will not do"** — always present, always last. A permanent close. Say plainly in the option text that it is permanent, and say what stays behind (the `TODO` still sits in the code, the finding stays in the frozen bundle) so the choice is made with eyes open.
 
 The user can always answer free-text instead of picking. **If they do, take their answer over your options** — the options are a convenience, not a cage.
 
@@ -123,40 +136,40 @@ The user can always answer free-text instead of picking. **If they do, take thei
 
 If the user stops partway through, **leave every un-interviewed issue exactly as it is** — still `state:untriaged`, still open, untouched. They weren't declined or postponed; they were never asked. Silence is not a decision and must never be recorded as one.
 
-This is the one place this command is meaningfully safer than the old fused version: the queue is already in the store, so an early stop loses nothing and needs no consent to publish anything. Just report where you stopped.
+This is the one place this command is meaningfully safer than a fused sweep-and-decide flow: the queue is already in the store, so an early stop loses nothing and needs no consent to publish anything. Just report where you stopped.
 
-## Step 3 — Record the decision, then write it in the background
+## Step 4 — Record the decision, then write it in the background
 
-**Never make the user wait on `gh`.** The moment an answer arrives, write it to the run journal and move to the next question. The GitHub calls happen in a background subagent while the interview continues. A triage sitting is a conversation; three `gh` round trips between every question turns it into a progress bar, and the whole reason this command was split out of `issue-audit` was to make the conversation cheap.
+**Never make the user wait on `gh`.** The moment an answer arrives, write it to the run journal and move to the next question. The GitHub calls happen in a background subagent while the interview continues. A triage sitting is a conversation; three `gh` round trips between every question turns it into a progress bar, and the whole reason this command is separate from `issue-audit` is to make the conversation cheap.
 
-### 3a. Journal the answer first — synchronously, before anything else
+### 4a. Journal the answer first — synchronously, before anything else
 
 The journal lives **outside the session**, under:
 
 ```
-~/.claude/wow-addon/issue-triage/<scope>-<YYYYMMDD-HHMMSS>.jsonl
+~/.claude/dev-copilot/issue-triage/<scope>-<YYYYMMDD-HHMMSS>.jsonl
 ```
 
-`<scope>` is the repo name, or `all` for a collection run. **The timestamp is to the second, and that is what makes the file unique** — two runs against the same repo on the same day must never share a journal, or one run's reconciliation checks itself against another run's decisions.
+`<scope>` is the repo name, or `all` for a multi-repo run. **The timestamp is to the second, and that is what makes the file unique** — two runs against the same repo on the same day must never share a journal, or one run's reconciliation checks itself against another run's decisions. Create the directory if it does not exist.
 
 It is deliberately **not** in the session scratchpad. A scratchpad journal survives a failed API call but not a crashed session, a new session, or a `/tmp` sweep — and "your decision is safe on disk" is worth nothing if the only process that can read it is the one that just died.
 
 Create the file with a run header, then append one line per event. Four line types, distinguished by `type`:
 
 ```json
-{"type":"run","scope":"all","started":"2026-08-07T00:31:12Z","queue":[{"repo":"PanelMaster","issue":4}]}
-{"type":"decision","repo":"PanelMaster","issue":4,"title":"<title text>","severity":"medium","severity_changed_from":null,"decision":"triaged","approach":"<resolution chosen, if any>","rationale":"<the user's words>","asked_at":"2026-08-07T00:33:40Z"}
-{"type":"outcome","repo":"PanelMaster","issue":4,"ok":true,"state":"OPEN","labels":["state:triaged","severity:medium"],"url":"...","detail":"label swap+comment succeeded"}
+{"type":"run","scope":"all","started":"2026-08-07T00:31:12Z","queue":[{"repo":"my-service","issue":4}]}
+{"type":"decision","repo":"my-service","issue":4,"title":"<title text>","severity":"medium","severity_changed_from":null,"decision":"triaged","approach":"<resolution chosen, if any>","rationale":"<the user's words>","asked_at":"2026-08-07T00:33:40Z"}
+{"type":"outcome","repo":"my-service","issue":4,"ok":true,"state":"OPEN","labels":["state:triaged","severity:medium"],"url":"...","detail":"label swap+comment succeeded"}
 {"type":"complete","reconciled":"2026-08-07T00:46:02Z","decisions":11,"written":11,"unwritten":0}
 ```
 
 The **decision** line is written **synchronously, before the next question is asked and before any subagent is spawned**. That ordering is the whole mechanism: a decision that exists only in a subagent's prompt is one failed call away from being lost, and losing someone's considered judgment is the worst outcome this command has.
 
-**A journal with no `complete` line is an unreconciled run.** That is the only signal Step 0's resume check uses, so never write one until Step 3c has actually reconciled.
+**A journal with no `complete` line is an unreconciled run.** That is the only signal Step 1's resume check uses, so never write one until Step 4c has actually reconciled.
 
-Journals are kept after completion — they are the local record of what was decided and when. Prune by hand if the directory grows; never automatically, and never as part of a run.
+Journals are kept after completion — they are the local record of what was decided and when. Prune by hand if the directory grows; never automatically, and never as part of a run. No other command reads or writes them, and none may treat a journal as a cache of issue state — GitHub is the store, the journal is the record of what was decided.
 
-### 3b. Spawn a background subagent to do the writing
+### 4b. Spawn a background subagent to do the writing
 
 Once journalled, dispatch a subagent to carry that one decision to GitHub, and **immediately continue interviewing**. Give it the repo, issue number, decision, approach, rationale and any severity change, and these instructions:
 
@@ -176,9 +189,9 @@ Constraints every subagent carries:
 - **One subagent per decision**, and keep at most a few in flight. They are writing to the same repo, and a burst is how a run gets rate-limited into a half-written state.
 - **It reports its outcome** — which calls succeeded, which failed, and the resulting issue URL and label set — so the parent can reconcile.
 
-### 3c. Reconcile before reporting
+### 4c. Reconcile before reporting
 
-The run is not finished when the last question is answered. It is finished when **every** subagent has returned. Before printing Step 4:
+The run is not finished when the last question is answered. It is finished when **every** subagent has returned. Before printing Step 5:
 
 1. Wait for all of them, appending each returned result as an `outcome` line.
 2. Compare `decision` lines against `outcome` lines. Every decision must have a matching successful write.
@@ -188,9 +201,9 @@ The run is not finished when the last question is answered. It is finished when 
 
 A decision the user made and GitHub never received is the one failure this command must never hide.
 
-**Never change the title.** The title is how the item is recognized across runs and in `/wow-addon:issue-details`; rewriting it orphans every reference to it. The single exception is stripping a legacy `[status]` prefix during the Step 0 stray repair, which is announced.
+**Never change the title.** The title is how the item is recognized across runs and in `/dev-copilot:issue-details`; rewriting it orphans every reference to it. The single exception is stripping a legacy `[status]` prefix during the Step 1 stray repair, which is announced.
 
-**Exactly one `state:` label, and it must not disagree with the GitHub state.** `state:done` and `state:will-not-do` are closed; `state:triaged` and `state:untriaged` are open. If you find one that disagrees, fix the state and say so in the report — that combination is a bug, and it is exactly what `/wow-addon:issue-summary` reports as an inconsistency. Two `state:` labels on one issue is the same class of bug: report it and leave it rather than guessing which is current.
+**Exactly one `state:` label, and it must not disagree with the GitHub state.** `state:done` and `state:will-not-do` are closed; `state:triaged` and `state:untriaged` are open. If you find one that disagrees, fix the state and say so in the report — that combination is a bug, and it is exactly what `/dev-copilot:issue-summary` reports as an inconsistency. Two `state:` labels on one issue is the same class of bug: report it and leave it rather than guessing which is current.
 
 The decision block appended as a comment:
 
@@ -207,7 +220,8 @@ The decision block appended as a comment:
 <the user's reason, in their words>
 ```
 
-- **Rationale is never blank.** For `state:will-not-do` it is **the most valuable field in the store** — it is what stops a future reader, or a future agent, re-opening a settled question, and it is what `/wow-addon:harvest-standards` mines to find rules the collection has collectively declined. If the user gave no reason, write what you understood their reason to be and **mark it inferred**.
+<!-- overlay: rationale -->
+- **Rationale is never blank.** For `state:will-not-do` it is **the most valuable field in the store** — it is what stops a future reader, or a future agent, re-opening a settled question. If the user gave no reason, write what you understood their reason to be and **mark it inferred**.
 - Comment rather than rewriting the body: the body is the audit record of what was found, the comment is the record of what was decided, and keeping them separate means the evidence survives the decision.
 
 ### Follow-through on "will not do"
@@ -216,9 +230,9 @@ The closed issue is enough to stop the item re-surfacing, so **no further action
 
 Never bundle this into the main decision. Ask separately, accept a plain no.
 
-## Step 4 — Report
+## Step 5 — Report
 
-Print this **only after every subagent has returned** (Step 3c). It has two halves, because they can disagree: what was *decided*, and what was *written*.
+Print this **only after every subagent has returned** (Step 4c). It has two halves, because they can disagree: what was *decided*, and what was *written*.
 
 **Decisions taken** — one row per item, straight from the journal, so this is complete even if a write failed:
 
@@ -259,4 +273,5 @@ Keep the two halves separate even when they match perfectly. Collapsing them int
 - **Never change a severity on your own initiative.** A `severity:` label moves only when the user says so during the interview, or when a stray issue had none at all.
 - **Never bulk-close.** An issue whose evidence you can't find is not thereby stale; leave it.
 - **Use the `gh` CLI subcommands.** Never `gh api graphql`.
-- **Don't touch `libs/`** or any vendored library, and don't edit frozen `docs/audits/` or `docs/reviews/` bundles.
+<!-- overlay: hard-rules -->
+- **Don't touch vendored code**, and don't edit frozen dated review/audit bundles.

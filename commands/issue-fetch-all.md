@@ -1,14 +1,22 @@
 ---
-description: List the GitHub issues on the current addon's repo, via the gh CLI. Optionally filter by status label (state:untriaged / state:triaged / state:done / state:will-not-do), by severity (severity:critical … severity:low), or by any other label, or switch to closed/all. Read-only — never creates, edits, or closes issues.
+description: List the GitHub issues on the current repo, via the gh CLI. Optionally filter by status label (state:untriaged / state:triaged / state:done / state:will-not-do), by severity (severity:critical … severity:low), or by any other label, or switch to closed/all. Read-only — never creates, edits, or closes issues.
 argument-hint: [untriaged | triaged | done | will-not-do] | [critical | high | medium | low] | [label] | [closed | all]  (optional; default: open)
 allowed-tools: [Bash]
 ---
 
 List the GitHub issues for the repo at the cwd, using the `gh` CLI.
 
+## Step 0 — Detect the repo profile
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=wow`** — Read `<root>/profiles/wow/issue-fetch-all.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
+- **`profile=generic`** — follow this spec as written. Do not read the overlay.
+
 ## The status and severity labels
 
-Issues on a Ka0s addon repo are the durable store of pending work — `docs/pending/LEDGER.md` is retired and `/wow-addon:issue-audit` reads and writes this store. Two facts about every issue are carried as **GitHub labels**:
+<!-- overlay: store-intro -->
+Issues on the repo are the durable store of pending work — `/dev-copilot:issue-audit` reads and writes this store. Two facts about every issue are carried as **GitHub labels**:
 
 **Status** — exactly one `state:` label per issue:
 
@@ -21,29 +29,30 @@ Issues on a Ka0s addon repo are the durable store of pending work — `docs/pend
 
 **Severity** — exactly one `severity:` label per issue:
 
+<!-- overlay: severity-ladder -->
 | Label | Color | Meaning |
 |---|---|---|
-| `severity:critical` | red `110000` | Taint, combat-lockdown breakage, saved-variable corruption or data loss, an error on a common path |
-| `severity:high` | orange `110800` | A user-visible defect, or a Ka0s standard deviation carried from an audit bundle |
+| `severity:critical` | red `110000` | Security exposure, data loss or corruption, a crash or broken build, an error on a common path |
+| `severity:high` | orange `110800` | A user-visible defect, or a deviation from a documented project standard carried from an audit or review bundle |
 | `severity:medium` | yellow `111100` | Maintainability: a stub callers depend on, code/doc drift, a dead path |
 | `severity:low` | green `001100` | Polish, naming, cosmetic, speculative-future notes |
 
 **The title carries neither.** Titles are the plain statement of the work — no `[status]` prefix, no emoji marker, no severity word. The old `[untriaged] …` title-prefix convention is **retired**; if you meet a stale prefix on an old issue, the labels are the truth and the prefix is leftover text.
 
-**Every issue always carries one `state:` label and one `severity:` label**, so a missing one is a defect rather than a fifth value. This command is a plain listing and deliberately does **not** repair it: show the issue with `—` in that column, say plainly which label is missing, and point at `/wow-addon:issue-audit` or `/wow-addon:issue-triage`, which repair strays on sight. Don't guess, and don't fix it here — a listing that edits what it lists is a surprise nobody asked for.
+**Every issue always carries one `state:` label and one `severity:` label**, so a missing one is a defect rather than a fifth value. This command is a plain listing and deliberately does **not** repair it: show the issue with `—` in that column, say plainly which label is missing, and point at `/dev-copilot:issue-audit` or `/dev-copilot:issue-triage`, which repair strays on sight. Don't guess, and don't fix it here — a listing that edits what it lists is a surprise nobody asked for.
 
-For status, severity, description and age together rather than a bare listing, use `/wow-addon:issue-details`; for counts across repos, `/wow-addon:issue-summary`.
+For status, severity, description and age together rather than a bare listing, use `/dev-copilot:issue-details`; for counts across repos, `/dev-copilot:issue-summary`.
 
 **GitHub API guardrail.** Use the `gh` CLI subcommands — here that is `gh issue list` and, if a single issue needs expanding, `gh issue view` — with `--json` for structured data. **Never use `gh api graphql`** for issue work, and never hand-roll GraphQL queries against `api.github.com/graphql` — reaching for GraphQL first is a real, observed failure that wastes a round trip on a deprecated path before falling back. If a REST call is genuinely unavoidable, use `gh api repos/{owner}/{repo}/issues` — never the GraphQL endpoint. Because status and severity are labels, filtering by either is a **plain `--label` query** — never a title filter, never `--search`, never GraphQL.
 
-## Step 0 — Preflight
+## Step 1 — Preflight
 
 Run, and stop with clear guidance if either fails:
 
 1. `gh auth status` — confirm `gh` is installed and authenticated. If not, tell the user to install `gh` and run `gh auth login`, then stop.
 2. `gh repo view --json nameWithOwner` — confirm the cwd repo has a GitHub remote `gh` can resolve. If it can't (no remote, not a GitHub repo), say so and stop.
 
-## Step 1 — Parse the argument
+## Step 2 — Parse the argument
 
 Parse `$ARGUMENTS` (trimmed), in this order:
 
@@ -55,7 +64,7 @@ Parse `$ARGUMENTS` (trimmed), in this order:
 
 A status filter and a severity filter **do** combine — `gh issue list --label` is AND across repeated flags, so `untriaged high` is a legitimate and useful request. A plain label filter combines with them the same way. If the user gives two filters of the *same* kind (two statuses, two severities), honour the first and say the second was ignored; the labels are mutually exclusive, so an AND of two of them always returns nothing.
 
-## Step 2 — Fetch
+## Step 3 — Fetch
 
 Fetch as JSON for reliable parsing (do not screen-scrape the plain output):
 
@@ -63,9 +72,9 @@ Fetch as JSON for reliable parsing (do not screen-scrape the plain output):
 gh issue list --state <state> --limit 100 --json number,title,state,labels,author,createdAt,url [--label "state:<value>"] [--label "severity:<value>"] [--label "<label>"]
 ```
 
-Repeat `--label` once per filter Step 1 produced. Never translate a label filter into a `--search` or a GraphQL query.
+Repeat `--label` once per filter Step 2 produced. Never translate a label filter into a `--search` or a GraphQL query.
 
-## Step 3 — Report
+## Step 4 — Report
 
 Print a table sorted by severity (critical first), and within a severity by issue number descending (newest first):
 

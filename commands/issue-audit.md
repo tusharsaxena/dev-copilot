@@ -1,16 +1,26 @@
 ---
-description: Sweep the addon for everything still hanging — TODO/FIXME/stub markers, unexecuted audit and review plan items, doc open questions and Known Limitations, an Unreleased CHANGELOG section, stashes and follow-up commits, and recorded-but-unacted Claude memory — and file anything not already in the issue store as a new GitHub issue labelled `state:untriaged` plus a severity. Discovery only: it never interviews you and never changes code. Triage is `/wow-addon:issue-triage`.
+description: Sweep the repo for everything still hanging — TODO/FIXME/stub markers, unexecuted review/audit plan items, doc open questions and Known Limitations, an Unreleased CHANGELOG section, stashes and follow-up commits, and recorded-but-unacted Claude memory — and file anything not already in the issue store as a new GitHub issue labelled `state:untriaged` plus a severity. Discovery only: it never interviews you and never changes code. Triage is `/dev-copilot:issue-triage`.
 argument-hint: [here|all|<repo>] [code|docs|issues|memory|<path>]
 allowed-tools: [Read, Glob, Grep, Bash, AskUserQuestion]
 ---
 
-Find every pending decision, unfinished action and deferred change in the addon, and make sure each one exists as a GitHub issue. **This command discovers and files. It does not triage.**
+Find every pending decision, unfinished action and deferred change in the repo, and make sure each one exists as a GitHub issue. **This command discovers and files. It does not triage.**
 
-That split is the point. Discovery is mechanical and can run unattended over any scope; triage is a conversation that costs you a decision per item. Fusing them meant you could not sweep without committing to an interview, which trained people not to sweep. Everything this command files lands as **`state:untriaged`** — seen, recorded, and explicitly *not* decided. `/wow-addon:issue-triage` is what turns those into decisions.
+## Step 0 — Detect the repo profile
 
-## The store: GitHub issues on the addon's own repo
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
 
-There is no local ledger. `docs/pending/LEDGER.md` is **retired** — the durable record is the set of GitHub issues on the addon's repo. Two facts about every issue are carried as **GitHub labels**:
+- **`profile=wow`** — Read `<root>/profiles/wow/issue-audit.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
+- **`profile=generic`** — follow this spec as written. Do not read the overlay.
+
+This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 1 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the run — its sweep, its labels, its filing — and a generic repo in the same run follows this spec as written. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
+
+The discovery/triage split is the point. Discovery is mechanical and can run unattended over any scope; triage is a conversation that costs you a decision per item. Fusing them meant you could not sweep without committing to an interview, which trained people not to sweep. Everything this command files lands as **`state:untriaged`** — seen, recorded, and explicitly *not* decided. `/dev-copilot:issue-triage` is what turns those into decisions.
+
+<!-- overlay: store-intro -->
+## The store: GitHub issues on the repo itself
+
+There is no local ledger — the durable record is the set of GitHub issues on the repo. Never create or mirror one in a file. Two facts about every issue are carried as **GitHub labels**:
 
 **Status** — exactly one `state:` label per issue:
 
@@ -23,10 +33,11 @@ There is no local ledger. `docs/pending/LEDGER.md` is **retired** — the durabl
 
 **Severity** — exactly one `severity:` label per issue:
 
+<!-- overlay: severity-ladder -->
 | Severity | Label | Color | Meaning |
 |---|---|---|---|
-| Critical | `severity:critical` | red `110000` | Taint, combat-lockdown breakage, saved-variable corruption or data loss, an error on a common path |
-| High | `severity:high` | orange `110800` | A user-visible defect, or a Ka0s standard deviation carried from an audit bundle |
+| Critical | `severity:critical` | red `110000` | Security exposure, data loss or corruption, a crash or broken build, an error on a common path |
+| High | `severity:high` | orange `110800` | A user-visible defect, or a deviation from a documented project standard carried from an audit or review bundle |
 | Medium | `severity:medium` | yellow `111100` | Maintainability: a stub callers depend on, code/doc drift, a dead path |
 | Low | `severity:low` | green `001100` | Polish, naming, cosmetic, speculative-future notes |
 
@@ -38,19 +49,21 @@ There is no local ledger. `docs/pending/LEDGER.md` is **retired** — the durabl
 
 **Space out writes.** A sweep that files twenty issues is twenty content-creating API calls, and GitHub throttles bursts. Leave a few seconds between mutations and prefer a slow complete run to a fast partial one. On an `all`-scope run, work **one repo at a time** rather than firing at several at once.
 
-## Step 0 — Resolve the scope
+## Step 1 — Resolve the scope
 
 The **first** `$ARGUMENTS` token, if it is a scope keyword:
 
+<!-- overlay: scope -->
 - **absent, or `here`** → the repo at the cwd. **This is the default.**
-- **`all`** → every addon repo in the collection. Read the roster from `WowAddonStandards/standards/ADDONS.md` (folder + repository per row) rather than hardcoding it; if that repo isn't checked out, fall back to sibling directories containing a `.toc` and **say in the report that the roster was inferred**.
-- **a repo name** → that repo alone, matched case-insensitively against the roster. If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
+- **`all`** → the repos the user names (in the request, or as further repo tokens after `all`); if none are named, the git checkouts beside the cwd repo in its parent folder — or, when the cwd is not itself inside a repo, the checkouts directly under it — that have a GitHub remote `gh` can resolve. **Show the resolved list and confirm it before writing to more than one repo**, and say in the report how the list was formed (named, or discovered on disk) — a discovered list can silently omit a repo, or include one nobody meant.
+- **a repo name** → that repo alone: an `owner/name` is used as given; a bare name is matched case-insensitively against the sibling checkout folders. If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
 
-If the cwd is not an addon repo and no scope was given, **ask** which scope to use rather than guessing — sweeping the wrong repo wastes a run, and sweeping `all` when the user meant one repo files issues on ten repos they weren't thinking about.
+If the cwd is not a git repo with a GitHub remote and no scope was given, **ask** which scope to use rather than guessing — sweeping the wrong repo wastes a run, and sweeping `all` when the user meant one repo files issues on repos they weren't thinking about.
 
 Any remaining token narrows the sweep to one source (`code`, `docs`, `issues`, `memory`) or to a path prefix. Empty means sweep everything.
 
-For each repo in scope, confirm it is a WoW addon (at least one `.toc`, or a `docs/`+`.lua` layout), then preflight:
+<!-- overlay: repo-check -->
+For each repo in scope, confirm it is a git checkout, then preflight:
 
 1. `gh auth status` — `gh` installed and authenticated.
 2. `gh repo view --json nameWithOwner` — the repo has a GitHub remote `gh` can resolve.
@@ -61,14 +74,15 @@ The one exception, offered rather than assumed: the code, docs and memory sweeps
 
 ### Ensure the label set exists
 
-Before any write, make sure the eight collection labels exist on the repo. `gh label create --force` creates a missing label and updates an existing one's color and description, so it is safe to run every time and repairs a drifted color on the way:
+Before any write, make sure the eight `state:`/`severity:` labels exist on the repo. `gh label create --force` creates a missing label and updates an existing one's color and description, so it is safe to run every time and repairs a drifted color on the way:
 
+<!-- overlay: label-set -->
 ```
 gh label create "state:untriaged"   --color ff0000 --description "Seen and recorded; nobody has been asked yet"  --force
 gh label create "state:triaged"     --color ffff00 --description "Decided: not now. Still on the books"          --force
 gh label create "state:done"        --color 00ff00 --description "Implemented. Terminal"                          --force
 gh label create "state:will-not-do" --color 0000ff --description "Will never be done. Terminal"                   --force
-gh label create "severity:critical" --color 110000 --description "Taint, lockdown, data loss, common-path error"  --force
+gh label create "severity:critical" --color 110000 --description "Security, data loss, crash, common-path error"  --force
 gh label create "severity:high"     --color 110800 --description "User-visible defect, or a standard deviation"   --force
 gh label create "severity:medium"   --color 111100 --description "Maintainability: stub, drift, dead path"        --force
 gh label create "severity:low"      --color 001100 --description "Polish, naming, cosmetic, speculative"          --force
@@ -95,9 +109,9 @@ An issue carrying no `severity:` label gets one too — assess it from its body 
 
 **A legacy `[status]` title prefix is stripped as part of the same repair.** Set the label from the prefix, then `gh issue edit <n> --title "<title with the prefix removed>"`. Keep the rest of the title text exactly — you are removing a prefix, not rewriting somebody's words. If the label and a leftover prefix disagree, the **label wins**; report the disagreement rather than silently picking one.
 
-**Report every repair** in Step 4 — labels added, prefix stripped, old and new title — so a title changing under someone is never a silent event. After repair the issue is an ordinary `state:untriaged` item and `/wow-addon:issue-triage` will pick it up.
+**Report every repair** in Step 5 — labels added, prefix stripped, old and new title — so a title changing under someone is never a silent event. After repair the issue is an ordinary `state:untriaged` item and `/dev-copilot:issue-triage` will pick it up.
 
-## Step 1 — Discover
+## Step 2 — Discover
 
 Run all four sweeps (or the one the argument selected). Every item you surface must carry:
 
@@ -107,44 +121,46 @@ Run all four sweeps (or the one the argument selected). Every item you surface m
 - an **evidence hash** — first 8 chars of `sha1` over the verbatim evidence text. The store matches on this, so a marker whose text changed correctly re-surfaces as new.
 - **age**, where knowable — `git blame -L <line>,<line> -- <file>` on a code marker. An item sitting for a year is different information from one added yesterday.
 
-### 1a. Code markers
+### 2a. Code markers
 
-Grep the addon's own `.lua` and `.xml` files — **exclude `libs/`, `Libs/` and any vendored library directory**:
+<!-- overlay: code-scope -->
+Grep the project's own source files (`git ls-files` is the honest list) — **exclude vendored and generated trees**: `vendor/`, `third_party/`, `node_modules/`, `libs/`, `dist/`, `build/`, lockfiles, minified bundles, and any directory the repo's docs describe as a copy of someone else's code:
 
 - `TODO`, `FIXME`, `HACK`, `XXX`, `BUG`, `NOTE:` followed by deferral language
 - prose deferrals in comments: `for now`, `temporary`, `revisit`, `later`, `placeholder`, `stub`, `not implemented`, `come back to`, `once we`
-- **stub functions** — a body that is empty, only a comment, or only `return` / `return nil`
-- **commented-out blocks** — three or more consecutive commented lines that parse as Lua rather than prose
+- **stub functions** — a body that is empty, only a comment, only `return` / `return nil` / `return None` / `pass`, or only a `throw`/`raise` of a not-implemented error
+- **commented-out blocks** — three or more consecutive commented lines that parse as code in the file's language rather than prose
 - **hardcoded values flagged as provisional** — a literal whose comment matches the deferral vocabulary above
 
-Read enough surrounding lines to state what the marker actually asks for. A bare `-- TODO` with no context is itself a finding ("marker with no stated intent").
+Read enough surrounding lines to state what the marker actually asks for. A bare `TODO` with no context is itself a finding ("marker with no stated intent").
 
-### 1b. Docs and frozen artifacts
+### 2b. Docs and frozen artifacts
 
-- `README.md`, root `CLAUDE.md`, `docs/*.md` — open questions, "not yet", "planned", "TBD", "known issue"
-- `docs/ARCHITECTURE.md` → **Known Limitations**, every entry
+- `README.md`, root `CLAUDE.md` / `AGENTS.md`, `docs/*.md` — open questions, "not yet", "planned", "TBD", "known issue"
+- `ARCHITECTURE.md` (root or `docs/`) → **Known Limitations**, every entry
 - `CHANGELOG.md` → an `Unreleased` section with content in it
 - `TODO.md` if present — every unchecked item
 
-Then the high-value one: **unexecuted plan items.** Find the newest `docs/audits/<YYYY-MM-DD>/05_EXECUTION_PLAN.md` and the newest `docs/reviews/<YYYY-MM-DD>/04_EXECUTION_PLAN.md`. For each step or deviation ID, check the current code to see whether it was carried out. Report executed / not executed / partially executed **with the evidence you used to decide** — a plan row is a pending item only if the code still shows the pre-remediation state. Carry the original deviation ID into the evidence so it stays traceable to the frozen bundle.
+<!-- overlay: plan-bundles -->
+Then the high-value one: **unexecuted plan items.** Find the newest `reviews/<YYYY-MM-DD>/04_EXECUTION_PLAN.md` (the bundle `/dev-copilot:review` writes), and the newest execution plan of any other dated review/audit bundle the repo keeps. For each step or finding ID, check the current code to see whether it was carried out. Report executed / not executed / partially executed **with the evidence you used to decide** — a plan row is a pending item only if the code still shows the pre-remediation state. Carry the original finding ID into the evidence so it stays traceable to the frozen bundle.
 
 Older bundles are frozen history; don't re-litigate them. Sort by date and take the latest.
 
-### 1c. Git
+### 2c. Git
 
 - `git stash list` — each stash is unfinished work
 - `git status --porcelain` — uncommitted changes
 - `git log --oneline -50` — subjects/bodies containing `follow-up`, `followup`, `temporary`, `revert later`, `part 1`, `WIP`, `first pass`
 
-The issues read in Step 0 are **not** a discovery sweep — they are the store, and they are what Step 2 reconciles against.
+The issues read in Step 1 are **not** a discovery sweep — they are the store, and they are what Step 3 reconciles against.
 
-### 1d. Claude memory
+### 2d. Claude memory
 
 Look under `~/.claude/projects/<cwd-path-slug>/memory/` (the slug is the absolute cwd with `/` replaced by `-`). Read `MEMORY.md` and the entries it indexes. Surface entries recording a decision, constraint or user instruction **with no corresponding change in the code or docs**.
 
 Memory reflects what was true when written. Before surfacing one, verify the file, function or flag it names still exists.
 
-## Step 2 — Reconcile against the store
+## Step 3 — Reconcile against the store
 
 For each discovered item, look for an issue whose body records the same **evidence hash**:
 
@@ -159,13 +175,13 @@ Before filing, check whether an existing issue already describes the same work i
 
 Labelled issues with **no** matching discovered item are not stale. The evidence may live somewhere this run didn't sweep. Leave them alone; **never bulk-close issues because a sweep didn't find their evidence.**
 
-Classify each new item by **severity** against the ladder in the store table above, each with a one-line justification so the ranking is arguable. The severity becomes the issue's `severity:` label, and it is what `/wow-addon:issue-triage` orders its queue by — a wrong severity does not just mislabel an item, it puts it in front of or behind the wrong things when somebody sits down to decide.
+Classify each new item by **severity** against the ladder in the store table above, each with a one-line justification so the ranking is arguable. The severity becomes the issue's `severity:` label, and it is what `/dev-copilot:issue-triage` orders its queue by — a wrong severity does not just mislabel an item, it puts it in front of or behind the wrong things when somebody sits down to decide.
 
 Print the inventory grouped by severity (Critical first) showing ID, location and a one-line summary, plus counts for *Already tracked* and *Dropped as terminal*.
 
 If nothing new was found, say so plainly and stop. That is a good outcome, not a failed run.
 
-## Step 3 — File the new items as `state:untriaged`
+## Step 4 — File the new items as `state:untriaged`
 
 **Show the list and get approval before creating anything.** Filing is public and other people get notified. Show the count, the titles and the severities, then ask once. On a `all`-scope run, show it per repo — twelve issues across one repo and twelve across eight are different decisions.
 
@@ -180,22 +196,22 @@ gh issue create --title "<Title>" \
 - **Item ID:** CODE-03
 - **Evidence hash:** 1a2b3c4d
 - **Source:** code marker
-- **Location:** modules/Aura.lua:212
+- **Location:** src/cache.py:212
 - **Severity rationale:** a stub two callers already depend on
 - **Found:** 2026-08-06
 
 ### Evidence
 
-> -- TODO: handle the pet-swap case before 11.2
+> # TODO: handle the empty-cache case before the next release
 
 ### Status
 
-Untriaged — found by a sweep and recorded. **Nobody has been asked about this yet**, and this issue is not agreement to do it. `/wow-addon:issue-triage` puts it to a human.
+Untriaged — found by a sweep and recorded. **Nobody has been asked about this yet**, and this issue is not agreement to do it. `/dev-copilot:issue-triage` puts it to a human.
 EOF
 )"
 ```
 
-- **Item ID and evidence hash are mandatory.** They are the whole matching key for the next run's Step 2. An issue missing them cannot be reconciled and will be re-filed as a duplicate forever.
+- **Item ID and evidence hash are mandatory.** They are the whole matching key for the next run's Step 3. An issue missing them cannot be reconciled and will be re-filed as a duplicate forever.
 - **Both labels are mandatory.** `state:untriaged` and one `severity:` label go on at creation, in the same call — an issue created bare and labelled afterwards is one failed call away from being invisible to every status query in the family.
 - **The body records the severity *rationale*, not the severity.** The level itself lives in the label; writing it in the body too creates a second copy that drifts the first time triage or a later sweep revises it.
 - **Title** is a crisp statement of the work, derived from the evidence, with **no status prefix and no severity word**. Don't paste a raw `TODO` as a title, and don't invent scope the evidence doesn't support.
@@ -203,7 +219,7 @@ EOF
 - **Never file with any status but `state:untriaged`.** This command has no way to know whether something should be done — it hasn't asked. A sweep that files `state:triaged` is asserting a decision nobody made.
 - Tag labels (`bug`, `enhancement`) are optional and orthogonal to both.
 
-## Step 4 — Report
+## Step 5 — Report
 
 - **Filed** — every new issue: item ID, severity, title, number and URL
 - **Already tracked** — count, split `state:untriaged` / `state:triaged`, with numbers
@@ -211,17 +227,18 @@ EOF
 - **Stray issues repaired** — every issue that gained a `state:` or `severity:` label or lost a legacy title prefix, with its old and new title and the labels added. Never silent.
 - **Skipped sweeps** — any source that couldn't run and why
 - **Failed writes** — any `gh` call that failed, and which item it was for
-- The count of `state:untriaged` issues now open, their severity split, and a pointer: `/wow-addon:issue-triage` to decide them
+- The count of `state:untriaged` issues now open, their severity split, and a pointer: `/dev-copilot:issue-triage` to decide them
 
 ## Hard rules
 
 - **Discovery only. Never triage.** Don't interview, don't ask the user to decide an item's fate, don't file anything as `state:triaged`, `state:done` or `state:will-not-do` on the strength of your own reading. The whole value of the split is that a sweep is cheap and safe to run.
 - **Never change code.** No `Edit`, no `Write`, no fixing the `TODO` you just found. This command reads the repo and writes GitHub. If a marker is trivially fixable, say so in the report and leave it.
-- **Don't commit, don't bump the version, don't touch `libs/`.**
+<!-- overlay: hard-rules -->
+- **Don't commit, don't bump the version, don't touch vendored code.**
 - **Every issue this command creates or repairs ends up with exactly one `state:` label and exactly one `severity:` label.** Two of either is a defect; report it rather than picking one at random.
 - **Never put status or severity in the title.** No `[untriaged]` prefix, no emoji marker, no severity word. Strip a legacy prefix when you meet one, and say you did.
 - **Use the `gh` CLI subcommands.** Never `gh api graphql`.
 - **Don't file an issue for something you can't point at.** Every item traces to verbatim evidence at a real location. If you think something *should* be done but nothing in the repo says so, that's your opinion — put it in the report under "Not a pending item, but noticed", never in the store.
 - **Don't rewrite somebody else's issue.** Repairing a stray adds the missing labels and removes a legacy prefix — nothing else.
-- **Don't edit frozen artifacts.** `docs/audits/<date>/` and `docs/reviews/<date>/` are history.
+- **Don't edit frozen artifacts.** Dated review/audit bundles (`reviews/<date>/` and the like) are history.
 - **Don't resurrect closed items.** A terminal issue with a matching evidence hash means the question is settled; only the evidence changing re-opens it.
