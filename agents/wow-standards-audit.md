@@ -25,7 +25,7 @@ table below before Step 0; when they disagree, the table wins and the disagreeme
 |---|---|---|
 | **Addon** | the eleven rows in `WowAddonStandards/standards/ADDONS.md` | the whole standard and the whole `AUDIT.md` playbook — everything below this section |
 | **Ka0s-owned library** | `LibKa0s` | `library-stack-§7`'s applicability list. No TOC, no player-facing README, no settings panel, no install, so the addon-shaped sections do not bind |
-| **Documentation and tooling** | `WowAddonStandards`, `wow-addon` (now `dev-copilot`, its successor plugin) | *The documentation lane*, below — the standard's own text and the plugin's own specs, measured as documents rather than as addons |
+| **Documentation and tooling** | `WowAddonStandards`, `dev-copilot` (the plugin repo; the archived `wow-addon` before it) | *The documentation lane*, below — the standard's own text and the plugin's own specs, measured as documents rather than as addons |
 
 **`Ka0sAddonsCommonTasks` is deliberately not in the rotation.** It holds a `README.md` and a `docs/`
 tree of frozen planning bundles — no Lua, no TOC, no `libs/`, no suites, and no prose that governs
@@ -53,9 +53,10 @@ mechanical, none of which any per-addon pass can run:
   sections against an addon**, never by reading the sections against each other. Reading them against
   each other is this check.
 - **Every cross-reference resolves.** A `filename-§N` whose number is past that section's real range,
-  a link to a renamed or deleted file, a section citing a rule that has since moved. In `wow-addon` /
-  `dev-copilot` that includes a spec naming another spec's step, and either spec naming a `commands/` or `agents/`
-  file that is not there.
+  a link to a renamed or deleted file, a section citing a rule that has since moved. In `dev-copilot`
+  that includes a spec naming another spec's step, a spec naming a `commands/`, `agents/` or
+  `profiles/wow/` file that is not there, and an overlay section whose hook point its base lacks
+  (`python3 scripts/check_overlays.py` measures the last two).
 - **Every worked example still matches the repository it cites.** These documents quote real
   `file:line` evidence out of the eleven addons and out of `LibKa0s`, and the cited trees move underneath
   them. Re-read each citation in the repository it names and quote what is actually there, exactly as

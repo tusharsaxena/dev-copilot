@@ -10,7 +10,7 @@ marker of the same id in `commands/bump-version.md`.
 **Repo kind** comes from the detector's `kind`: `addon` (a root `.toc` with `## Interface:`) or
 `library` (LibKa0s and its kin — `library-stack-§7`'s applicability list). Where a section below
 says "addon" or "library", that is the switch. **`kind=standards` / `kind=tooling`**
-(WowAddonStandards, the wow-addon / dev-copilot plugin repo) are documentation-and-tooling repos
+(WowAddonStandards, the dev-copilot plugin repo, and the archived wow-addon) are documentation-and-tooling repos
 with no TOC and no vendored runner: this overlay does not apply to them — follow the generic spec.
 
 Step numbers below are the base spec's: 1 version, 2 gate, 3 references, 3b summary, 4 update,
