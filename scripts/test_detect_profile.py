@@ -89,8 +89,9 @@ class DetectTest(unittest.TestCase):
         r = self.repo("std", origin="https://github.com/x/WowAddonStandards.git")
         self.assertKind(r, "wow", "standards")
 
-    def test_tooling_by_name(self):
-        self.assertKind(self.repo("wow-addon"), "wow", "tooling")
+    def test_retired_wow_addon_is_generic(self):
+        # The retired wow-addon plugin repo is archived and out of the rotation: no rule names it.
+        self.assertKind(self.repo("wow-addon"), "generic", "generic")
 
     def test_workspace_is_tooling(self):
         r = self.repo("ws", origin="git@github.com:x/Ka0sAddonsCommonTasks.git")

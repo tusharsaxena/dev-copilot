@@ -16,7 +16,7 @@ Use the Task tool with `subagent_type: "dev-copilot:wow-standards-audit"`. Pass 
 **Three kinds of repository are in the rotation and they are not audited against the same rules**, so
 the first thing the agent settles is which one it is standing in — its *Which rule set binds this
 repository* section owns that decision. The eleven addons take the whole standard. `LibKa0s` takes
-`library-stack-§7`'s applicability list. `WowAddonStandards` and `wow-addon` take the **documentation
+`library-stack-§7`'s applicability list. `WowAddonStandards` and `dev-copilot` (the plugin repo, formerly `wow-addon`) take the **documentation
 lane**: same eight steps, same five artifacts, same `docs/audits/<date>/`, but measuring internal
 consistency between rules, cross-references that resolve, worked examples against the trees they cite,
 and inventories against the trees they count. Those two hold `AUDIT.md` and `agents/review.md` — the
