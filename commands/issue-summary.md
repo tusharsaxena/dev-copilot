@@ -1,5 +1,5 @@
 ---
-description: GitHub issue counts — a status × repo grid, a severity × repo grid over the open backlog, and a status × severity crosstab, plus a short read of what the numbers imply. Defaults to the repo at the cwd; pass `all` for several repos (the ones you name, or the sibling checkouts), or a repo name. Counts only — for the issues themselves use `/dev-copilot:issue-details`. Read-only apart from repairing a missing status label.
+description: GitHub issue counts — a status × repo grid, a severity × repo grid over the open backlog, and a status × severity crosstab, plus a short read of what the numbers imply. Defaults to the repo at the cwd (in a Ka0s WoW repo, detected by dev-copilot-profile, to the whole collection instead); pass `all` for several repos (the ones you name, or the sibling checkouts), or a repo name. Counts only — for the issues themselves use `/dev-copilot:issue-details`. Read-only apart from repairing a missing status label.
 argument-hint: [here|all|<repo>]
 allowed-tools: [Bash, Read]
 ---
@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-summary.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 2 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the report. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
 
@@ -70,7 +71,9 @@ Every issue is classified twice, both times from its **labels**:
 
 **Severity** — exactly one `severity:` label: `severity:critical`, `severity:high`, `severity:medium`, `severity:low`.
 
-**Every issue always carries one of each.** There is no unlabelled column, because there is no unlabelled state — an issue that arrives without a `state:` label (filed from the GitHub web UI, or by someone not using these commands) is **repaired on sight**:
+**First, is the repo on the label scheme at all?** Run `gh label list -R <owner>/<repo> --search "state:" --json name` once per repo. If none of the four `state:` labels exists, the repo has not adopted these commands yet: make **no** repairs there (they would fail, the labels do not exist), and count its issues in an **`unlabelled`** column split open / closed, with a one-line note that the repo is not on the label scheme and that `/dev-copilot:issue-audit` or `/dev-copilot:issue-add` creates the labels. Never fold those issues into `untriaged`: nobody filed them under this scheme, and a backlog of ordinary issues is not a triage queue.
+
+**In a repo on the scheme, every issue always carries one of each.** There is no unlabelled column for such a repo, because there is no unlabelled state — an issue that arrives without a `state:` label (filed from the GitHub web UI, or by someone not using these commands) is **repaired on sight**:
 
 - open → `gh issue edit <n> --add-label "state:untriaged"`
 - closed → `state:done` if it was closed as completed, `state:will-not-do` if closed as not planned (`gh api repos/{owner}/{repo}/issues/<n>` reports `state_reason`)
@@ -79,7 +82,7 @@ An issue with no `severity:` label is **not** repaired here. Severity is a judgm
 
 A **legacy `[status]` title prefix** is leftover text from the retired prefix scheme. If the label and the prefix disagree, the **label wins**. Don't strip the prefix here — that is a title edit, and this command's one sanctioned write is adding a missing status label. Note any issue where they disagree under *Inconsistencies*.
 
-**This is the only write this command makes, and every repair must appear in the report**, with the issue number and the label added. A command people run to look at things must never change one quietly; announcing it is what keeps that true. If a repair fails, count the issue under `untriaged` anyway and say the label could not be added.
+**This is the only write this command makes, and every repair must appear in the report**, with the issue number and the label added. A command people run to look at things must never change one quietly; announcing it is what keeps that true. If a repair fails, count the issue where the repair would have put it (open → `untriaged`, closed → `done` or `will-not-do` by its `state_reason`; never a closed issue under `untriaged`) and say the label could not be added.
 
 **Report any label/state disagreement** — a `state:triaged` issue that is closed, a `state:done` issue that is open, an issue carrying two `state:` labels — as a short **Inconsistencies** list under the grids, with repo, number and both values. The label and the open/closed state encode the same decision twice, so a disagreement means one of them is wrong and a human has to say which. Don't fix them, don't count them twice; surface them and point at `/dev-copilot:issue-triage`.
 

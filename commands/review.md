@@ -9,7 +9,7 @@ Invoke the `dev-copilot:review` subagent on the project in the current working d
 
 Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
 
-Record `profile` and `kind`. This wrapper has no overlay of its own and reads none: the review agent carries the profile-specific behavior, and it applies it from its own Step 0. Your only use of the result is to pass it along in Step 1.
+Record `profile` and `kind` (if neither invocation works, record `profile=generic` and say so in one line). This wrapper has no overlay of its own and reads none: the review agent carries the profile-specific behavior, and it applies it from its own Step 0. Your only use of the result is to pass it along in Step 1.
 
 ## Step 1 — Dispatch the agent
 

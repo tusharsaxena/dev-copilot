@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/commit.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 ## Argument modes
 
@@ -29,14 +30,16 @@ Two independent things are being chosen: **how the message is decided**, and **w
 
 The flag has to combine with everything else while never swallowing a word from a custom message. So:
 
-1. Split `$ARGUMENTS` on whitespace.
-2. If **every** token is a recognized flag (approval and/or push), it is flag-only: no custom message.
-3. Otherwise there is a custom message. Consume a push flag **only if it is the leading token**; everything after it is the message, verbatim.
+1. Match **phrases, not words.** Several flags are more than one word (`ask for approval`, `push it`), so read the trimmed `$ARGUMENTS` left to right as a sequence of the phrases listed above, longest phrase first at each position (`ask for my approval` before `ask`, `push it` before `push`).
+2. If the **whole** string is used up that way (approval and/or push phrases, nothing else), it is flag-only: no custom message.
+3. Otherwise there is a custom message. Consume a push flag **only if the leading token is a one-word push flag** (`push`, `--push`, `-p`); everything after it is the message, verbatim. A multi-word phrase counts only when it is the whole argument (alone or with other flags), so `push it` is a flag but `push it to staging` is `push` plus the message `it to staging`.
 
 | Argument | Message | Push |
 |---|---|---|
 | *(empty)* | auto-generated | no |
 | `ask` | auto-generated, confirmed | no |
+| `ask for approval` | auto-generated, confirmed | no |
+| `push it` | auto-generated | **yes** |
 | `push` | auto-generated | **yes** |
 | `ask push` / `push ask` | auto-generated, confirmed | **yes** |
 | `Fix the login redirect loop` | verbatim | no |

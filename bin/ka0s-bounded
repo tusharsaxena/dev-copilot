@@ -7,4 +7,4 @@
 # bounds, variables, exit codes and messages are exactly the runner's. The hook's
 # ~/.claude/dev-copilot/bin/ka0s-bounded symlink still points straight at scripts/ka0s-bounded, and
 # that absolute path keeps working where the plugin's bin/ is not on PATH.
-exec "$(dirname "$0")/../scripts/ka0s-bounded" "$@"
+exec "$(dirname "$(readlink -f "$0")")/../scripts/ka0s-bounded" "$@"

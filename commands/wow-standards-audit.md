@@ -2,6 +2,13 @@
 description: Run the dev-copilot:wow-standards-audit subagent — a read-only compliance audit of the repository in cwd against the living Ka0s WoW Addon Standard. Covers the whole audit rotation: the eleven addons, LibKa0s, and the two documentation-and-tooling repos (WowAddonStandards, wow-addon). Fetches the AUDIT.md playbook + standards/STANDARDS.md (the standard's index, then every section file it lists) from the WowAddonStandards repo at runtime and writes a frozen dated bundle to docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN), plus a chat summary.
 ---
 
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-standards-audit` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue, and pass the detector's `kind` (`addon`, `library`, `standards` or `tooling`) to the subagent in its prompt, so its rule-set decision starts from evidence.
+
 Invoke the `dev-copilot:wow-standards-audit` subagent on the addon in the current working directory.
 
 Use the Task tool with `subagent_type: "dev-copilot:wow-standards-audit"`. Pass through `$ARGUMENTS` verbatim as additional context for the auditor if non-empty (e.g. a subtree to focus on, or a note about an in-progress prior run); otherwise instruct the agent to audit the full addon at cwd.
@@ -31,10 +38,3 @@ The shared subsystems — debug console, options toolkit, slash dispatcher, perf
 **The disabled state is newly auditable, and a clean result there is the thing to question.** `slash-commands-§7` makes disable total — every registration actually unregistered, every timer cancelled, every owned frame hidden at the source, and no SavedVariables write reachable from a game event. It does **not** narrow the slash surface: `slash-commands-§2` (restored in v2.57.0 after v2.56.0's short-lived two-verb `enable`/`help` surface) keeps every reserved verb, `config`, the bare `/<slash>` and the schema CLI answering while disabled, and refusing a feature verb is only a SHOULD — so a summary that files an addon for *not* refusing `config`, or passes one that does refuse it, is auditing the reversed rule. Every addon in the collection implements disable as a **draw gate** (the flag as one rung of a show ladder, or an early return per handler), which is `anti-patterns` #85 and which reads as correct from every surface a player can see; the upstream audit that produced the rule found **11 of 11 failing**, with 34 live event registrations, 13 running timers and 18 SavedVariables writes among the survivors. So a summary reporting this area clean, or resting on a prior bundle's verdict, is measuring against a rule that no longer exists — send it back. Adoption is **overdue, not blocked**: `LibKa0s-Lifecycle-1.0` ships from LibKa0s v1.40.0 and v1.42.0 (Slash minor 14) is the floor, so the gap belongs in the addon's execution plan, and a summary calling it blocked upstream is out of date. One non-finding in the other direction: the absence of `/<slash> lock` / `/<slash> unlock` is a declined **MAY** that owes no deviation row at all.
 
 Do not perform the audit yourself in the main thread — delegate fully to the subagent so it fetches the current standard, follows the `AUDIT.md` playbook to the letter, and writes the frozen `docs/audits/<YYYY-MM-DD>/` bundle per its spec. The audit is read-only; it must not modify addon code. After the agent returns, surface its chat summary verbatim to the user.
-
-## Before anything — confirm this is a WoW repo
-
-Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
-
-- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-standards-audit` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
-- **`profile=wow`** — Continue, and pass the detector's `kind` (`addon`, `library`, `standards` or `tooling`) to the subagent in its prompt, so its rule-set decision starts from evidence.

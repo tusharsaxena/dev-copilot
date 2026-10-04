@@ -36,6 +36,11 @@ what an analysis owes its reader):
 Hard-code only that entry point and discover the section file by **following the Sections list** —
 never hard-code an individual section filename.
 
+**Fetch faithfully.** Use `curl -fsSL "<url>"` via Bash, save to a scratch path (the session
+scratchpad, never the repo) and `Read` the saved file, so the playbook arrives verbatim. WebFetch is
+a last-resort fallback only if `curl` is unavailable, and then treat its output as lossy: its
+summarizer rewrites and truncates content.
+
 Follow the playbook to the letter. Everything below is orchestration; the playbook is the spec.
 
 ## Step 1 — Confirm the addon has the harness

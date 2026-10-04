@@ -13,7 +13,8 @@ Applied by `/dev-copilot:issue-triage` to every repo in scope for which `dev-cop
 
 ## scope — replaces
 
-- **absent, or `here`** → the repo at the cwd. **This is the default.**
+Replaces only the `all` and repo-name bullets; the base's `absent, or here` default stands. The paragraphs after them apply alongside the base's.
+
 - **`all`** → every addon repo in the collection, roster read from `WowAddonStandards/standards/ADDONS.md`; if unreachable, fall back to sibling directories with a `.toc` and **say the roster was inferred**.
 - **a repo name** → that repo alone, matched case-insensitively. No match → say so, list the valid names, stop.
 

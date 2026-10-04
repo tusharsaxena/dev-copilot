@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-triage.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 1 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the run — its labels, its resolutions, its rules — and a generic repo in the same run follows this spec as written. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
 
@@ -73,7 +74,7 @@ gh label create "severity:medium"   --color 111100 --description "Maintainabilit
 gh label create "severity:low"      --color 001100 --description "Polish, naming, cosmetic, speculative"          --force
 ```
 
-Read `gh label list --limit 100 --json name,color` first and run only the creates that are missing or wrong. A repo where the status labels are absent has never been swept — say so, because an empty queue there means "never audited", not "nothing pending".
+Read `gh label list --limit 100 --json name,color` first and run only the creates that are missing or wrong. A label that already exists under one of these names with a different color is "wrong" only if these commands created it and it drifted; in a repo where these labels were never used, it may be the project's own scheme, so ask once before recoloring it. A repo where the status labels are absent has never been swept — say so, because an empty queue there means "never audited", not "nothing pending".
 
 Read the queue:
 
@@ -81,7 +82,11 @@ Read the queue:
 gh issue list --state open --limit 200 --json number,title,body,labels,createdAt,url
 ```
 
-Take the issues carrying `state:untriaged`. Also pick up **stray issues** — open issues with **no** `state:` label, filed from the web UI or by someone not using these commands. Repair each on sight with `gh issue edit <n> --add-label "state:untriaged"`, and where the issue also carries no `severity:` label, assess one from its body and add it. If a legacy `[status]` title prefix is present, strip it in the same repair — `gh issue edit <n> --title "<title without the prefix>"` — keeping the rest of the title text exactly. **Report every repair**; then triage it like any other. An issue that reaches you without a status is still real work, and the one thing that must never happen is it going unseen.
+Take the issues carrying `state:untriaged`. Also pick up **stray issues** — open issues with **no** `state:` label, filed from the web UI or by someone not using these commands.
+
+**A repo new to the scheme is not full of strays.** If the label check above found the status labels absent, or no open issue carries a `state:` label, every open issue predates the scheme, and pulling them all in would turn this run into an interview over the project's whole history. Say so, show the count, and ask **once** whether to bring them into the queue or to triage only issues already labelled `state:untriaged` (none, on a fresh repo: then stop and point at `/dev-copilot:issue-audit`). Silence is a decline.
+
+Otherwise, repair each stray on sight with `gh issue edit <n> --add-label "state:untriaged"`, and where the issue also carries no `severity:` label, assess one from its body and add it. If a legacy `[status]` title prefix is present (exactly `[untriaged]`, `[triaged]`, `[done]` or `[will-not-do]`, any case, at the start of the title; a `[Bug]` or `[WIP]` is the author's text and stays), strip it in the same repair — `gh issue edit <n> --title "<title without the prefix>"` — keeping the rest of the title text exactly. **Report every repair**; then triage it like any other. An issue that reaches you without a status is still real work, and the one thing that must never happen is it going unseen.
 
 ### Resume check — before the first question, always
 
@@ -130,7 +135,7 @@ The user can always answer free-text instead of picking. **If they do, take thei
 
 **The `state:done` case is narrow and needs evidence.** Only mark an item done when the work is *already true in the repo* — the marker is stale, the plan row was executed, the limitation no longer applies. Verify it in the code before recording it, quote what you checked, and say so. Never mark something done because the user agreed it *should* be done.
 
-**Everything recorded here is public.** Say this once, up front, before the first question — not buried in an option label and never left to be discovered from a notification. Every decision becomes a label and a body on a public repo, and whoever watches it gets mailed.
+**Everything recorded here is visible to everyone who can see the repo** — on a public repo, that is everyone. Say this once, up front, before the first question — not buried in an option label and never left to be discovered from a notification. Every decision becomes a label and a body on the repo, and whoever watches it gets mailed.
 
 ### Stopping early
 

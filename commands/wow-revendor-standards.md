@@ -10,8 +10,9 @@ Refresh the **in-repo reference to the Ka0s WoW Addon Standard** in the addon(s)
 
 Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
 
-- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-revendor-standards` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
-- **`profile=wow`** — Continue. When the scope names several repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`.
+- **`profile=generic`, and `$ARGUMENTS` names no target** (no path, repo name or `all`) — print exactly this and stop: "`/dev-copilot:wow-revendor-standards` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=generic`, but `$ARGUMENTS` names targets** — the cwd is not what is being swept, so it does not decide. Resolve the scope (Step 1) first, then apply the per-target rule below; refuse with the line above only if every resolved target comes back `generic`.
+- **`profile=wow`** — Continue. When the scope names other repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`.
 
 ## What this is, and what it is not
 
@@ -154,7 +155,7 @@ The addon's quirks file is **two parts**, and the split is the whole design:
 … findings not yet promoted upstream, plus genuine one-repo residue …
 ```
 
-- **Replace the vendored block wholesale.** Same rule as `libs/LibKa0s/`: whole payload, never a subset, never a local patch. A local edit inside the markers is reverted silently by the next revendor, and the behavior it fixed comes back as a regression with **no cause in this repo's history** — the exact failure the vendoring discipline exists to prevent. If a repo has edited inside the markers, do not merge it: report the edit verbatim, tell the user it belongs in the addon's own section (where `harvest-standards` will find it and promote it), and overwrite only once they have somewhere to put it.
+- **Replace the vendored block wholesale.** Same rule as `libs/LibKa0s/`: whole payload, never a subset, never a local patch. A local edit inside the markers is reverted silently by the next revendor, and the behavior it fixed comes back as a regression with **no cause in this repo's history** — the exact failure the vendoring discipline exists to prevent. If a repo has edited inside the markers, do not merge it: report the edit verbatim, tell the user it belongs in the addon's own section (where `wow-harvest-standards` will find it and promote it), and overwrite only once they have somewhere to put it.
 - **Stamp the block with the catalogue's version.** This is the one place a standard version *does* belong in the repo — a vendored payload with no source version cannot be told stale from current, which is why LibStub minors exist. It does not contradict the no-version-stamp rule in Step 5: that rule governs the **reference**, which points at a live document and is dated by its own staleness; this is a **copy**, which is not.
 - **Prune what has been promoted.** Any quirk in the addon's own section that now appears in the vendored block is duplicated — the upstream version won, and it is usually the deeper write-up, since the harvest promotes the deepest of several independent discoveries. Remove the addon's copy and say which entries you removed. Two live copies of one finding is how they diverge.
 - **Never touch the addon's own section otherwise.** Everything below the end marker belongs to the repo. It is the harvest's input, and editing it here would let this command launder its own text into the next harvest's evidence.

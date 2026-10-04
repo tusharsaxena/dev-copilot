@@ -17,7 +17,8 @@ The heading reads **The store: GitHub issues on the addon's own repo**. `docs/pe
 
 ## scope — replaces
 
-- **absent, or `here`** → the repo at the cwd. **This is the default.**
+Replaces only the `all` and repo-name bullets; the base's `absent, or here` default stands. The paragraphs after them apply alongside the base's.
+
 - **`all`** → every addon repo in the collection. Read the roster from `WowAddonStandards/standards/ADDONS.md` (folder + repository per row) rather than hardcoding it; if that repo isn't checked out, fall back to sibling directories containing a `.toc` and **say in the report that the roster was inferred**.
 - **a repo name** → that repo alone, matched case-insensitively against the roster. If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
 

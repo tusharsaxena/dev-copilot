@@ -10,8 +10,9 @@ Carry the current **LibKa0s** into the addon(s) in scope, and then decide what t
 
 Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
 
-- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-revendor-libka0s` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
-- **`profile=wow`** — Continue. When the scope (Step 1) names several repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`, or `kind=library` (LibKa0s does not vendor itself).
+- **`profile=generic`, and `$ARGUMENTS` names no target** (no path, repo name or `all`) — print exactly this and stop: "`/dev-copilot:wow-revendor-libka0s` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=generic`, but `$ARGUMENTS` names targets** — the cwd is not what is being re-vendored, so it does not decide. Resolve the scope (Step 1) first, then apply the per-target rule below; refuse with the line above only if every resolved target comes back `generic`.
+- **`profile=wow`** — Continue. When the scope (Step 1) names other repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`, or `kind=library` (LibKa0s does not vendor itself).
 
 ## What this is, and what it is not
 
@@ -31,7 +32,7 @@ This command is both halves, consumer-side, one repo at a time. It re-vendors, d
 | `LibKa0s/docs/adoption-report.md` | Read-only, library-side, every consumer at once. This is write-side, consumer-side, one repo at a time. |
 | `/dev-copilot:wow-harvest-standards` | It reads `docs/revendor/` bundles as evidence. They are **frozen** — never edit a past bundle. |
 
-This is, with `new-addon`, one of only two specs in this plugin that writes an addon's own Lua. Step 7's fences are what make that safe; do not relax them.
+This is, with `wow-new-addon`, one of only two specs in this plugin that writes an addon's own Lua. Step 7's fences are what make that safe; do not relax them.
 
 ## Step 0 — Pre-flight: does each addon's newest bundle state the right base?
 
@@ -82,7 +83,7 @@ The `$ARGUMENTS` tokens, in any order:
 
 Targets are processed **sequentially, never fanned out.** Each one costs the user a decision per candidate, and concurrent interviews are not interviews. Announce the roster before starting and say which repo you are on at each transition.
 
-A target that is not an addon repo — no `.toc`, or no `libs/LibKa0s/` — is **skipped with a reason**, not scaffolded. This command re-vendors an existing adoption; a first adoption is `new-addon`'s.
+A target that is not an addon repo — no `.toc`, or no `libs/LibKa0s/` — is **skipped with a reason**, not scaffolded. This command re-vendors an existing adoption; a first adoption is `wow-new-addon`'s.
 
 ## Step 2 — Resolve the library, and take the payload from the tag
 
@@ -313,7 +314,7 @@ Preserve the repo's existing phrasing and position if it already has a line; onl
 ### Gate, then commit
 
 ```sh
-cd <Addon> && luacheck . && lua tests/run.lua
+cd <Addon> && ~/.claude/dev-copilot/bin/ka0s-bounded luacheck . && ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua
 ```
 
 Both green — including `tests/test_vendor_sync.lua`, which is the case this whole step exists to satisfy — before anything else happens. Red **stops the run** with the output shown; this command does not fix unrelated red (`run-tests` owns that). A missing tool is a **stated skip**, never an inferred pass and never a fabricated number.

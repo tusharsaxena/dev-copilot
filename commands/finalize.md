@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/finalize.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 **Detection runs per repo.** This command can span several repos, so run `dev-copilot-profile <path>` for every repo that becomes a candidate in Step 1 and record each one's `profile` and `kind`. A WoW repo's overlay applies only to that repo's portion of the run (its doc sync, its gate, its report row). The overlay's scope and dependency-chain sections (Steps 1–2) apply to the edges between repos when either end of an edge is a WoW repo. When no repo in scope is WoW, do not read the overlay at all.
 
@@ -27,7 +28,12 @@ The unit of work is a **changeset**: the repos that were changed together, for o
 
 1. If `$ARGUMENTS` is `here` (or names exactly the cwd repo), the scope is this repo alone. Skip to Step 2.
 2. If `$ARGUMENTS` names repos, use exactly those — but still run the status check on each and say so if one is already clean, rather than pretending you finalized it. Skip to Step 2.
-3. Otherwise, survey. From the cwd repo, take the parent directory as the collection root and list every sibling that is a git repo (`ls -d ../*/.git`). For each, plus the cwd repo, run `git -C <repo> status --porcelain` and `git -C <repo> log --oneline origin/HEAD..HEAD 2>/dev/null`. A repo is a **candidate** if it has uncommitted changes **or** unpushed commits.
+3. Otherwise, survey (below).
+
+<!-- overlay: survey -->
+**Which repos the survey looks at:** the cwd repo, plus any sibling checkout (`../<name>`) that this session's own work touched or that a changed file cites (`../<Repo>/…`). Do not walk the whole parent folder: a general workspace is full of unrelated repos, and listing their dirt only forces a question nobody needed.
+
+For each, run `git -C <repo> status --porcelain` and `git -C <repo> log --oneline HEAD --not --remotes`. The second lists commits no remote-tracking ref holds, so it also covers a branch with no upstream and a repo created locally and pushed without `origin/HEAD` (where `origin/HEAD..HEAD` fails and shows nothing). Keep its stderr: an error there is a fact to report, not an empty answer. A repo is a **candidate** if it has uncommitted changes **or** unpushed commits; note "no upstream" or "no remote" when that is why its commits are unpushed.
 
 Then decide, and only proceed without asking when the answer is certain:
 
@@ -105,7 +111,9 @@ If there is a feature branch:
 
 `git push origin <default>`. This command **does** push on its own — that is the point of it, and it is the only spec in this plugin that pushes without being asked (`/dev-copilot:commit` pushes only when passed `push`). Paste the real output; a push that says `Everything up-to-date` when you expected a new ref is a finding.
 
-If the push is rejected (someone else moved origin), stop that repo: pull, re-run the gate, and report. Never `--force`.
+If the push is rejected (someone else moved origin), run `git pull --ff-only origin <default>` once. If it fast-forwards, re-run the gate and push again; if it cannot (the histories diverged), stop that repo and report, leaving the merge for the user. Never `--force`, and never rebase or merge origin in on your own.
+
+If the repo has no `origin` remote at all, there is nothing to push: say so in the report, and run 3f after the merge instead of after a push.
 
 ### 3f. Delete the branch
 

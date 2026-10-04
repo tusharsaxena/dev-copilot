@@ -1,5 +1,5 @@
 ---
-description: Bump the project version to X.Y.Z everywhere it appears — package manifests, code constants, README badges, CLAUDE*/AGENTS*.md, the project's own entry in lockfiles — and roll the git history since the last tag into CHANGELOG.md (matching its existing style, Keep a Changelog by default). Gated: runs the repo's full lint/test battery FIRST and refuses to bump anything unless it passes. Asks for the version if not provided. Never commits, tags or pushes unless asked.
+description: Bump the project version to X.Y.Z everywhere it appears — package manifests, code constants, README badges, CLAUDE*/AGENTS*.md, the project's own entry in lockfiles — and roll the git history since the last tag into CHANGELOG.md (matching its existing style, Keep a Changelog by default). Gated: runs the repo's full lint/test battery FIRST and refuses to bump anything unless it passes. Asks for the version if not provided. Never commits, tags or pushes unless asked. In a Ka0s WoW repo (detected by dev-copilot-profile) it also bumps the TOC and the README Version History, and gates on the four-suite release battery with zero functions above CCN 15.
 argument-hint: [X.Y.Z] [commit] [tag] [push]
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write]
 ---
@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/bump-version.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 Work from the repository root (`repo=`).
 
@@ -211,8 +212,10 @@ Print:
 - Every version-shaped string found but NOT changed, with the reason (e.g. "dependency version, not
   the project's", "auto-derived npm badge", "setuptools_scm dynamic version")
 - Where the release history was written (CHANGELOG path), or that none was written and why
-- The next step, as a command the user can copy: `git commit -am "Release vX.Y.Z"` and
-  `git tag -a vX.Y.Z -m "vX.Y.Z"`, matching the tag shape existing tags use (`v1.2.3` vs `1.2.3`)
+- The next step, as a command the user can copy: `git add <every file changed above> && git commit
+  -m "Release vX.Y.Z"` (naming the files, so a `CHANGELOG.md` created in Step 4 is included, which
+  `-am` would leave out) and `git tag -a vX.Y.Z -m "vX.Y.Z"`, matching the tag shape existing tags
+  use (`v1.2.3` vs `1.2.3`)
 
 ## Step 6 — Commit, tag, push (only when asked)
 
@@ -223,8 +226,10 @@ this order, and only after the gate passed and Step 4 finished:
   repo's existing release-commit subject if there is one).
 - `tag` — create an annotated tag on that commit, in the existing tag shape. Requires `commit`
   (or a clean tree where the bump is already committed); refuse otherwise.
-- `push` — push the branch, and the tag if one was created (`git push origin <branch> vX.Y.Z`;
-  never `--tags`, never `--force`).
+- `push` — push the branch to its upstream remote, and the tag if one was created (`git push <remote>
+  <branch> vX.Y.Z`, where `<remote>` is the branch's upstream, else `origin`; never `--tags`, never
+  `--force`). Without `commit`, push only when the bump is already committed (a clean tree); refuse
+  otherwise, since pushing would publish the branch without the bump.
 
 Without an opt-in, stop after Step 5.
 

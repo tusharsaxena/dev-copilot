@@ -1,7 +1,7 @@
 ---
 description: Create a well-formed GitHub issue on the current repo, via the gh CLI. Gathers a title, tag (bug/enhancement), severity and details from you — fuzzy input is fine — formulates a clean issue with the `state:` and `severity:` labels the issue-* commands use, shows it for approval, then creates it.
 argument-hint: [rough title / details to seed from]  (optional)
-allowed-tools: [Bash]
+allowed-tools: [Bash, Read]
 ---
 
 Create a new GitHub issue on the repo at the cwd, using the `gh` CLI. Your inputs can be fuzzy — you formulate a clean, well-structured issue from them.
@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-add.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 ## The status and severity labels
 
@@ -91,7 +92,7 @@ gh label create "severity:medium"   --color 111100 --description "Maintainabilit
 gh label create "severity:low"      --color 001100 --description "Polish, naming, cosmetic, speculative"          --force
 ```
 
-Run only the ones `gh label list` shows as missing or wrong, and space the calls a second or two apart. If a create fails, say so and carry on — a missing label is a reason to report, not to lose the user's issue.
+Run only the ones `gh label list` shows as missing or wrong, and space the calls a second or two apart. A label that already exists under one of these names with a different color is "wrong" only if these commands created it and it drifted; in a repo where these labels were never used, it may be the project's own scheme, so ask once before recoloring it. If a create fails, say so and carry on — a missing label is a reason to report, not to lose the user's issue.
 
 The `bug` / `enhancement` tag labels are GitHub defaults and usually already exist. If the tag label is missing, still create the issue and note that the tag was skipped (or offer to create it).
 
@@ -111,7 +112,7 @@ On approval, create it via a heredoc for the body (preserves Markdown/newlines):
 
 ```
 gh issue create --title "<title>" \
-  --label "state:untriaged" --label "severity:<level>" --label "<tag>" \
+  --label "state:<untriaged|triaged>" --label "severity:<level>" --label "<tag>" \
   --body "$(cat <<'EOF'
 <body>
 EOF

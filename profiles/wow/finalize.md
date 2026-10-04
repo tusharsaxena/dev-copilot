@@ -2,7 +2,11 @@
 
 Applied by `/dev-copilot:finalize` to every repo in scope for which `dev-copilot-profile` reports `profile=wow`, and to every scope or dependency edge with a WoW repo at either end. The base spec's scope rules, default-branch detection (Ka0s repos default to `master`; detect it anyway), merge, push, branch deletion and report shape apply unchanged. This overlay carries what the Ka0s collection adds: its folder layout and vendored trees as scope evidence, the LibKa0s provenance line as dependency evidence, the bounded runner and the vendor-drift gate, the commit-vs-release complexity split, and how a non-addon `kind` changes the doc sync.
 
-The collection is one parent directory of sibling checkouts: the Ka0s addons, `LibKa0s` (`kind=library`), `WowAddonStandards` (`kind=standards`) and the tooling repos (`kind=tooling`). The base's survey of `../*/.git` is exactly that directory.
+The collection is one parent directory of sibling checkouts: the Ka0s addons, `LibKa0s` (`kind=library`), `WowAddonStandards` (`kind=standards`) and the tooling repos (`kind=tooling`). The `survey` section below widens the base's survey to exactly that directory.
+
+## survey — replaces
+
+Replaces only the paragraph naming which repos the survey looks at. In the collection, take the parent directory as the collection root and list every sibling that is a git repo (`ls -d ../*/.git`); survey each of them plus the cwd repo, with the two commands of the next paragraph.
 
 ## scope-evidence — adds
 

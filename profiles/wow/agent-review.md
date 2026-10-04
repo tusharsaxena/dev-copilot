@@ -78,6 +78,8 @@ If the addon **consumes** a shared library for a subsystem — the debug console
 
 ## measure — replaces
 
+Replaces only the `Step 0b` heading and its two intro paragraphs; the `###` subsections under it are handled by their own sections below.
+
 ### Measure the addon before you review it — re-run everything that can run outside the game
 
 A Ka0s addon carries standing bodies of evidence about itself — a **lint config**, a **test suite and generated case inventory**, an **offline performance runner and committed captures**, and a **consolidated automated-test record**. A review that ignores them is guessing at questions that have already been answered, and asserting where it could cite.
@@ -115,6 +117,8 @@ Four rules govern all of it:
 - **Never report a result you did not observe.** A missing interpreter, a missing `luacheck`, a missing `lizard` is a **skip you state plainly** — in the run log below and, where it matters to a finding, in `01_FINDINGS.md`. It is never a pass you infer, never a failure you invent, and never a reason to fall back on the committed artifact as though it were a fresh run. Absence of tooling makes a claim *unverified*, which you say.
 
 ## measure-record — replaces
+
+Replaces only the *Record what you ran* paragraph; the boundary paragraph under the same heading is `measure-boundary`, below.
 
 **Record what you ran.** Open `01_FINDINGS.md` with a short **Measurement run** block: each suite as **pass / fail / skipped (reason)** with its counts and the exact command, plus one line per artifact whose committed copy disagrees with the fresh run. A reader must be able to tell what was measured today from what was merely read off disk.
 

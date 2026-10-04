@@ -4,7 +4,8 @@ Applied by `/dev-copilot:issue-details` when the scope step runs from a WoW repo
 
 ## scope — replaces
 
-- **absent, or `here`** → the repo at the cwd. **This is the default.**
+Replaces only the `all` and repo-name bullets; the base's `absent, or here` default stands. The paragraphs after them apply alongside the base's.
+
 - **`all`** → every addon repo plus the upstreams: `WowAddonStandards` (`kind=standards`), `LibKa0s` (`kind=library`) and the plugin repo (`kind=tooling`) — `dev-copilot`, plus `wow-addon` for as long as that legacy repo still holds issues. Read the addon roster from `WowAddonStandards/standards/ADDONS.md`; if unreachable, fall back to sibling directories with a `.toc` and **say the roster was inferred** — an inferred roster can silently omit a repo, and a missing repo reads as "nothing here" rather than "not checked".
 - **a repo name** → that repo alone, matched case-insensitively against the roster (addons plus the upstreams). No match → say so, list the valid names, and stop. Don't guess at a near-miss.
 

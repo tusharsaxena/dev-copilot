@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/run-tests.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 <!-- overlay: scope -->
 **This is the fast green gate — it records nothing.** It runs what the repo already declares, reads
@@ -40,6 +41,13 @@ the session. A run that exits **124** hit the time limit and **137** was killed 
 report either as exactly that, never as a test failure or a pass. Running independent suites in
 parallel is fine when they do not share state (a database, a port, a build directory); otherwise
 run them one at a time.
+
+**`timeout` alone is not enough for five commands.** This plugin's bounded-runs hook checks every Bash
+call, in every repo, and refuses a `luacheck`, `lizard`, `lua tests/run.lua`, `lua tests/perf.lua` or
+`run-automated-tests.sh` run unless it carries both `ulimit -v` and `timeout`. Prefix those with the
+plugin's bounded runner instead, `ka0s-bounded <command>` (on PATH; or
+`~/.claude/dev-copilot/bin/ka0s-bounded`). It applies a wall-clock limit and memory caps, and passes
+the exit code through.
 
 <!-- overlay: suites -->
 ### Where the commands come from (in order of authority)

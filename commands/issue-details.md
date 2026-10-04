@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-details.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 2 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the output. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
 
@@ -69,7 +70,9 @@ gh issue list -R <owner>/<repo> --state all --limit 500 --json number,title,stat
 
 Take each issue's **status** from its `state:` label and its **severity** from its `severity:` label. Both are labels; neither is ever read out of the title. A **legacy `[status]` title prefix** is leftover text from the retired prefix scheme — strip it from the *displayed* title so the column stays readable, and if it disagrees with the label, the **label wins** and the disagreement goes in *Inconsistencies*.
 
-**An issue with no `state:` label is repaired on sight**, because every issue in this store always carries one: `gh issue edit <n> --add-label "state:untriaged"` for an open issue, or the matching terminal label for a closed one. This is the **only** write this command makes. State it in the output every time it happens — a read command that silently changes something is worse than one that doesn't repair at all. If the repair fails, show the issue as `untriaged` anyway and say the label could not be added.
+**First, is the repo on the label scheme at all?** Run `gh label list -R <owner>/<repo> --search "state:" --json name` once per repo. If none of the four `state:` labels exists, the repo has not adopted these commands yet: make **no** repairs there, show its issues in an **`unlabelled`** sub-section (open and closed apart), and say in one line that the repo is not on the label scheme and that `/dev-copilot:issue-audit` or `/dev-copilot:issue-add` creates the labels.
+
+**In a repo on the scheme, an issue with no `state:` label is repaired on sight**, because every issue in this store always carries one: `gh issue edit <n> --add-label "state:untriaged"` for an open issue, or the matching terminal label for a closed one. This is the **only** write this command makes. State it in the output every time it happens — a read command that silently changes something is worse than one that doesn't repair at all. If the repair fails, show the issue under the status the repair would have given it (open → `untriaged`, closed → its terminal status; never a closed issue as `untriaged`) and say the label could not be added.
 
 **An issue with no `severity:` label is shown with `—` and is not repaired.** Assigning a severity is a judgment call, and this command's job is to show you the store, not to grade it. `/dev-copilot:issue-audit` assigns one on sight; say how many rows are unsized and point there.
 

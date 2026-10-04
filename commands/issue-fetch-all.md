@@ -1,7 +1,7 @@
 ---
 description: List the GitHub issues on the current repo, via the gh CLI. Optionally filter by status label (state:untriaged / state:triaged / state:done / state:will-not-do), by severity (severity:critical … severity:low), or by any other label, or switch to closed/all. Read-only — never creates, edits, or closes issues.
 argument-hint: [untriaged | triaged | done | will-not-do] | [critical | high | medium | low] | [label] | [closed | all]  (optional; default: open)
-allowed-tools: [Bash]
+allowed-tools: [Bash, Read]
 ---
 
 List the GitHub issues for the repo at the cwd, using the `gh` CLI.
@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-fetch-all.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 ## The status and severity labels
 

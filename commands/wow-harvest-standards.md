@@ -20,7 +20,7 @@ This is the **upstream** half of a two-command cycle, and the mirror image of `/
 - **`/dev-copilot:wow-revendor-standards`** runs in an addon repo and carries the standard **down** into it.
 - **This command** runs in the standards repo and carries the collection's learnings **up** into the standard.
 
-The reason the pair exists is that knowledge in this collection is discovered **per repo** and paid for **per repo**. One addon fights the client for an afternoon, writes down what it found, and the other eight rediscover it later at full price — or worse, never do, and ship the bug the first one already fixed. The standard is the only place a finding stops being paid for twice. Nothing else in the toolkit reads across repos: `standards-audit` measures one addon, `review` reviews one addon, `issue-audit` triages one addon. **Cross-repo synthesis is this command's entire reason to exist**, so a run that only re-reads one repo has done nothing the existing commands did not already do.
+The reason the pair exists is that knowledge in this collection is discovered **per repo** and paid for **per repo**. One addon fights the client for an afternoon, writes down what it found, and the other eight rediscover it later at full price — or worse, never do, and ship the bug the first one already fixed. The standard is the only place a finding stops being paid for twice. Nothing else in the toolkit reads across repos: `wow-standards-audit` measures one addon, `review` reviews one addon, `issue-audit` triages one addon. **Cross-repo synthesis is this command's entire reason to exist**, so a run that only re-reads one repo has done nothing the existing commands did not already do.
 
 ## Absolute rule — read-only on every addon repo
 
@@ -33,7 +33,7 @@ The corollary: **never edit a frozen `docs/audits/<date>/` or `docs/reviews/<dat
 ## Step 0 — Confirm where you are, and resolve the standard
 
 1. Confirm cwd is the `WowAddonStandards` repo (it has `standards/STANDARDS.md`, `AUDIT.md`, `NEW_ADDON.md` at the expected paths). If it is not, **stop** and say so — this command writes to the standard, and running it from an addon repo would either write nothing useful or write into the wrong tree.
-2. Read the standard **from the working tree**, not from raw GitHub. This is the one spec in the plugin that reads local files rather than fetching: you are about to *edit* these files, so you must measure against the working copy, including any uncommitted change. Read `standards/STANDARDS.md` and **every section file its Sections list links** — follow the list, never hard-code a section filename. Note the current version and date.
+2. Read the standard **from the working tree**, not from raw GitHub. This is the one spec in the plugin that reads the *standard* from local files rather than fetching it (`wow-revendor-libka0s` also reads local disk, but for the library, not the standard): you are about to *edit* these files, so you must measure against the working copy, including any uncommitted change. Read `standards/STANDARDS.md` and **every section file its Sections list links** — follow the list, never hard-code a section filename. Note the current version and date.
 3. Read `standards/standards/open-evolutions.md` (via the Sections list, not by path assumption). This is the standard's own ledger of "considered, not yet done", and it is the dedup key for the whole run.
 4. Read `standards/ADDONS.md` — the roster.
 

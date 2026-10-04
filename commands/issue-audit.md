@@ -12,6 +12,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/issue-audit.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 This command can span several repos, so detection runs **per repo**: once at the cwd (which decides how the scope in Step 1 resolves), then `dev-copilot-profile <path>` for each repo in scope. A WoW repo's overlay applies only to that repo's portion of the run — its sweep, its labels, its filing — and a generic repo in the same run follows this spec as written. If the cwd is not inside a git repo (an orchestration folder above several checkouts), also run `dev-copilot-profile` on each git checkout directly under it; if any reports `profile=wow`, read the overlay for the scope step as well.
 
@@ -88,7 +89,7 @@ gh label create "severity:medium"   --color 111100 --description "Maintainabilit
 gh label create "severity:low"      --color 001100 --description "Polish, naming, cosmetic, speculative"          --force
 ```
 
-Read `gh label list --limit 100 --json name,color` first and run only the creates that are missing or wrong, so a repo already set up costs one call instead of eight. Report any create that failed; a missing label is a reason to report and file the issue without it, never a reason to lose the finding.
+Read `gh label list --limit 100 --json name,color` first and run only the creates that are missing or wrong, so a repo already set up costs one call instead of eight. A label that already exists under one of these names with a different color is "wrong" only if these commands created it and it drifted; in a repo where these labels were never used, it may be the project's own scheme, so ask once before recoloring it. Report any create that failed; a missing label is a reason to report and file the issue without it, never a reason to lose the finding.
 
 Read the whole store:
 
@@ -100,14 +101,16 @@ gh issue list --state all --limit 200 --json number,title,state,body,labels,crea
 
 ### Stray issues
 
-An issue carrying **no** `state:` label was filed outside these commands, or predates the label scheme. Repair it:
+**A repo new to the scheme is not full of strays.** If the label-set step above had to create the `state:` labels, or no issue in the store carries a `state:` label, the repo is adopting these commands on this run, and its existing issues are a backlog that predates the scheme. Do not repair them in bulk on your own initiative: say so, show the count (open and closed apart), and ask **once** whether to repair them all as below, or to leave them and label only the issues this and later runs file. Silence is a decline. On a decline, skip the rest of this section for that repo and say in Step 5 how many issues were left unlabelled.
+
+Otherwise, an issue carrying **no** `state:` label was filed outside these commands. Repair it:
 
 - **open** → `gh issue edit <n> --add-label "state:untriaged"`
 - **closed** → `state:done` if it was closed as completed, `state:will-not-do` if closed as not planned (`gh api repos/{owner}/{repo}/issues/<n>` reports `state_reason`)
 
 An issue carrying no `severity:` label gets one too — assess it from its body against the ladder above and add it, recording the one-line justification in the report so the call is arguable.
 
-**A legacy `[status]` title prefix is stripped as part of the same repair.** Set the label from the prefix, then `gh issue edit <n> --title "<title with the prefix removed>"`. Keep the rest of the title text exactly — you are removing a prefix, not rewriting somebody's words. If the label and a leftover prefix disagree, the **label wins**; report the disagreement rather than silently picking one.
+**A legacy `[status]` title prefix is stripped as part of the same repair.** That means exactly one of `[untriaged]`, `[triaged]`, `[done]` or `[will-not-do]` (any case) at the start of the title, and nothing else: a `[Bug]`, `[RFC]` or `[WIP]` is the author's own text and stays. Set the label from the prefix, then `gh issue edit <n> --title "<title with the prefix removed>"`. Keep the rest of the title text exactly — you are removing a prefix, not rewriting somebody's words. If the label and a leftover prefix disagree, the **label wins**; report the disagreement rather than silently picking one.
 
 **Report every repair** in Step 5 — labels added, prefix stripped, old and new title — so a title changing under someone is never a silent event. After repair the issue is an ordinary `state:untriaged` item and `/dev-copilot:issue-triage` will pick it up.
 
@@ -124,7 +127,7 @@ Run all four sweeps (or the one the argument selected). Every item you surface m
 ### 2a. Code markers
 
 <!-- overlay: code-scope -->
-Grep the project's own source files (`git ls-files` is the honest list) — **exclude vendored and generated trees**: `vendor/`, `third_party/`, `node_modules/`, `libs/`, `dist/`, `build/`, lockfiles, minified bundles, and any directory the repo's docs describe as a copy of someone else's code:
+Grep the project's own source files (`git ls-files` is the honest list) — **exclude vendored and generated trees**: `vendor/`, `third_party/`, `node_modules/`, `dist/`, `build/`, lockfiles, minified bundles, git submodules, and any directory the repo's docs describe as a copy of someone else's code (a `libs/` is often first-party, so it is excluded only on that evidence):
 
 - `TODO`, `FIXME`, `HACK`, `XXX`, `BUG`, `NOTE:` followed by deferral language
 - prose deferrals in comments: `for now`, `temporary`, `revisit`, `later`, `placeholder`, `stub`, `not implemented`, `come back to`, `once we`

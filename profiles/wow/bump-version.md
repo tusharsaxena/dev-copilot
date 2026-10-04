@@ -18,18 +18,11 @@ Step numbers below are the base spec's: 1 version, 2 gate, 3 references, 3b summ
 
 ## current-version — replaces
 
+Replaces only item 1 (where to find the current version); items 2–4 stand as written.
+
 1. Find the current version. Check, in this order: the `.toc` file's `## Version:` line, then any
    `local VERSION = "..."` / `MAJOR_VERSION` constant in the code, then the README's "Version"
    mention.
-2. Propose a bump:
-   - **patch** (`X.Y.Z` → `X.Y.Z+1`): the safe default for bugfixes / small changes
-   - **minor** (`X.Y.Z` → `X.Y+1.0`): for new features
-   - **major** (`X.Y.Z` → `X+1.0.0`): for breaking changes
-   Recommend one with a one-line reason based on what's in the working tree (`git status` /
-   `git diff` if it's a git repo, otherwise a quick scan of recent file mtimes).
-3. Ask the user: "Current version is X.Y.Z. Propose bumping to A.B.C ([reason]). Confirm or specify
-   another version."
-4. Wait for the user's reply before proceeding.
 
 ## gate — replaces
 

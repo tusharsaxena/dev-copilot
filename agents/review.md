@@ -13,6 +13,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/agent-review.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 If the calling command passed a `Detected repo profile:` line and it disagrees with what you just detected, trust your own run and say so in one line at the top of `01_FINDINGS.md`.
 
@@ -37,7 +38,7 @@ State the resolved scope in one line at the top of your chat summary and in `01_
 
 A project carries standing evidence about itself — a **lint config**, a **type-checker**, a **test suite**, sometimes **coverage reports**, **benchmark results** or a **test count in its README**. A review that ignores them is guessing at questions that have already been answered, and asserting where it could cite.
 
-But a committed artifact is a **claim about a past state of the code**, and the code you are reviewing is the code as it is now. So: **re-run the project's own suites yourself, from scratch, at the start of the review — before the findings list sets.** Do not review from a committed coverage report, a CI badge, an older run in this session, a previous review bundle, or memory. This step is not optional when the tooling is present.
+But a committed artifact is a **claim about a past state of the code**, and the code you are reviewing is the code as it is now. So: **re-run the project's own suites yourself, from scratch, at the start of the review — before the findings list sets.** Do not review from a committed coverage report, a CI badge, an older run in this session, a previous review bundle, or memory. This step is not optional when the tooling is present — but size it to the scope: for the default current-changes scope, lint and type-check run whole (they are cheap), while a slow test suite may be narrowed to the tests that cover the changed files where the runner supports it (`pytest <paths>`, `go test ./<pkg>/...`, `jest --findRelatedTests <files>`). Say in the measurement block when you narrowed and to what.
 
 <!-- overlay: measure-suites -->
 ### What to run
@@ -55,12 +56,12 @@ Detect how **this** project runs its checks — read the manifests, the task run
 | Ruby / PHP | `Gemfile`, `composer.json` | `rubocop` / `phpstan` | `srb tc` / — | `bundle exec rspec` / `vendor/bin/phpunit` |
 | Make / just / task | `Makefile`, `justfile`, `Taskfile.yml` | `make lint` | `make typecheck` | `make test` |
 
-Notes. **A task-runner target is usually a wrapper** — if `make test` (or an npm `test` script) plainly re-runs lint and the suite, run it *instead of* those and say so, rather than reporting the same suite twice; if it does something additional, run it as its own suite. Run only what the project has configured: no lint config means lint is not part of this project's battery — skip it silently rather than proposing one. Never install dependencies the project does not declare; if the suite needs a declared install step first (`npm ci`, `pip install -e .[dev]`), run it into the project's normal location only when that is clearly the project's documented setup, and otherwise record the suite as skipped.
+Notes. **A task-runner target is usually a wrapper** — if `make test` (or an npm `test` script) plainly re-runs lint and the suite, run it *instead of* those and say so, rather than reporting the same suite twice; if it does something additional, run it as its own suite. Run only what the project has configured: no lint config means lint is not part of this project's battery — skip it silently rather than proposing one. Never run an install step (`npm ci`, `pip install -e .[dev]`, `bundle install`): it writes into the repo or its environment, which the next rule forbids. If a suite cannot run without one, record it as **skipped (needs `<install command>`)** and move on.
 
 <!-- overlay: measure-runner -->
 ### How to run
 
-Bound every run: wrap long suites in `timeout` (e.g. `timeout 600 <command>`), and write their output to a **scratch path** outside the repo. Independent suites may run in parallel. A run that exits **124** hit the time limit, and **137** was killed (most likely for memory) — report either as exactly that, never as a test failure or a pass.
+Bound every run: wrap long suites in `timeout` (e.g. `timeout 600 <command>`), and write their output to a **scratch path** outside the repo. For `luacheck`, `lizard` and `lua tests/run.lua` / `tests/perf.lua`, use the plugin's bounded runner instead (`ka0s-bounded <command>`, or `~/.claude/dev-copilot/bin/ka0s-bounded`): the plugin's bounded-runs hook refuses them in every repo when they carry `timeout` without `ulimit -v`. Independent suites may run in parallel. A run that exits **124** hit the time limit, and **137** was killed (most likely for memory) — report either as exactly that, never as a test failure or a pass.
 
 <!-- overlay: measure-rules -->
 ### Four rules

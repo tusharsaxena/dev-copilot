@@ -11,13 +11,14 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/sync-docs.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 
 ## Step 1 — Doc layout decisions
 
 <!-- overlay: layout-rule -->
 Before doing anything else, decide whether the project needs ARCHITECTURE and CLAUDE/AGENTS docs, and — if it does — whether they should be a single file or a split layout.
 
-Count the project's first-party source files (the languages' primary extensions under the source roots from Step 2, **excluding** vendored/generated dirs: `node_modules/`, `vendor/`, `dist/`, `build/`, `target/`, `.venv/`, `third_party/`, generated code, and lockfiles). The same count drives both decisions below.
+Count the project's first-party source files (the languages' primary extensions under the source roots from Step 2 — and, in a repo whose product is prose the tool loads, such as command, prompt or agent specs, those spec files too; they are what the module map describes — **excluding** vendored/generated dirs: `node_modules/`, `vendor/`, `dist/`, `build/`, `target/`, `.venv/`, `third_party/`, generated code, and lockfiles). The same count drives both decisions below.
 
 <!-- overlay: architecture-decision -->
 ### ARCHITECTURE.md decision
@@ -70,9 +71,9 @@ If you propose creating either layout (ARCHITECTURE or CLAUDE/AGENTS), ask the u
 ## Step 3 — Discover the docs
 
 <!-- overlay: doc-discovery -->
-Find every documentation file: `README.md`, `README.*`, `CLAUDE.md`, `CLAUDE.*.md`, `CLAUDE/*.md`, `AGENTS.md`, `ARCHITECTURE.md`, `ARCHITECTURE.*.md`, `DEPENDENCIES.md`, `docs/*.md`, `CHANGELOG.md`, `TODO.md`. List them. **Always include `TODO.md` in the sync set** — if it exists, treat it as a first-class doc to reconcile; if it doesn't exist but the code carries `TODO`/`FIXME`/`HACK`/`XXX` markers (from Step 2.3), flag that one could be created (don't scaffold without asking).
+Find every documentation file: `README.md`, `README.*`, `CLAUDE.md`, `CLAUDE.*.md`, `CLAUDE/*.md`, `AGENTS.md`, `ARCHITECTURE.md`, `ARCHITECTURE.*.md`, `DEPENDENCIES.md`, `docs/**/*.md` (nested too), `CHANGELOG.md`, `TODO.md`. List them, then set aside the frozen dated records described below: they are read, never synced. **Always include `TODO.md` in the sync set** — if it exists, treat it as a first-class doc to reconcile; if it doesn't exist but the code carries `TODO`/`FIXME`/`HACK`/`XXX` markers (from Step 2.3), flag that one could be created (don't scaffold without asking).
 
-**Generated docs are not synced by hand.** A doc a tool produces (an API reference, a generated inventory, a coverage or benchmark record) is refreshed by regenerating it, never by editing its numbers. Read it — a count claim elsewhere in the docs must agree with it — but if it is stale, that is a **finding** to report, not something to fix here. Frozen dated records (review or audit bundles under a dated directory) are evidence of their date and are never edited.
+**Generated docs are not synced by hand.** A doc a tool produces (an API reference, a generated inventory, a coverage or benchmark record) is refreshed by regenerating it, never by editing its numbers. Read it — a count claim elsewhere in the docs must agree with it — but if it is stale, that is a **finding** to report, not something to fix here. Frozen dated records (review or audit bundles under a dated directory, and dated design specs or plans such as `docs/<…>/specs/<YYYY-MM-DD>-*.md`, even one carrying a live status ledger: its owner updates it, not this command) are evidence of their date and are never edited.
 
 For each, read the current contents and build a drift inventory across these axes:
 
@@ -136,6 +137,7 @@ A comment that names a file, a line or a symbol is documentation, and it drifts 
 - A root that is a language builtin, a standard-library module, or a platform/runtime API — the project does not define it and is not expected to.
 - Prose that merely contains a dot: sentence-ending words, `e.g.`, ellipses, a decimal number, a URL's host, and a version string with **no authority in the tree**. Require a path token to end in a known source/doc extension, and a symbol token to be at least two identifier segments with the final segment either starting upper-case or matching a name Step 2 actually found in the project.
 - A member reached only through a vendored library's own dispatch, when a grep of the loaded tree finds it.
+- A path in **the repo a tool operates on**, not this one: a script or spec that runs `tests/run.lua` or reads `CLAUDE.md` in whatever repo it is pointed at names a path relative to that target. When the surrounding code treats the path as a runtime argument, a target-repo path or a `cd`-relative command, it is not a citation of this repo.
 
 <!-- overlay: citation-limits -->
 **What this check cannot see, stated plainly so nobody assumes it is covered:** a comment that is *countably* wrong — "all four exits of `poll()`" over a function with two — parses as prose, names nothing that fails to resolve, and is out of this check's reach. So is a self-referential explanation, a stale rationale whose code still exists, and a duplicated paragraph. Those stay a reviewer's job. This check closes the mechanical half: **a named path that is not there, a named line past the end of its file, a named symbol with no definition, and a named version the tree does not record.**
