@@ -149,6 +149,6 @@ These bind the `wow-*` commands, the WoW overlays, and `agent-review.md`; comman
 
 ## Known TODOs
 
-- **Phase 2 — the rename ripple, in progress.** Tracked in `docs/superpowers/plans/2026-10-04-phase2-rename-ripple.md` (ledger there): `WowAddonStandards` v2.76.0, `LibKa0s` v1.68.1 (kit revision 36), every addon's own docs, `Ka0sAddonsCommonTasks`, and the `wow-addon` repo's "moved" notice are on `feat/2026-10-04-dev-copilot-rename` branches; re-vendoring v1.68.1 into the addons and archiving `wow-addon` follow. The legacy `~/.claude/wow-addon` paths and the `wow-addon` detector rule were removed in 2.0.1 (see *No legacy paths*). Frozen dated bundles anywhere are never edited.
+None tracked. Phase 2 (the rename ripple through `WowAddonStandards` v2.76.0, `LibKa0s` v1.68.1 / kit 36, every addon and `Ka0sAddonsCommonTasks`, and archiving `wow-addon`) finished 2026-10-04; its ledger is `docs/superpowers/plans/2026-10-04-phase2-rename-ripple.md`. Frozen dated bundles anywhere still name `/wow-addon:*` and are never edited; an addon's generated `docs/automated-tests/RESULTS.md` lead-in switches to `/dev-copilot:bump-version` on its next run.
 
 (The `TODO/FIXME` strings that appear in `commands/diff.md`, `commands/sync-docs.md`, `commands/execution-status.md`, `commands/issue-triage.md` and — densely — `commands/issue-audit.md` and its overlay are those specs *describing their own behavior*, not project TODOs. `issue-audit.md` is the one to watch: a grep for pending work across this repo will always light it up.)
