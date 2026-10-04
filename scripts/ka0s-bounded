@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wow-addon plugin: run a command under memory, time and concurrency bounds.
+# dev-copilot plugin: run a command under memory, time and concurrency bounds.
 #
 #   ka0s-bounded lua tests/run.lua
 #   ka0s-bounded tests/_kit/run-automated-tests.sh --no-bundle

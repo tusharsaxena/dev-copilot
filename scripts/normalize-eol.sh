@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wow-addon plugin: normalize a just-written file to whatever line ending its repo's
+# dev-copilot plugin: normalize a just-written file to whatever line ending its repo's
 # .gitattributes declares for it — CRLF in a client-bound Ka0s repo, LF in one that ships
 # nothing to the WoW client (Ka0s WoW Addon Standard, line-endings-§2).
 # Triggered by a PostToolUse hook on Write|Edit|MultiEdit.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""wow-addon plugin: PreToolUse(Bash) guard that refuses unbounded heavy test runs.
+"""dev-copilot plugin: PreToolUse(Bash) guard that refuses unbounded heavy test runs.
 
 A heavy run is `lua tests/run.lua`, `lua tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or
 `lizard`. One of those, run unbounded, once took a WSL2 VM and the Claude Code session driving it
@@ -339,7 +339,7 @@ def main():
     if not found:
         return 0
 
-    wrapper = os.path.expanduser("~/.claude/wow-addon/bin/" + WRAPPER)
+    wrapper = os.path.expanduser("~/.claude/dev-copilot/bin/" + WRAPPER)
     kinds = ", ".join(sorted(set(found)))
     reason = (
         f"Unbounded heavy run ({kinds}). Prefix it with the bounded runner: `{wrapper} <command>` "
