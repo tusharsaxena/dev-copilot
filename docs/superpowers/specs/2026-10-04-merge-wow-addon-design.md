@@ -84,7 +84,10 @@ Every shared command/agent begins with the same **Step 0**:
 > written and do not read the overlay. In multi-repo flows, run detection per repo.
 
 Base specs mark hook points with an HTML comment on its own line directly above the section it
-governs: `<!-- overlay: <id> -->`. Overlay files consist of a short preamble then sections headed
+governs: `<!-- overlay: <id> -->`. **Span:** a marker directly above a heading governs that
+heading's whole section, up to the next heading of the same or higher level; a marker above any
+other block governs that one block (a paragraph, list, table or code fence). A `replaces` section may
+narrow itself further in its first sentence ("replaces only the example strings…"). Overlay files consist of a short preamble then sections headed
 `## <id> — adds` or `## <id> — replaces`. An overlay may also have `## extra — adds` for WoW-only
 steps with no generic counterpart (it states where in the flow they run). Overlays carry only WoW
 deltas, never a copy of generic text.
