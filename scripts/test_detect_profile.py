@@ -92,6 +92,11 @@ class DetectTest(unittest.TestCase):
     def test_tooling_by_name(self):
         self.assertKind(self.repo("wow-addon"), "wow", "tooling")
 
+    def test_workspace_is_tooling(self):
+        r = self.repo("ws", origin="git@github.com:x/Ka0sAddonsCommonTasks.git")
+        got = self.assertKind(r, "wow", "tooling")
+        self.assertEqual(got["reason"], "name:Ka0sAddonsCommonTasks")
+
     def test_non_git_dir(self):
         d = os.path.join(self.tmp, "plain")
         os.makedirs(d)

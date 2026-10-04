@@ -17,7 +17,8 @@ evaluated at the git top-level:
 
     override   .dev-copilot file at the root with profile=wow|generic (and optional kind=)
     standards  dir or origin name WowAddonStandards
-    tooling    dir or origin name wow-addon (the retired plugin repo)
+    tooling    dir or origin name wow-addon (the retired plugin repo) or Ka0sAddonsCommonTasks (the
+               cross-repo workspace the collection's finalize/issue-*/revendor runs start from)
     library    dir or origin name LibKa0s, or a root LibKa0s.toc
     addon      a root *.toc with a line starting "## Interface:"
     generic    otherwise
@@ -31,7 +32,8 @@ import sys
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 KEYS = ("profile", "kind", "repo", "name", "root", "reason")
 WOW_KINDS = ("addon", "library", "standards", "tooling")
-NAMED = (("WowAddonStandards", "standards"), ("wow-addon", "tooling"), ("LibKa0s", "library"))
+NAMED = (("WowAddonStandards", "standards"), ("wow-addon", "tooling"),
+         ("Ka0sAddonsCommonTasks", "tooling"), ("LibKa0s", "library"))
 
 
 def _git(path, *args):

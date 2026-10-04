@@ -11,7 +11,10 @@ sys.path.insert(0, HERE)
 
 import check_overlays  # noqa: E402
 
-STEP0 = "Run `dev-copilot-profile`. If wow, Read `<root>/profiles/wow/{name}.md`.\n"
+
+
+def step0(name):
+    return check_overlays.STEP0_BLOCK.format(overlay=name)
 
 
 def write(root, rel, text):
@@ -34,7 +37,7 @@ class CheckTest(unittest.TestCase):
 
     def valid(self):
         write(self.root, "commands/diff.md",
-              "# diff\n" + STEP0.format(name="diff") + "<!-- overlay: risks -->\n## Risks\n")
+              "# diff\n" + step0("diff") + "<!-- overlay: risks -->\n## Risks\n")
         write(self.root, "profiles/wow/diff.md", "Preamble.\n\n## risks — adds\n- events\n\n## extra — adds\nx\n")
 
     def test_valid_pair(self):
@@ -45,8 +48,8 @@ class CheckTest(unittest.TestCase):
         self.valid()
         write(self.root, "profiles/wow/diff.md", "## risky — replaces\nx\n")
         errs = self.errors()
-        self.assertEqual(len(errs), 1)
-        self.assertIn("risky", errs[0])
+        self.assertTrue(any("'risky' has no" in e for e in errs), errs)
+        self.assertTrue(any("'risks' has no section" in e for e in errs), errs)
 
     def test_orphan_overlay(self):
         self.valid()
@@ -54,12 +57,12 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(any("ghost" in e for e in self.errors()))
 
     def test_base_references_missing_overlay(self):
-        write(self.root, "commands/diff.md", STEP0.format(name="diff"))
+        write(self.root, "commands/diff.md", step0("diff"))
         self.assertTrue(any("profiles/wow/diff.md" in e for e in self.errors()))
 
     def test_agent_overlay_maps_to_agent(self):
         self.valid()
-        write(self.root, "agents/review.md", STEP0.format(name="agent-review") + "<!-- overlay: out -->\n")
+        write(self.root, "agents/review.md", step0("agent-review") + "<!-- overlay: out -->\n")
         write(self.root, "profiles/wow/agent-review.md", "## out — replaces\n")
         self.assertEqual(self.errors(), [])
 
@@ -75,6 +78,46 @@ class CheckTest(unittest.TestCase):
 
     def test_missing_shared_command(self):
         self.assertTrue(any("commands/diff.md" in e for e in self.errors()))
+
+    def test_step0_wording_drift(self):
+        self.valid()
+        write(self.root, "commands/diff.md", "# diff\n" + step0("diff").replace("as written", "loosely")
+              + "<!-- overlay: risks -->\n## Risks\n")
+        self.assertTrue(any("verbatim" in e for e in self.errors()))
+
+    def test_agent_without_step0(self):
+        self.valid()
+        write(self.root, "agents/review.md", "# review\n<!-- overlay: out -->\n")
+        write(self.root, "profiles/wow/agent-review.md", "## out — replaces\n")
+        self.assertTrue(any("agents/review.md" in e and "verbatim" in e for e in self.errors()))
+
+    def test_base_naming_another_overlay(self):
+        self.valid()
+        write(self.root, "profiles/wow/commit.md", "Preamble.\n")
+        write(self.root, "commands/commit.md", step0("commit"))
+        write(self.root, "commands/diff.md", "# diff\n" + step0("diff") + "See profiles/wow/commit.md.\n"
+              "<!-- overlay: risks -->\n## Risks\n")
+        self.assertTrue(any("not its own overlay" in e for e in self.errors()))
+
+    def test_extra_may_not_replace(self):
+        self.valid()
+        write(self.root, "profiles/wow/diff.md", "## risks — adds\nx\n\n## extra — replaces\nx\n")
+        self.assertTrue(any("extra" in e for e in self.errors()))
+
+    def test_duplicate_marker_and_section(self):
+        self.valid()
+        write(self.root, "commands/diff.md", "# diff\n" + step0("diff")
+              + "<!-- overlay: risks -->\n## Risks\n<!-- overlay: risks -->\nx\n")
+        write(self.root, "profiles/wow/diff.md", "## risks — adds\nx\n\n## risks — replaces\nx\n")
+        errs = self.errors()
+        self.assertTrue(any("appears 2 times" in e for e in errs))
+        self.assertTrue(any("more than once" in e for e in errs))
+
+    def test_unused_marker(self):
+        self.valid()
+        write(self.root, "commands/diff.md", "# diff\n" + step0("diff")
+              + "<!-- overlay: risks -->\n## Risks\n<!-- overlay: lonely -->\nx\n")
+        self.assertTrue(any("lonely" in e for e in self.errors()))
 
     def test_bad_heading_suffix(self):
         self.valid()
