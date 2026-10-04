@@ -66,7 +66,9 @@ Rules, first match wins (evaluated at the git top-level, or the path itself outs
    optional `kind=`) wins outright.
 1. **standards** — repo dir name or `origin` URL basename is `WowAddonStandards`.
 2. **tooling** — dir name or `origin` basename is `wow-addon` (the retired plugin repo, still in
-   the audit rotation until phase 2).
+   the audit rotation until phase 2) or `Ka0sAddonsCommonTasks` (the cross-repo workspace that
+   collection-wide finalize / issue-* / revendor runs start from; it stays outside the audit
+   rotation). dev-copilot itself is `tooling` through its own `.dev-copilot` override.
 3. **library** — dir name or `origin` basename is `LibKa0s`, or the root holds `LibKa0s.toc`.
 4. **addon** — any `*.toc` at the root contains a line starting `## Interface:`.
 5. **generic** — otherwise.
@@ -81,13 +83,17 @@ Every shared command/agent begins with the same **Step 0**:
 > Run `dev-copilot-profile` (Bash). If the command is not found, run
 > `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`. If `profile=wow`, Read
 > `<root>/profiles/wow/<overlay>.md` now and apply it. If `profile=generic`, follow this spec as
-> written and do not read the overlay. In multi-repo flows, run detection per repo.
+> written and do not read the overlay. If neither invocation works, treat the repo as generic and
+> say so in one line. In multi-repo flows, run detection per repo.
+>
+> The exact text is `STEP0_BLOCK` in `scripts/check_overlays.py`, which enforces it verbatim.
 
 Base specs mark hook points with an HTML comment on its own line directly above the section it
 governs: `<!-- overlay: <id> -->`. **Span:** a marker directly above a heading governs that
 heading's whole section, up to the next heading of the same or higher level; a marker above any
 other block governs that one block (a paragraph, list, table or code fence). A `replaces` section may
-narrow itself further in its first sentence ("replaces only the example strings…"). Overlay files consist of a short preamble then sections headed
+state its exact extent in its first sentence, narrower ("replaces only the example strings…") or
+wider over the directly following blocks, and must when it differs from the default span. Overlay files consist of a short preamble then sections headed
 `## <id> — adds` or `## <id> — replaces`. An overlay may also have `## extra — adds` for WoW-only
 steps with no generic counterpart (it states where in the flow they run). Overlays carry only WoW
 deltas, never a copy of generic text.
@@ -137,8 +143,9 @@ Total: 22 commands (14 shared, 8 WoW-only), 2 agents, 2 hooks.
 
 ## Out of scope (phase 2)
 
-Editing WowAddonStandards playbooks/rotation, LibKa0s kit text, any addon repo, and archiving the
-wow-addon repo. Frozen dated bundles anywhere are never edited.
+Editing WowAddonStandards playbooks/rotation, LibKa0s kit text, any addon repo,
+Ka0sAddonsCommonTasks' CLAUDE.md/README (they name `/wow-addon:` commands and the legacy
+`ka0s-bounded` path), and archiving the wow-addon repo. Frozen dated bundles anywhere are never edited.
 
 ## Testing
 
@@ -146,7 +153,8 @@ wow-addon repo. Frozen dated bundles anywhere are never edited.
 - `python3 scripts/test_bounded_runs.py` — must still pass after path changes.
 - `python3 scripts/check_overlays.py` — passes.
 - Real detection against AbsorbTracker (addon), LibKa0s (library), WowAddonStandards (standards),
-  wow-addon (tooling), dev-copilot and steamdb (generic).
+  wow-addon, Ka0sAddonsCommonTasks and dev-copilot (tooling; dev-copilot via override), steamdb
+  (generic).
 - Manifest JSON parses; command/agent counts match README and manifests.
 - A grep for `wow-addon:` / `/wow-addon` in live plugin files returns only intentional legacy
   mentions (README migration note, legacy symlink, CLAUDE.md history).

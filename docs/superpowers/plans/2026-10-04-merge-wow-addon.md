@@ -17,20 +17,20 @@ Branch: `feat/2026-10-04-merge-wow-addon` (pushed to `origin` at milestones; **n
 | Task | Status | Commit |
 |---|---|---|
 | T0 Merge wow-addon history | done | 4914203 |
-| T1 Detector + bin + test | pending | |
-| T2 Hook/state path migration | pending | |
-| T3 Overlay checker | pending | |
-| T4 WoW-only commands + agent renamed, refusal step | pending | |
-| — Milestone M1: push | pending | |
-| T5 commit + diff | pending | |
-| T6 sync-docs | pending | |
-| T7 review command + agent | pending | |
-| T8 run-tests + bump-version | pending | |
-| T9 finalize + execution-status | pending | |
-| T10 issue-* family | pending | |
-| — Milestone M2: push | pending | |
-| T11 Cross-ref sweep, manifests, README, CLAUDE.md, DEPENDENCIES.md, v2.0.0 | pending | |
-| T12 Verification | pending | |
+| T1 Detector + bin + test | done | fec0412 |
+| T2 Hook/state path migration | done | 270f9de |
+| T3 Overlay checker | done | 77e1349 |
+| T4 WoW-only commands + agent renamed, refusal step | done | 5275f73, acdff14 |
+| — Milestone M1: push | done | acdff14 |
+| T5 commit + diff | done | 42a94d7 |
+| T6 sync-docs | done | fdba64c |
+| T7 review command + agent | done | d87834e |
+| T8 run-tests + bump-version | done | e5bb928 |
+| T9 finalize + execution-status | done | ad8dcd1 |
+| T10 issue-* family | done | 6475520 |
+| — Milestone M2: push | done | c834bc3 |
+| T11 Cross-ref sweep, manifests, README, CLAUDE.md, DEPENDENCIES.md, v2.0.0 | done (CLAUDE.md/DEPENDENCIES.md via dogfooded sync-docs) | ee83666 + T12 commits |
+| T12 Verification (3-lens review: 43 findings, 35 applied, 8 rejected with reasons) | done | see git log |
 | — Milestone M3: push, report, await merge go-ahead | pending | |
 | T13 After go-ahead: merge `--no-ff`, push, delete branch/remote `wowaddon`/stashes/worktrees | pending | |
 
@@ -82,7 +82,7 @@ Tests for 1–4 are in T1; 5 is in T3.
   - CLI output: lines are exactly the six keys in order; `root` = repo's plugin root.
 - [ ] **Step 2:** `python3 scripts/test_detect_profile.py` → FAIL (module missing).
 - [ ] **Step 3:** Implement `detect_profile.py` per spec §Detection (git top-level via `git -C path rev-parse --show-toplevel`, fallback to path; origin via `git config --get remote.origin.url`, basename stripped of `.git`; root = `dirname(dirname(realpath(__file__)))`). `bin/dev-copilot-profile`: `#!/bin/sh` + `exec python3 "$(dirname "$(readlink -f "$0")")/../scripts/detect_profile.py" "$@"`. chmod +x both.
-- [ ] **Step 4:** test → PASS; run against `../AbsorbTracker ../LibKa0s ../WowAddonStandards ../wow-addon . ../steamdb` → addon/library/standards/tooling/generic/generic.
+- [ ] **Step 4:** test → PASS; run against `../AbsorbTracker ../LibKa0s ../WowAddonStandards ../wow-addon . ../steamdb` → addon/library/standards/tooling/tooling(override)/generic (Ka0sAddonsCommonTasks → tooling added in review).
 - [ ] **Step 5:** Commit `Add repo profile detector`.
 
 ### Task T2: Hook and state path migration
@@ -133,7 +133,10 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 - **`profile=wow`** — Read `<root>/profiles/wow/<OVERLAY>.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
 - **`profile=generic`** — follow this spec as written. Do not read the overlay.
+- **Neither invocation works** (no detector on PATH, and no plugin root substituted) — treat the repo as `profile=generic`, say so in one line, and do not read any overlay.
 ```
+
+(Canonical text: `STEP0_BLOCK` in `scripts/check_overlays.py`; the last bullet was added in review.)
 
 - **T5 commit + diff** — commit base = wow-addon version generalized (push flag, parsing table with generic examples); diff base = dev-copilot version. Overlays small.
 - **T6 sync-docs** — base = dev-copilot version + comment-citation check + DEPENDENCIES.md drift (when file exists) from WoW source, generalized. Overlay = all Ka0s-specific doc rules.
