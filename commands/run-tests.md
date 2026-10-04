@@ -1,64 +1,135 @@
 ---
-description: Run the current addon's entire test battery — auto-detects and runs luacheck lint, the headless Lua tests/ harness, and any Makefile `test` target, then reports a combined pass/fail summary. Offers to diagnose and fix failures.
+description: Run the current repo's entire lint/test/type-check battery — prefers the commands the repo documents (README, CONTRIBUTING, CLAUDE.md, Makefile, CI workflows), otherwise auto-detects them across ecosystems (npm/pnpm/yarn/bun scripts, pytest/tox/nox/ruff/mypy, go vet/test, cargo clippy/test, make, Maven/Gradle, dotnet, rspec/rake, phpunit, luacheck/busted…) — then reports a combined pass/fail table. Offers to diagnose and fix failures.
+argument-hint: [suite name or path to narrow the run]
 allowed-tools: [Bash, Read, Glob, Grep, Edit]
 ---
 
-Run the full test battery for the addon at the cwd and report the results.
+Run the full test battery for the repository at the cwd and report the results.
 
-**This is the fast green gate — it records nothing.** For the recorded four-suite run that writes a
-frozen bundle to `docs/automated-tests/`, use **`/wow-addon:automated-tests`**. Where the vendored
-runner is present, the equivalent of this command is
-`tests/_kit/run-automated-tests.sh --suite lint --suite tests --no-bundle`, and using it keeps the
-two paths from drifting; fall back to the discovery below when the addon has not adopted
-`automated-tests` yet.
+## Step 0 — Detect the repo profile
 
-## Step 0 — Locate the addon
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
 
-Confirm the cwd looks like a WoW addon — at least one `.toc` file at the root (or a folder that is clearly an addon). If nothing testable is present at all, say so and stop; don't invent a harness.
+- **`profile=wow`** — Read `<root>/profiles/wow/run-tests.md` now. Each of its sections names a hook point in this spec (`<!-- overlay: <id> -->`) and says whether it **adds to** or **replaces** that section; `extra` sections say where they run. Apply them as you go. `kind` (`addon`, `library`, `standards`, `tooling`) refines WoW behavior where the overlay says so.
+- **`profile=generic`** — follow this spec as written. Do not read the overlay.
 
-## Step 1 — Discover and run suites
+<!-- overlay: scope -->
+**This is the fast green gate — it records nothing.** It runs what the repo already declares, reads
+the results, and leaves no files behind. If `$ARGUMENTS` names a suite (`lint`, `tests`, `types`, a
+tool name) or a path, run only what matches and say what was left out.
 
-**Every run goes through the bounded runner.** Prefix each command with `~/.claude/wow-addon/bin/ka0s-bounded` (e.g. `~/.claude/wow-addon/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
+<!-- overlay: locate -->
+## Step 1 — Locate the project
 
-Discover what's present and run each applicable suite **in this order**, capturing output. Report every suite as **pass**, **fail**, or **skipped (tooling absent)** — a missing tool is a skip, not a failure.
+Work from the repository root (`repo=` from Step 0), not the subdirectory you were started in:
+documented commands and most tool configs assume the root. Confirm there is something buildable or
+testable there — a manifest, a build file, a test directory, a CI workflow. If nothing testable is
+present at all, say so and stop; don't invent a harness.
 
-1. **luacheck (static lint)** — if a `.luacheckrc` exists **and** `luacheck` is on `PATH`, run `~/.claude/wow-addon/bin/ka0s-bounded luacheck .`. If `.luacheckrc` exists but `luacheck` is missing, mark it **skipped** and note the install hint. No `.luacheckrc` → not part of this addon's battery; skip silently.
-2. **tests/ harness (headless Lua unit tests)** — the Ka0s standard's headless Lua 5.1 harness, built on the vendored shared test kit. Discover the runner (in order of preference): an explicit entry like `tests/run.lua` / `tests/run_tests.lua`, else suite files under `tests/` (`test_*.lua`, `*_test.lua`, `*_spec.lua`). Pick an interpreter, preferring `lua5.1` → `lua` → `luajit`. Run the harness **from the repo root** — the runner and the kit both assume it — and capture its pass/fail counts. **Time it**, and prefer the parallel form where the kit supports it: from testkit revision 12 the runner accepts `-j auto`, which fans the declared suites across worker processes (`testing-§14`). Use `~/.claude/wow-addon/bin/ka0s-bounded lua tests/run.lua -j auto`: a revision-12 kit fans out, and an older one simply **ignores the unknown flag and runs serially**, so the command is safe to use unconditionally and there is no version check to make. A parallel run's transcript is byte-identical to a serial one and carries the same totals and exit code, so nothing about how you read the result changes. The summary line reports the shard count when it fanned out, which is how you tell which happened. If a `tests/` dir exists but no interpreter is found, mark **skipped** with the reason.
+In a monorepo (workspaces, multiple manifests in sibling packages), prefer the root-level command
+that fans out across packages (`pnpm -r test`, `npm test --workspaces`, `cargo test --workspace`,
+`go test ./...`, `nx`/`turbo` targets). Only fall back to per-package runs when no root command
+exists, and report each package as its own suite.
 
-   **`tests/_kit/` is not a suite directory.** It is the vendored shared harness (`framework.lua`, `loader.lua`, `mock_base.lua`, `README.md`) — the runner `dofile`s it. Never glob it for suites, never run its files directly, never count anything in it, and never edit it (see the hard rules). Prefer the explicit runner precisely so this doesn't arise; if you fall back to globbing, exclude `tests/_kit/`.
-3. **Makefile `test` target** — if a root `Makefile` defines a `test:` target, it is often the canonical entry point that already wraps lint + unit tests. **De-dup:** if `make test` clearly runs the same suites as 1–2, run `make test` **instead of** re-running those suites, and say so in the summary. If it does something additional (e.g. integration tests), run it as its own suite.
+## Step 2 — Discover and run suites
 
-**Not a suite: measurement runners.** `tests/perf.lua` — the Ka0s standard's offline performance scenario runner (`performance-§9`) — lives in `tests/` but is deliberately **outside the green gate**: it measures rather than verifies, and it asserts nothing about wall-clock time. **Do not** run it as part of the battery, count its scenarios as test cases, or fold its numbers into the pass/fail summary. If it exists, note in one line that it is available (`lua tests/perf.lua`) and move on. Same for any other runner the addon documents as non-gating.
+<!-- overlay: runner -->
+**Bound every run.** Wrap each command in a wall-clock limit where the platform has one
+(`timeout 900 <command>` on Linux, `gtimeout` on macOS with coreutils) so a hung suite cannot stall
+the session. A run that exits **124** hit the time limit and **137** was killed (often by memory) —
+report either as exactly that, never as a test failure or a pass. Running independent suites in
+parallel is fine when they do not share state (a database, a port, a build directory); otherwise
+run them one at a time.
 
-**Not a suite: complexity.** `lizard` is **not** part of this battery, and adding it would be a standards violation rather than a thoroughness win. It is **recorded here and never gating this battery** (`automated-tests-§3`, `performance-§10`) — a complexity threshold on the dev loop teaches everyone to reach for `--no-verify`, after which the gate protects nothing and the habit remains. (The **release** is gated on it — zero functions above CCN 15 — but that is `/wow-addon:bump-version`'s gate at the tag, not this command's, and it is deliberately not something you can trip mid-loop.) Do not run `lizard` here, do not report a stale record as a red suite, and do not offer to refresh it: that happens in `/wow-addon:automated-tests`, and at release in `/wow-addon:bump-version`.
+<!-- overlay: suites -->
+### Where the commands come from (in order of authority)
 
-Run suites read-only — none of this edits addon code.
+1. **What the repo documents.** Read, in this order, `CLAUDE.md` / `AGENTS.md`, `CONTRIBUTING*`,
+   the README's development/testing section, and the CI workflow files (`.github/workflows/*.yml`,
+   `.gitlab-ci.yml`, `azure-pipelines.yml`, `.circleci/config.yml`, `Jenkinsfile`,
+   `bitbucket-pipelines.yml`). A command the repo tells contributors to run — or that CI runs on
+   every push — is the canonical one. Use it verbatim, minus CI-only steps (deploys, uploads, cache
+   priming, secrets-dependent jobs) and minus matrix fan-out (run the local default once).
+2. **A task-runner entry point.** A root `Makefile` (`test`, `check`, `lint`, `verify`, `ci`
+   targets), `justfile`, `Taskfile.yml`, `noxfile.py`, `tox.ini`, or `package.json` scripts named
+   `test`, `lint`, `typecheck`/`type-check`/`tsc`, `check`, `verify`, `ci`. These usually already
+   wrap the tools below. **De-dup:** if `make test` (or `npm test`, `tox`, `nox`, `just test`)
+   clearly runs the same suites you would otherwise detect, run it **instead of** re-running those
+   suites, and say so in the summary. If it does something additional, run it as its own suite.
+3. **Auto-detection** — only for what 1–2 did not already cover. Detect by the config file, run with
+   the repo's own toolchain (its package manager, its virtualenv, its wrapper script):
 
-## Step 2 — Combined summary
+   | Signal | Lint / static | Type-check | Tests |
+   |---|---|---|---|
+   | `package.json` (+ `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lockb`/`bun.lock` → bun, else npm) | `<pm> run lint` if declared; else `eslint .` / `biome check` when configured | `<pm> run typecheck` if declared; else `tsc --noEmit` when `tsconfig.json` exists | `<pm> test` / `<pm> run test` |
+   | `pyproject.toml`, `setup.cfg`, `setup.py`, `requirements*.txt` (use the repo's runner: `uv run`, `poetry run`, `pdm run`, `hatch run`, or the active venv) | `ruff check .`; else `flake8` when configured; `pylint` only if configured | `mypy` / `pyright` when configured (`[tool.mypy]`, `mypy.ini`, `pyrightconfig.json`) | `tox` / `nox` when present, else `pytest`; else `python -m unittest discover` |
+   | `go.mod` | `go vet ./...`; `golangci-lint run` when `.golangci.*` exists | (compiler) | `go test ./...` |
+   | `Cargo.toml` | `cargo clippy --all-targets -- -D warnings` only if the repo's CI uses `-D warnings`, else `cargo clippy --all-targets`; `cargo fmt --check` when CI runs it | (compiler) | `cargo test` (`--workspace` in a workspace) |
+   | `pom.xml` / `build.gradle(.kts)` (prefer `./mvnw` / `./gradlew`) | `checkstyle`/`spotless` goals when configured | (compiler) | `mvn -q test` / `./gradlew test` (or `check`) |
+   | `*.sln` / `*.csproj` / `*.fsproj` | `dotnet format --verify-no-changes` when CI runs it | (compiler) | `dotnet test` |
+   | `Gemfile` | `bundle exec rubocop` when `.rubocop.yml` exists | `srb tc` / `steep check` when configured | `bundle exec rspec` (spec/) or `bundle exec rake test` |
+   | `composer.json` | `phpcs` / `php-cs-fixer --dry-run` when configured | `phpstan` / `psalm` when configured | `composer test` if declared, else `vendor/bin/phpunit` |
+   | `mix.exs` | `mix credo` when present; `mix format --check-formatted` | `mix dialyzer` when configured | `mix test` |
+   | `.luacheckrc`, `*.rockspec`, `.busted` | `luacheck .` | — | `busted`, or the repo's own `tests/` runner |
+   | Shell scripts / `*.sh` with a `.shellcheckrc` or CI shellcheck step | `shellcheck` | — | `bats test/` when present |
+   | `CMakeLists.txt` / `meson.build` | — | — | `ctest --test-dir <build>` / `meson test -C <build>` against an existing build dir only |
 
+   Run a tool only when the repo shows it is part of the battery (a config file, a declared script,
+   a CI step, a dev dependency). Do not lint a repo with a linter it never adopted.
+
+<!-- overlay: not-suites -->
+### Not part of the battery
+
+Benchmarks, load and soak tests, coverage upload, mutation testing, end-to-end suites that need
+external services the repo does not start itself, release/deploy jobs, and formatters in write mode
+(`--fix`, `fmt` without `--check`) are **not** suites here. If one exists, note in one line that it
+is available and move on — never count its results in the pass/fail summary.
+
+Report every suite as **pass**, **fail**, or **skipped (tooling absent)** — a missing tool is a
+skip, not a failure. Install nothing without asking; say what the install would be.
+
+Run suites read-only — none of this edits code.
+
+## Step 3 — Combined summary
+
+<!-- overlay: summary -->
 Print a compact summary:
-- One line per suite: name — **pass / fail / skipped** — counts (e.g. `luacheck — pass — 0 warnings`, `tests/ — fail — 13 passed, 1 failed`).
-- A headline verdict (e.g. `2/3 suites passed` or `All suites passed`).
-- **The wall-clock time of the headless suite**, on its own line. `testing-§14` governs the gate's speed because a slow gate is one people stop running, and the number is only actionable if it is visible. If the serial suite is over ~10s and the addon has not opted into `-j`, say so and point at `Kit.run{ ..., jobs = "auto" }` — after confirming a sharded run agrees with the serial one. If it is over ~30s, treat that as a finding worth profiling rather than a fact of life: the two costs that dominate are re-parsing source already read and spawning one subprocess per item, and both are fixed in the kit rather than in the addon.
-- For failures, show the **relevant failing output** — the failed assertions / lint lines — not the entire log.
+- A table, one row per suite: name — command run — **pass / fail / skipped** — counts (e.g.
+  `ruff — pass — 0 findings`, `pytest — fail — 213 passed, 2 failed`, `tsc — skipped — typescript
+  not installed`).
+- A headline verdict (e.g. `3/4 suites passed` or `All suites passed`).
+- Where each command came from (documented, task runner, auto-detected), so the user can tell a
+  canonical command from a guess.
+- The wall-clock time of the slowest suite, on its own line.
+- For failures, show the **relevant failing output** — the failed assertions / lint lines / type
+  errors with file:line — not the entire log.
 
-**Surface a kit-sync failure distinctly.** If the run includes a kit-sync / vendor-identity case — one asserting that the vendored `tests/_kit/` is byte-identical to its source `testkit/`, or that a vendored `libs/<Lib>/` matches its library repo's ship folder — and it fails, **do not report it as just another red assertion**. It is the one failure whose meaning is *"the copy in this repo has drifted from the library it came from"*, and it is otherwise invisible: both repos stay green while the copies diverge, because each suite tests its own copy. Call it out on its own line, name the files that differ, and state the remediation: **re-vendor the whole folder from the library repo** — not edit the vendored copy, not edit the test. If the check reports that it *could not run* (empty listing, source repo not found), treat that as a failure too, not a skip: a gate that goes quiet when it cannot look is worse than no gate.
+<!-- overlay: no-suites -->
+If **no** suites were found at all, tell the user the repo has no test battery yet and suggest the
+conventional starting point for its ecosystem (one line, no scaffolding).
 
-If **no** suites were found at all, tell the user the addon has no test battery yet and point them at the Ka0s standard's headless `tests/` harness (`/wow-addon:new-addon` scaffolds one).
-
-## Step 3 — On failure, offer to fix
+## Step 4 — On failure, offer to fix
 
 If any suite failed, after printing the summary ask:
 
 > "Want me to diagnose and fix the N failure(s)? (y/n)"
 
-- **y** → investigate the failures, propose fixes, and apply them **with approval before editing** any file. Re-run the affected suite(s) to confirm. If a fix moves the addon's pass count, the standard requires the generated test-case inventory and the README test badge to move **in the same change** — regenerate the inventory with the runner's non-executing list mode and update the badge, rather than leaving it as a follow-up.
+<!-- overlay: fix -->
+- **y** → investigate the failures, propose fixes, and apply them **with approval before editing**
+  any file. Re-run the affected suite(s) to confirm. If a fix changes a number the repo publishes
+  (a test-count badge, a generated test inventory), move it in the same change.
 - **n** → stop. The user handles it.
 
 ## Hard rules
 
-- **Read-only during the run.** The only time this command edits code is the opt-in fix phase in Step 3, after the user says yes.
-- **Vendored folders are never edited — not even to make a test pass.** `libs/` and `tests/_kit/` are copies of code that lives in another repo; the next re-vendor overwrites any local patch silently, and the behavior it fixed returns as a regression with no cause anywhere in this repo's history. In the Step 3 fix phase, a failure whose real cause is in vendored code is an **upstream** fix plus a **re-vendor**, and this command's job is to say so clearly and stop — not to patch under `libs/` or `tests/_kit/`, and not to weaken or delete the test that caught it.
-- **A missing tool is a skip, not a failure.** Don't report `luacheck`/interpreter absence as a red test result — report it as skipped with an install hint.
+<!-- overlay: hard-rules -->
+- **Read-only during the run.** The only time this command edits code is the opt-in fix phase in
+  Step 4, after the user says yes.
+- **Vendored code is never edited — not even to make a test pass.** `vendor/`, `third_party/`,
+  `node_modules/`, git submodules and any folder the repo documents as copied from elsewhere: a
+  failure whose real cause is there is an upstream fix plus a re-vendor. Say so and stop; never
+  weaken or delete the test that caught it.
+- **A missing tool is a skip, not a failure.** Report it as skipped with an install hint.
 - **Don't dump full logs.** Show the failing lines; summarize the rest.
-- **Don't fabricate results.** If a suite can't run, say why; never report a pass you didn't observe.
+- **Don't fabricate results.** If a suite can't run, say why; never report a pass you didn't
+  observe.
