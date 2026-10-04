@@ -1,0 +1,4 @@
+# dev-copilot is the Ka0s collection's tooling repo (successor to wow-addon), so its own
+# docs and reviews follow the WoW documentation lane. See README "Repo profiles".
+profile=wow
+kind=tooling

@@ -1,0 +1,8 @@
+#!/bin/sh
+# dev-copilot plugin: the repo profile detector on the plugin's PATH entry.
+#
+# Claude Code puts <plugin>/bin on PATH, so shared commands run the bare name:
+#   dev-copilot-profile            # classify the repo at cwd
+#   dev-copilot-profile ../Foo     # or a given path
+# The logic lives in scripts/detect_profile.py; this only resolves its own location and hands over.
+exec python3 "$(dirname "$(readlink -f "$0")")/../scripts/detect_profile.py" "$@"
