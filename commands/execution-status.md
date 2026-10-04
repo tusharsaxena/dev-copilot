@@ -15,6 +15,12 @@ The report has to be **true**, so everything here is about evidence. People make
 
 This command **only reads**. It never ticks a ledger row, commits, restarts work or messages a running agent. A status check that changes the thing it measures has stopped being a status check.
 
+## Step 0 — Detect the repo profile
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+This command behaves the same in every repo; there is no profile-specific variant of it. Detection is only for the report: run `dev-copilot-profile <path>` once per repo the work touches (Step 2 lists them) and record each repo's `profile` (and `kind` when `profile=wow`), so the report can say what kind of repo each track runs in. If the detector is not available, say so and carry on — it never blocks a status report.
+
 ## Step 1 — Establish what was planned
 
 The denominator is **everything planned in this conversation**, not only what a plan file lists. Build it from these sources, in order, and merge them:
@@ -46,6 +52,7 @@ A ledger says what someone *wrote down*. Commits and running processes say what 
   - `git -C <repo> branch --show-current`
   - `git log --oneline <base>..HEAD` with times: `--format='%h %ad %s' --date=format:%H:%M`, where the base is the branch the work split from, usually `master` or `main`
   - `git status --short`
+  - its `profile`/`kind` from Step 0
 
   Branch names, sibling repos and base branches come from the plan or the conversation. A multi-repo effort needs every repo, not just the cwd.
 - **Live background work.**
@@ -97,9 +104,9 @@ Use this shape. Drop a section that would be empty, except **Still to do**, whic
 ```
 **~<P>% complete — <n> of <m> tasks done** (<k> more coded, in review). Likely done in **<range>, around <clock>** (it's <now>). <One sentence on what is running right now.>
 
-| Phase | Tasks | Status |
-|---|---|---|
-| <phase name> | <count> | ✅ done / 🟡 x of y done; <what is running> / ⏳ queued after <X> / ⛔ blocked: <why> |
+| Phase | Repo (profile) | Tasks | Status |
+|---|---|---|---|
+| <phase name> | <repo> (<profile>[/<kind>]) | <count> | ✅ done / 🟡 x of y done; <what is running> / ⏳ queued after <X> / ⛔ blocked: <why> |
 
 **Done since the last update** (or **Done so far**, the first time): what each finished unit delivered, in user terms, with the requirement or task IDs.
 
@@ -109,7 +116,7 @@ Use this shape. Drop a section that would be empty, except **Still to do**, whic
 
 **Risks to the estimate:** only the real ones.
 
-**Waiting on you:** decisions or checks only the user can make (merge, push, in-game checks). Leave it out when there are none.
+**Waiting on you:** decisions or checks only the user can make (merge, push, manual or in-app checks). Leave it out when there are none.
 ```
 
 - **Talk in outcomes, not mechanics.** "General → Containers is live and the Containers page is gone" tells the user more than "D2 done (bbdf178)". Keep commit hashes and run ids to where they help someone check the claim.
