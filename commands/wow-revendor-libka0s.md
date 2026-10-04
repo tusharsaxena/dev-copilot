@@ -6,6 +6,13 @@ allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion]
 
 Carry the current **LibKa0s** into the addon(s) in scope, and then decide what to do with what arrived. Scope comes from `$ARGUMENTS` (Step 1); with no arguments this is the repo at cwd.
 
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-revendor-libka0s` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue. When the scope (Step 1) names several repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`, or `kind=library` (LibKa0s does not vendor itself).
+
 ## What this is, and what it is not
 
 `LibKa0s` releases; its consumers do not follow. Nothing announces the gap: the vendored copy still loads, every suite in the consumer stays green, and the only witness is somebody reading two changelogs side by side. The library's own `docs/releasing.md` documents the catch-up under *Re-vendoring consumers*, but as a release-side checklist a human runs once per consumer — and the harder half is written down nowhere executable: once the bytes are current, **which of the new surfaces should this addon adopt?**
@@ -16,13 +23,13 @@ This command is both halves, consumer-side, one repo at a time. It re-vendors, d
 
 | Against | The line |
 |---|---|
-| `/wow-addon:revendor-standards` | Same verb, different object. That one carries the standard's **reference** down and must never copy its text into a repo (anti-pattern #49). This one carries the library's **bytes** down, and writes code. |
-| `/wow-addon:new-addon` | First adoption at scaffold time. This is re-vendor and incremental adoption forever after. |
-| `/wow-addon:run-tests` | That command owns running suites as a gate and offers to fix what is red. This runs them as its own stage gates and **stops** on unrelated red rather than fixing it mid-run. |
-| `/wow-addon:bump-version` | It must **never** roll the provenance `vX.Y.Z` — that is the library's tag, not the addon's. **This command is the only one that moves it.** |
-| `/wow-addon:sync-docs` | It owns migrating a provenance line out of a README as part of a doc sweep. This command removes only a README line it has **just superseded**, in the same commit as the bytes. |
+| `/dev-copilot:wow-revendor-standards` | Same verb, different object. That one carries the standard's **reference** down and must never copy its text into a repo (anti-pattern #49). This one carries the library's **bytes** down, and writes code. |
+| `/dev-copilot:wow-new-addon` | First adoption at scaffold time. This is re-vendor and incremental adoption forever after. |
+| `/dev-copilot:run-tests` | That command owns running suites as a gate and offers to fix what is red. This runs them as its own stage gates and **stops** on unrelated red rather than fixing it mid-run. |
+| `/dev-copilot:bump-version` | It must **never** roll the provenance `vX.Y.Z` — that is the library's tag, not the addon's. **This command is the only one that moves it.** |
+| `/dev-copilot:sync-docs` | It owns migrating a provenance line out of a README as part of a doc sweep. This command removes only a README line it has **just superseded**, in the same commit as the bytes. |
 | `LibKa0s/docs/adoption-report.md` | Read-only, library-side, every consumer at once. This is write-side, consumer-side, one repo at a time. |
-| `/wow-addon:harvest-standards` | It reads `docs/revendor/` bundles as evidence. They are **frozen** — never edit a past bundle. |
+| `/dev-copilot:wow-harvest-standards` | It reads `docs/revendor/` bundles as evidence. They are **frozen** — never edit a past bundle. |
 
 This is, with `new-addon`, one of only two specs in this plugin that writes an addon's own Lua. Step 7's fences are what make that safe; do not relax them.
 
@@ -301,7 +308,7 @@ Roll the line in `<Addon>/CLAUDE.md` to the resolved tag:
 
 Preserve the repo's existing phrasing and position if it already has a line; only the version moves. `CLAUDE.md`, **never** `README.md` — the line answers "which LibKa0s does this build carry?", which is a maintainer's question on a page written for players, and the addon README carries no bundled-library inventory at all (`documentation-§1`, anti-patterns #58/#59). There is **no fallback**: `vendor_sync.lua` reads `CLAUDE.md`, and a line left in the README reads to it as no line at all.
 
-**A leftover README line is removed here.** If the target still carries a provenance line in `README.md`, delete it while writing the correct one into `CLAUDE.md`, and **announce the removal**. `/wow-addon:sync-docs` nominally owns that migration, but leaving both produces the half-migrated two-lines-that-can-disagree state, and this command is the one holding the correct version at that moment. Remove **only** the line just superseded; touch nothing else in the README.
+**A leftover README line is removed here.** If the target still carries a provenance line in `README.md`, delete it while writing the correct one into `CLAUDE.md`, and **announce the removal**. `/dev-copilot:sync-docs` nominally owns that migration, but leaving both produces the half-migrated two-lines-that-can-disagree state, and this command is the one holding the correct version at that moment. Remove **only** the line just superseded; touch nothing else in the README.
 
 ### Gate, then commit
 
@@ -315,7 +322,7 @@ Note that `luacheck`'s figure is scoped by `.luacheckrc`'s `exclude_files`, whic
 
 Then **one commit**, carrying both payloads *and* the provenance line together. The atomicity is required upstream and the consumer's own gate fails a split. Commit style per this collection: terse capitalized imperative subject, no Conventional-Commits prefix, `Co-Authored-By: Claude …` trailer.
 
-**Never push.** Push is `/wow-addon:finalize`'s job, and `commit.md`'s hard rule stands.
+**Never push.** Push is `/dev-copilot:finalize`'s job, and `commit.md`'s hard rule stands.
 
 ## Step 5 — Work out the candidates → `02_CANDIDATES.md`
 
@@ -387,7 +394,7 @@ Write the plan before touching code. Per adopted candidate it names: the files i
 
 **The assertion standard is "does this render the same bytes", not "does this still run."** A test that passed before and after proves nothing if the code path moved. The divergences that matter here fail **silently and only in-game** — color codecs, EditBox-versus-Dropdown dispatch, `hasAlpha`, an unknown `row.type` dropping one row from a page — and none of them appear headless unless the assertion is written. Write it.
 
-Then implement, **one candidate at a time**: test, then code, then `luacheck` + `lua tests/run.lua` green (both through `~/.claude/wow-addon/bin/ka0s-bounded`), then **its own commit**. A candidate whose suites go red is rolled back to its own commit boundary and reported; it does not block the candidates after it.
+Then implement, **one candidate at a time**: test, then code, then `luacheck` + `lua tests/run.lua` green (both through `~/.claude/dev-copilot/bin/ka0s-bounded`), then **its own commit**. A candidate whose suites go red is rolled back to its own commit boundary and reported; it does not block the candidates after it.
 
 Fences, all four of which hold on every candidate:
 
@@ -411,6 +418,6 @@ Both carry the same facts:
 - what was **skipped or unreached**, and why;
 - the suite results at each gate, with any tool that was skipped named as skipped.
 
-The bundle lives at `<Addon>/docs/revendor/<YYYY-MM-DD>-v<new>/`, named for the tag it vendored (a consolidated span bundle from 3h sits beside it under its own two-tag name), and is **frozen**: a later run makes a new folder, and the difference between two folders is the record of what moved. `/wow-addon:harvest-standards` reads these as evidence — never edit a past bundle, and never rewrite one whose notation the standard has since retired. It records what was true against the library of *its* date, which is what a dated artifact is for.
+The bundle lives at `<Addon>/docs/revendor/<YYYY-MM-DD>-v<new>/`, named for the tag it vendored (a consolidated span bundle from 3h sits beside it under its own two-tag name), and is **frozen**: a later run makes a new folder, and the difference between two folders is the record of what moved. `/dev-copilot:wow-harvest-standards` reads these as evidence — never edit a past bundle, and never rewrite one whose notation the standard has since retired. It records what was true against the library of *its* date, which is what a dated artifact is for.
 
 In a multi-repo run, print a per-repo summary as each repo finishes rather than one at the end, and a final roster line saying which repos completed, which were skipped, and which the user stopped.

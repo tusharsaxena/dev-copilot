@@ -6,12 +6,19 @@ allowed-tools: [Bash, Read, Write, Edit, Glob, Grep, WebFetch]
 Run and **record** the addon at the cwd's automated tests.
 
 This is the recorded, four-suite run. For the fast green gate — lint and tests only, writing nothing
-— use `/wow-addon:run-tests`, or the runner's own `--suite lint --suite tests --no-bundle`.
+— use `/dev-copilot:run-tests`, or the runner's own `--suite lint --suite tests --no-bundle`.
 
 Everything here runs **outside** the game client. An **in-game** capture — the report and the JSON
-dump a player copied out of the client after a `/<slash> perf` run — is `/wow-addon:perf-analysis`'s,
+dump a player copied out of the client after a `/<slash> perf` run — is `/dev-copilot:wow-perf-analysis`'s,
 and lands under `docs/perf-analysis/<YYYYMMDD-HHMMSS>/`. The offline perf scenarios recorded below
 answer a different question and are never a stand-in for one.
+
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-automated-tests` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue; `kind` is normally `addon` (`library` is fine too — LibKa0s runs the same kit).
 
 ## Step 0 — Fetch the playbook
 
@@ -72,12 +79,12 @@ The runner is **vendored**: `tests/_kit/run-automated-tests.sh`, from `LibKa0s`'
 From the repo root:
 
 ```sh
-~/.claude/wow-addon/bin/ka0s-bounded tests/_kit/run-automated-tests.sh                    # the default: all four, writes a bundle
-~/.claude/wow-addon/bin/ka0s-bounded tests/_kit/run-automated-tests.sh --label <text>     # when the run answers a specific question
-~/.claude/wow-addon/bin/ka0s-bounded tests/_kit/run-automated-tests.sh --suite <name>     # repeatable, for a subset
+~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh                    # the default: all four, writes a bundle
+~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh --label <text>     # when the run answers a specific question
+~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh --suite <name>     # repeatable, for a subset
 ```
 
-**Every run goes through the bounded runner.** Prefix each command with `~/.claude/wow-addon/bin/ka0s-bounded` (e.g. `~/.claude/wow-addon/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
+**Every run goes through the bounded runner.** Prefix each command with `~/.claude/dev-copilot/bin/ka0s-bounded` (e.g. `~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
 
 The runner writes the bundle and prepends the `RESULTS.md` row. It does **not** write `ANALYSIS.md`
 or the `RESULTS.md` watch list — those need a reader, and they are Steps 3 and 4.
@@ -90,7 +97,7 @@ scratchpad directory when you have one, and never inside the repo (the log is no
 
 ```sh
 log=$(mktemp "${TMPDIR:-/tmp}/ka0s-ats-$(basename "$PWD")-XXXXXX.log")
-~/.claude/wow-addon/bin/ka0s-bounded tests/_kit/run-automated-tests.sh >"$log" 2>&1; echo "exit $?"
+~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh >"$log" 2>&1; echo "exit $?"
 ```
 
 Read the bundle path and the verdict from that log, and cite figures from the bundle's own files, not
@@ -178,7 +185,7 @@ Print:
 
 ## Hard rules
 
-- **Don't commit.** This command records; committing is the user's call (`/wow-addon:commit`).
+- **Don't commit.** This command records; committing is the user's call (`/dev-copilot:commit`).
 - **Never edit a frozen bundle.** A bundle is evidence. If a reading was wrong, the *next* run's
   analysis says so; this one stands as what was believed at the time.
 - **Never edit `tests/_kit/`.** It is vendored. A runner problem is fixed in `LibKa0s` and
@@ -186,7 +193,7 @@ Print:
   returns as a regression with no cause anywhere in this repo's history.
 - **Never make this command gate on perf or complexity**, and never present a run as failed because of
   them. They are measured and recorded; a complexity warning count does not fail a run. The **release**
-  gate — all four suites plus zero functions above CCN 15 — belongs to `/wow-addon:bump-version`, which
+  gate — all four suites plus zero functions above CCN 15 — belongs to `/dev-copilot:bump-version`, which
   reads this run's `manifest.json` before it edits anything. Do not implement it here, and never edit
   the vendored runner's exit code to implement it: the same script is the commit gate.
 - **Never hand-write a number into a bundle.** Everything in it came from a tool. A hand-edited

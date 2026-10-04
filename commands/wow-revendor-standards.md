@@ -6,14 +6,21 @@ allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion]
 
 Refresh the **in-repo reference to the Ka0s WoW Addon Standard** in the addon(s) in scope, so the documentation an agent loads as working context matches the standard as it exists **today**. Scope comes from `$ARGUMENTS` (see Step 1); with no arguments this is the repo at cwd.
 
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-revendor-standards` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue. When the scope names several repos, run the detector **per target repo** (`dev-copilot-profile <path>`) and skip — with a one-line note in the report — any target that comes back `generic`.
+
 ## What this is, and what it is not
 
 The standard evolves upstream. An addon that was compliant when it was written keeps a *snapshot* of that standard in its docs — the `X-Standard:` line, the README badge, the `CLAUDE.md` compliance section, and every doc sentence that names a section, counts a doc set (root or `docs/`) without naming its members, or cites a file the standard has since retired. None of that goes red. No test covers a doc, lint does not read prose, and a stale brief does not go quiet — it is loaded as working context and gets **followed**. This command is the sweep that closes that gap.
 
 Three commands touch the same doc set from different directions; keep them apart:
 
-- **`/wow-addon:standards-audit`** measures the addon against the standard and writes a frozen `docs/audits/<date>/` bundle. It is **read-only** and produces findings. This command is not an audit: it produces no bundle, no deviation IDs, and no severity ratings, and it **edits**.
-- **`/wow-addon:sync-docs`** reconciles the docs against the addon's **own code**. It owns count claims, slash parity, dead exports, doc scaffolding, and the migrate-and-delete flow for `docs/agent-context.md`.
+- **`/dev-copilot:wow-standards-audit`** measures the addon against the standard and writes a frozen `docs/audits/<date>/` bundle. It is **read-only** and produces findings. This command is not an audit: it produces no bundle, no deviation IDs, and no severity ratings, and it **edits**.
+- **`/dev-copilot:sync-docs`** reconciles the docs against the addon's **own code**. It owns count claims, slash parity, dead exports, doc scaffolding, and the migrate-and-delete flow for `docs/agent-context.md`.
 - **This command** reconciles the docs against the **current upstream standard text**. Where the two overlap, `sync-docs` owns anything requiring code analysis; this one owns anything requiring the fetched standard.
 
 **"Revendor" here means the *reference*, never a copy — with exactly one exception.** Do not write the standard's rules, its section files, or the scaffolding context pack into the addon under any name. A stored copy of the standard's *rules* is the same failure as a stored context pack (`documentation-§3`, anti-pattern #49) — it describes the standard on the day it was copied, forever, and because it sits inside the repo it wins over the live document for every agent that reads it. What lives in the addon is a **pointer** plus the small canonical block the standard itself says to carry.
@@ -129,11 +136,11 @@ This is a deliberate, narrow relaxation of this command's blanket "never edit co
 - The `CLAUDE.md` pointer list **MUST NOT** name a file the standard forbids (`documentation-§2`). Record any such pointer, and any pointer to a file that does not exist in the repo.
 - Verify **root** against the standard's root doc set — the full `README.md`, the `CLAUDE.md` stub and `DEPENDENCIES.md`, plus `LICENSE` (`documentation-§7`). A missing `DEPENDENCIES.md`, or a fourth doc sitting at root, is recorded.
 - Verify `docs/` against the canonical set — `ARCHITECTURE.md`, `testing.md`, `smoke-tests.md`; the five verification-and-record docs `test-cases.md`, `performance.md`, `perf-analysis/README.md`, `automated-tests/README.md` and `automated-tests/RESULTS.md`; the six **Tier 1** docs `scope.md`, `module-map.md`, `schema.md`, `settings-panel.md`, `data-flow.md` and `common-tasks.md`; plus fired **Tier 2** triggers and any **Tier 3** docs (`documentation-§3`). A surviving `docs/complexity.md`, `docs/file-index.md` or `docs/conventions.md` is a **pre-adoption finding to report**, never a missing member to create — and so is a Tier 1/2 subject filed under a non-canonical name (`data-model.md`, `saved-variables.md`, `pipeline.md`, `settings-system.md`, `wow-quirks.md`, `slash-commands.md`, `debug-console.md`, …): report the rename, do not perform it.
-- **Flag missing members; do not create them** — root and `docs/` alike. Writing an `ARCHITECTURE.md` requires reading the addon's code, which this command does not do; a `DEPENDENCIES.md` must be **evidence-based** (`documentation-§7`), which means reading the scripts, the harness and the TOC, and a speculative one costs the reader's trust in the whole list; and the automated-test record is produced by running the vendored runner, which this command does not run. An empty or invented one is worse than an absent one — `/wow-addon:sync-docs` owns the scaffolding, and the record is regenerated at release by `/wow-addon:bump-version`.
+- **Flag missing members; do not create them** — root and `docs/` alike. Writing an `ARCHITECTURE.md` requires reading the addon's code, which this command does not do; a `DEPENDENCIES.md` must be **evidence-based** (`documentation-§7`), which means reading the scripts, the harness and the TOC, and a speculative one costs the reader's trust in the whole list; and the automated-test record is produced by running the vendored runner, which this command does not run. An empty or invented one is worse than an absent one — `/dev-copilot:sync-docs` owns the scaffolding, and the record is regenerated at release by `/dev-copilot:bump-version`.
 
 ### 3d. The vendored quirks catalogue
 
-The standard carries a **quirks catalogue** — client behaviors the collection discovered the hard way, promoted upstream by `/wow-addon:harvest-standards` so no addon pays the discovery cost twice. Find that section through the fetched Sections list; **never hard-code its filename**. If the standard has no such section yet, skip this step entirely and say so — there is nothing to vendor, and inventing a catalogue from this repo's own notes is the harvest command's job, in the other direction.
+The standard carries a **quirks catalogue** — client behaviors the collection discovered the hard way, promoted upstream by `/dev-copilot:wow-harvest-standards` so no addon pays the discovery cost twice. Find that section through the fetched Sections list; **never hard-code its filename**. If the standard has no such section yet, skip this step entirely and say so — there is nothing to vendor, and inventing a catalogue from this repo's own notes is the harvest command's job, in the other direction.
 
 The addon's quirks file is **two parts**, and the split is the whole design:
 
@@ -155,7 +162,7 @@ The addon's quirks file is **two parts**, and the split is the whole design:
 
 ### 3e. `docs/agent-context.md` — report, do not delete
 
-If the file exists (under that name or any other stored copy of the context pack), record it as a compliance failure (`documentation-§3`, anti-pattern #49) and **point the user at `/wow-addon:sync-docs`**, which owns the migrate-then-delete flow: salvage anything genuinely addon-specific into `docs/ARCHITECTURE.md` or the `CLAUDE.md` stub, then delete. Do not delete it here and do not migrate from it here. Two specs owning one destructive action is how the migration half gets skipped and real content is lost.
+If the file exists (under that name or any other stored copy of the context pack), record it as a compliance failure (`documentation-§3`, anti-pattern #49) and **point the user at `/dev-copilot:sync-docs`**, which owns the migrate-then-delete flow: salvage anything genuinely addon-specific into `docs/ARCHITECTURE.md` or the `CLAUDE.md` stub, then delete. Do not delete it here and do not migrate from it here. Two specs owning one destructive action is how the migration half gets skipped and real content is lost.
 
 You **may** still fix references *to* it — a `CLAUDE.md` pointer naming it is 3c drift — but say plainly in the report that the file itself is still there and which command removes it.
 
@@ -169,7 +176,7 @@ Read `automated-tests-§3` ("What gates, and what only records", including its r
 - **`docs/automated-tests/README.md`** — the section headed "What gates, and what only records", including its per-suite rows.
 - **root `CLAUDE.md`** — any sentence of the form "complexity — recorded, never a gate", or the same claim about `perf`.
 
-The drift is always the same shape: a **gate statement that names no checkpoint**. `automated-tests-§3` gates lint and tests at the **commit**, and gates all four suites plus zero functions above CCN 15 at the **release**, so a bare "perf and complexity never fail a run" is now only half true and reads as the whole truth. Rewrite so every gate statement names its checkpoint — for example "…never fail a **run** and never gate a **commit**; the **tag** is gated on all four suites plus zero functions above CCN 15, evaluated by `/wow-addon:bump-version` from the run's `manifest.json`". Take the wording from the fetched section, not from this example, and change nothing about a sentence that already qualifies its checkpoint.
+The drift is always the same shape: a **gate statement that names no checkpoint**. `automated-tests-§3` gates lint and tests at the **commit**, and gates all four suites plus zero functions above CCN 15 at the **release**, so a bare "perf and complexity never fail a run" is now only half true and reads as the whole truth. Rewrite so every gate statement names its checkpoint — for example "…never fail a **run** and never gate a **commit**; the **tag** is gated on all four suites plus zero functions above CCN 15, evaluated by `/dev-copilot:bump-version` from the run's `manifest.json`". Take the wording from the fetched section, not from this example, and change nothing about a sentence that already qualifies its checkpoint.
 
 Record each hit with `file:line` like any other sweep item. A doc that already names both checkpoints is not a hit — do not rewrite prose that is already correct.
 
@@ -266,12 +273,12 @@ FLAGGED (not changed here)
   docs/automated-tests/RESULTS.md lead-in states the same gate claim, but it is runner-generated
     (tests/_kit/run-automated-tests.sh) — out of this sweep's reach; fixed by re-vendoring a
     corrected runner from LibKa0s and re-running
-  docs/agent-context.md exists — run /wow-addon:sync-docs to migrate and delete it
-  docs/smoke-tests.md absent — canonical member missing; /wow-addon:sync-docs scaffolds it
+  docs/agent-context.md exists — run /dev-copilot:sync-docs to migrate and delete it
+  docs/smoke-tests.md absent — canonical member missing; /dev-copilot:sync-docs scaffolds it
   DEPENDENCIES.md absent at root — required by documentation-§7 (anti-pattern #50); it must be
-    written from this repo's own evidence, so /wow-addon:sync-docs owns it, not this command
+    written from this repo's own evidence, so /dev-copilot:sync-docs owns it, not this command
   docs/automated-tests/RESULTS.md absent — required by automated-tests-§4; regenerated at release by
-    /wow-addon:bump-version, never written here
+    /dev-copilot:bump-version, never written here
 ```
 
 Then apply:
@@ -312,12 +319,12 @@ Then, once for the run:
   2. **A 3b standards-citation correction, in a comment, after the user confirms it.** A citation is bound by `documentation-§6` wherever the repo authored it, including code and config, so the sweep must be able to see those files; this exception is what lets it also fix them, and it is fenced on all four sides — **this sweep only** (never any other drift this command notices in code), **comments only** (a string literal, a key or a value is reported, never edited), **explicit confirmation every time** (silence is a decline, and a multi-repo run confirms the whole plan up front), and **never a guessed target** for an out-of-range or malformed reference. Everything else in code stays untouched and gets reported. The rule's purpose — that an agent licensed to rewrite every repo's `CLAUDE.md` cannot also reach into `.lua` — is intact: this exception cannot reach a line that runs.
 - **Never write the standard's rules into the repo.** No copy of `STANDARDS.md`, no section files, no context pack, under any name. What lives in the addon is the reference, the canonical `CLAUDE.md` block the standard itself prescribes, and the vendored quirks block — that block is the *only* upstream text carried in, and it is carried whole or not at all.
 - **Never merge inside the vendored quirks markers.** Replace the block wholesale; a local edit found inside it is reported and relocated to the addon's own section, never quietly preserved and never quietly overwritten.
-- **Never edit the addon's own quirks section.** It is `/wow-addon:harvest-standards`' input; the only change permitted below the end marker is removing an entry that has since been promoted upstream, which is reported.
-- **Never create missing `docs/` members, and never create a missing root `DEPENDENCIES.md`.** Flag them; `/wow-addon:sync-docs` scaffolds them from the repo's own evidence.
+- **Never edit the addon's own quirks section.** It is `/dev-copilot:wow-harvest-standards`' input; the only change permitted below the end marker is removing an entry that has since been promoted upstream, which is reported.
+- **Never create missing `docs/` members, and never create a missing root `DEPENDENCIES.md`.** Flag them; `/dev-copilot:sync-docs` scaffolds them from the repo's own evidence.
 - **Never hand-edit the automated-test record or `docs/test-cases.md`.** They are generated. Correcting a retired section reference in their header text is allowed; touching a number is not, and a hand-edited complexity report reads as measured when it is not (`performance-§10`, anti-pattern #51). This command does not run `lizard`.
 - **Never delete `docs/agent-context.md`.** Report it and name the command that removes it.
 - **Never touch `docs/audits/<date>/`, `docs/reviews/<date>/` or `docs/automated-tests/<stamp>/`.** All three are frozen history — they record what was true on their date, against the standard of their date, and rewriting their notation falsifies the record. This holds even when they use retired forms; that is what a dated artifact is *for*. **All three are excluded from the 3b sweep, and the third is the one that gets forgotten**: one roster addon carries 30 `§N.M` lines inside its automated-test bundles, so a sweep that reaches zero without this exclusion reached zero by corrupting evidence. If a repo's notation count will not go to zero, check what the surviving hits are *in* before assuming the sweep is unfinished.
-- **Don't bump the version, don't commit, don't push.** Version bumping is `/wow-addon:bump-version`'s job; pushing is `/wow-addon:finalize`'s alone.
-- **Don't sync docs against code.** Count claims, slash parity, dead exports and module maps are `/wow-addon:sync-docs`'s. If you notice such drift, mention it in the report and name that command; do not fix it here.
+- **Don't bump the version, don't commit, don't push.** Version bumping is `/dev-copilot:bump-version`'s job; pushing is `/dev-copilot:finalize`'s alone.
+- **Don't sync docs against code.** Count claims, slash parity, dead exports and module maps are `/dev-copilot:sync-docs`'s. If you notice such drift, mention it in the report and name that command; do not fix it here.
 - **Never hard-code a section filename.** Discover every one from the fetched `STANDARDS.md` Sections list.
 - If this file and the fetched standard ever disagree about what the reference must contain, **the fetched standard wins**.

@@ -6,12 +6,19 @@ allowed-tools: [Bash, Read, Write, Edit, Glob, Grep, WebFetch, AskUserQuestion]
 
 Record an **in-game** perf run for the addon at the cwd, and write the analysis of it.
 
-This command is the in-game counterpart to `/wow-addon:automated-tests`. That one *runs* four
+This command is the in-game counterpart to `/dev-copilot:wow-automated-tests`. That one *runs* four
 out-of-game suites and records them; this one cannot run anything — the measurement happened in a
 live client, on the player's machine, in combat, and it exists only as text the player copied out of
 the game. **This command's entire job is to turn that paste into evidence and read it.** Offline perf
 scenarios are not this command's business; they live in the automated-test bundle that produced them
 (`automated-tests-§7`).
+
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-perf-analysis` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue; `kind` is normally `addon`.
 
 ## Step 0 — Fetch the playbook
 
@@ -217,9 +224,9 @@ Print:
 - **Never read a delta below the resolution floor as a result**, in either direction. "Unresolved" is
   the honest word and it is a finding in its own right.
 - **Never run the addon's test suites to fill a gap here.** The offline scenarios answer a different
-  question and belong to `/wow-addon:automated-tests`; citing an offline `bytes/iter` as though it
+  question and belong to `/dev-copilot:wow-automated-tests`; citing an offline `bytes/iter` as though it
   were in-game evidence conflates two harnesses the standard deliberately separates.
-- **Don't commit.** This command records; committing is the user's call (`/wow-addon:commit`).
+- **Don't commit.** This command records; committing is the user's call (`/dev-copilot:commit`).
 - **Never create `docs/perf-analysis/` in an addon with a recorded `performance-§12` exemption.** Say
   the addon is exempt and why. An empty store in an addon with no combat path is a directory that
   will never fill, and it reads as an unmet obligation forever.

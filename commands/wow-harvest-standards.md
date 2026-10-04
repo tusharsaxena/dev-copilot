@@ -6,11 +6,18 @@ allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion]
 
 Harvest what the Ka0s collection has **learned** since the standard last moved, and promote the findings that have earned it into the **Ka0s WoW Addon Standard**. Run this from inside the `WowAddonStandards` repo. `$ARGUMENTS` may narrow the sweep to named repos or to one category (`quirks`, `deviations`, `decisions`, `patterns`); empty means the full sweep. (`ledgers` is accepted as a legacy alias for `decisions`.)
 
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-harvest-standards` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue only when `kind=standards` — this command runs inside `WowAddonStandards`. Any other WoW kind: say so, name the standards checkout to run it from, and stop.
+
 ## Direction of travel
 
-This is the **upstream** half of a two-command cycle, and the mirror image of `/wow-addon:revendor-standards`:
+This is the **upstream** half of a two-command cycle, and the mirror image of `/dev-copilot:wow-revendor-standards`:
 
-- **`/wow-addon:revendor-standards`** runs in an addon repo and carries the standard **down** into it.
+- **`/dev-copilot:wow-revendor-standards`** runs in an addon repo and carries the standard **down** into it.
 - **This command** runs in the standards repo and carries the collection's learnings **up** into the standard.
 
 The reason the pair exists is that knowledge in this collection is discovered **per repo** and paid for **per repo**. One addon fights the client for an afternoon, writes down what it found, and the other eight rediscover it later at full price — or worse, never do, and ship the bug the first one already fixed. The standard is the only place a finding stops being paid for twice. Nothing else in the toolkit reads across repos: `standards-audit` measures one addon, `review` reviews one addon, `issue-audit` triages one addon. **Cross-repo synthesis is this command's entire reason to exist**, so a run that only re-reads one repo has done nothing the existing commands did not already do.
@@ -19,7 +26,7 @@ The reason the pair exists is that knowledge in this collection is discovered **
 
 **Never write to an addon repo. Not one byte.** Not a fix, not a doc, not a `midnight-quirks.md` entry, not a tidy-up of a file you are reading. Your only writes are inside the `WowAddonStandards` repo.
 
-This is not a safety nicety, it is what makes the harvest trustworthy. You are about to read N repos' worth of evidence and argue from it; if you also edit as you go, the evidence stops being independent of the argument, and the next run reads your own edits back as if they were nine repos agreeing. Downstream adoption is a **separate, per-repo, user-initiated** act (`/wow-addon:standards-audit`, then `/wow-addon:revendor-standards`) — you name the debt at the end and stop there.
+This is not a safety nicety, it is what makes the harvest trustworthy. You are about to read N repos' worth of evidence and argue from it; if you also edit as you go, the evidence stops being independent of the argument, and the next run reads your own edits back as if they were nine repos agreeing. Downstream adoption is a **separate, per-repo, user-initiated** act (`/dev-copilot:wow-standards-audit`, then `/dev-copilot:wow-revendor-standards`) — you name the debt at the end and stop there.
 
 The corollary: **never edit a frozen `docs/audits/<date>/` or `docs/reviews/<date>/` bundle**, in any repo, for any reason. Those are the harvest's primary source. A bundle records what was true on its date against the standard of its date; that is exactly what makes it evidence.
 
@@ -57,7 +64,7 @@ The higher-value half of the same sweep. When repos solve one problem several wa
 
 Read every addon's own quirks file and its `Compat` module, plus CHANGELOG entries and code comments describing a client behavior worked around. Look for the **same quirk written up more than once**: independent discoveries of one behavior are the clearest possible evidence that the finding belongs upstream, and the versions will differ in depth — one repo will have probed further than the others. **Promote the deepest version, and say which repo it came from**; a merge that averages three write-ups down to their common denominator throws away precisely the part that cost someone an afternoon.
 
-Quirks land upstream in the standard's **quirks catalogue section** and are then vendored back into every addon by `/wow-addon:revendor-standards`. Find that section through the Sections list. If no such section exists yet, **proposing it is itself a valid harvest proposal** — go through the normal interview and the normal ripple, do not create a section unasked.
+Quirks land upstream in the standard's **quirks catalogue section** and are then vendored back into every addon by `/dev-copilot:wow-revendor-standards`. Find that section through the Sections list. If no such section exists yet, **proposing it is itself a valid harvest proposal** — go through the normal interview and the normal ripple, do not create a section unasked.
 
 ### 4. The audit and review corpus
 
@@ -162,12 +169,12 @@ For each accepted proposal, touch **every** one of these that applies — resolv
 A rule change that lands with no adoption list is a rule the collection silently fails. Close with, per accepted proposal:
 
 - **Which repos it makes non-compliant**, named — you have just read all of them, so this is knowledge no later run recovers as cheaply.
-- **What each repo needs**: `/wow-addon:standards-audit` to measure it, `/wow-addon:revendor-standards` to carry the new text and any new vendored quirks down.
-- Whether the change requires a **`LibKa0s` change first** — if so, that repo leads and must be pushed before consumers cite it (`/wow-addon:finalize` enforces that ordering).
+- **What each repo needs**: `/dev-copilot:wow-standards-audit` to measure it, `/dev-copilot:wow-revendor-standards` to carry the new text and any new vendored quirks down.
+- Whether the change requires a **`LibKa0s` change first** — if so, that repo leads and must be pushed before consumers cite it (`/dev-copilot:finalize` enforces that ordering).
 
 Then print the harvest summary: repos read, findings by category, proposals accepted / deferred / rejected, the new standard version, the bundle path.
 
-**Do not commit and do not push.** Review the diff first; `/wow-addon:finalize` owns landing it.
+**Do not commit and do not push.** Review the diff first; `/dev-copilot:finalize` owns landing it.
 
 ## Hard rules
 

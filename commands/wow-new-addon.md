@@ -8,6 +8,10 @@ Scaffold a new WoW addon named **$ARGUMENTS** in the current working directory, 
 
 **CRITICAL — the context pack is never stored in the addon.** You fetch `NEW_ADDON_CONTEXT.md` to a scratch path and build from it. Creating `docs/agent-context.md` — under that name or any other — is a compliance failure (`documentation-§3`, anti-pattern #49). The addon's `docs/` holds the canonical trio `ARCHITECTURE.md`, `testing.md` and `smoke-tests.md`, the five **verification-and-record** docs — the generated `test-cases.md`, `performance.md`, `perf-analysis/README.md`, `automated-tests/README.md` and the generated `automated-tests/RESULTS.md` — and the **six unconditional Tier 1 topic-detail docs** `scope.md`, `module-map.md`, `schema.md`, `settings-panel.md`, `data-flow.md`, `common-tasks.md`, plus whatever Tier 2 triggers have fired and any Tier 3 docs the addon needs (`documentation-§3`); the root `CLAUDE.md` stub is the repo's only agent brief.
 
+## Before anything — check where the addon will be born
+
+This command creates a new repository, so there is no repo to classify yet and it **never refuses**. Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`) on the cwd only as a guard: if it reports a `repo=` (a git checkout) that is not the cwd's parent collection folder — i.e. the new addon would be nested **inside** another repository — warn the user and ask before scaffolding. Otherwise continue.
+
 ## `.gitattributes` — the first file, before anything else
 
 **Write the root `.gitattributes` before you write any other file in the new repo** (`line-endings`,
@@ -82,12 +86,12 @@ A new addon is born having adopted `automated-tests`. Before the first commit:
    its "what gates, and what only records" section, plus `docs/testing.md`'s gate table, so each states
    **both checkpoints**: `lint` and `tests` gate the **commit**, `perf` and `complexity` never fail a
    **run** and never gate a commit, and the **release** (the tag) is gated on all four suites plus zero
-   functions above CCN 15, evaluated by `/wow-addon:bump-version` from the run's `manifest.json`. Take
+   functions above CCN 15, evaluated by `/dev-copilot:bump-version` from the run's `manifest.json`. Take
    the wording from the fetched `automated-tests-§3` — including its release-gate subsection — not from
    this summary and not from the context pack's one-line version. A gate sentence that names no
-   checkpoint is the drift `/wow-addon:revendor-standards` sweep 3f exists to clean up; a new addon
+   checkpoint is the drift `/dev-copilot:wow-revendor-standards` sweep 3f exists to clean up; a new addon
    should not be born needing it.
-5. Run `~/.claude/wow-addon/bin/ka0s-bounded tests/_kit/run-automated-tests.sh` once, which writes the first bundle and creates
+5. Run `~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh` once, which writes the first bundle and creates
    `RESULTS.md`.
 
 `docs/complexity.md` is **retired** (standard v2.19.0) — do not scaffold one. Neither is
@@ -109,7 +113,7 @@ rows; that is the compliant state, not an omission.
 
 Finally write `docs/ARCHITECTURE.md`'s **`## Documentation map`** — the tenth mandated section —
 listing every `.md` under `docs/` in exactly one of its four tables — Required, Conditional, **Verification and record** (the six record docs, which sit outside the tier model) and Addon-specific. Write it now, while you still
-know why each file exists; it is the register `/wow-addon:standards-audit` reads. Keep
+know why each file exists; it is the register `/dev-copilot:wow-standards-audit` reads. Keep
 `ARCHITECTURE.md` a **hub**: under ~400 lines, with any section past ~60 lines spilled into its
 canonical topic doc behind a summary and one link.
 
@@ -237,7 +241,7 @@ Once fetched, **execute `NEW_ADDON.md`'s steps exactly as written**, scaffolding
 
    And the playbook's **step 6a**, which is a `CLAUDE.md` edit rather than a README one and is therefore the step most easily lost: **write the `LibKa0s` provenance line into the root `CLAUDE.md` stub** — `Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) vX.Y.Z (MIT).`, naming the **exact tag** both vendored payloads (`libs/LibKa0s/` and `tests/_kit/`) were copied from in step 3. Not the README. The consumer-side vendored-payload gate (`tests/test_vendor_sync.lua`, `testing-§11`) reads this line out of `CLAUDE.md` — since LibKa0s v1.8.1 / test-kit revision 9, with **no fallback to `README.md`** — so a scaffold that omits it, or writes it to the README, is born red rather than born compliant. The line moves in the same commit as the bytes, in both directions.
 7. **Write the root `DEPENDENCIES.md`** — the toolchain contract (`documentation-§7`). Every piece of software needed to build, run, test or release *this* addon, split **runtime (in-game) / development / release-and-assets**, each entry carrying the **evidence** for it (the TOC's dependency fields, a script's import, the command the harness runs) — never what a new addon usually needs, because one speculative entry costs the reader's trust in the whole list. Copy-pasteable WSL2 / Ubuntu install commands plus a one-line verification per tool. A new addon's honest runtime section is normally "World of Warcraft (Retail); nothing else", since every library is vendored. It answers *what to install*; `docs/testing.md` answers *how to verify* — point at it rather than restating it.
-8. **Produce the first automated-test bundle** — run the vendored `tests/_kit/run-automated-tests.sh` through `~/.claude/wow-addon/bin/ka0s-bounded` and commit the frozen `docs/automated-tests/<YYYYMMDD-HHMMSS>/` bundle plus the first `RESULTS.md` row (`automated-tests-§1`, `automated-tests-§4`), **before** tagging `v0.1.0`. That bundle's `complexity.txt` is the first `lizard` report and `RESULTS.md` carries the watch list; there is **no** `docs/complexity.md` (retired, v2.19.0). Take the invocation from the fetched section rather than from memory and run it **verbatim**, because the record's whole value is that later releases can be diffed against this one. `lint` and `tests` gate the commit; `perf` and `complexity` only record there — but the **tag** is gated on all four plus zero functions above CCN 15, so `v0.1.0` waits on a green run of every suite. If a tool is not installed, that suite is a **skip with its reason** — never a pass, and never a fabricated number, and a skip is not a pass for the release gate either.
+8. **Produce the first automated-test bundle** — run the vendored `tests/_kit/run-automated-tests.sh` through `~/.claude/dev-copilot/bin/ka0s-bounded` and commit the frozen `docs/automated-tests/<YYYYMMDD-HHMMSS>/` bundle plus the first `RESULTS.md` row (`automated-tests-§1`, `automated-tests-§4`), **before** tagging `v0.1.0`. That bundle's `complexity.txt` is the first `lizard` report and `RESULTS.md` carries the watch list; there is **no** `docs/complexity.md` (retired, v2.19.0). Take the invocation from the fetched section rather than from memory and run it **verbatim**, because the record's whole value is that later releases can be diffed against this one. `lint` and `tests` gate the commit; `perf` and `complexity` only record there — but the **tag** is gated on all four plus zero functions above CCN 15, so `v0.1.0` waits on a green run of every suite. If a tool is not installed, that suite is a **skip with its reason** — never a pass, and never a fabricated number, and a skip is not a pass for the release gate either.
 9. **Check the Definition of Done** before tagging `v0.1.0`.
 10. **Register in the roster** — add the addon's row to `standards/ADDONS.md` in the `WowAddonStandards` repo. Note that this edit is in a *different* repo; if you can't push there, tell the user this row still needs adding rather than silently skipping it.
 

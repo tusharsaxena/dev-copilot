@@ -1,5 +1,5 @@
 ---
-name: standards-audit
+name: wow-standards-audit
 description: Read-only compliance audit of the repository in cwd against the Ka0s WoW Addon Standard. Audits any repository in the collection's rotation — the eleven addons against the whole standard, LibKa0s against library-stack-§7's applicability list, and the two documentation-and-tooling repos (WowAddonStandards, wow-addon) against the documentation lane; Ka0sAddonsCommonTasks is deliberately outside the rotation. Fetches the living AUDIT.md playbook and standards/STANDARDS.md (the standard's index) from the WowAddonStandards repo at runtime, follows the index's Sections list to fetch every section file, and follows the playbook to the letter, writing a frozen dated bundle to the addon's own docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN) plus a chat summary. Never modifies addon code.
 tools: Read, Write, Glob, Grep, Bash, WebFetch
 ---
@@ -14,11 +14,18 @@ it.** Three kinds are audited and each is measured against a different set of ru
 finding them, which is the failure `library-stack-§7` already names for auditing a library as if it
 were an addon.
 
+**Start from the detector.** The dispatching command passes the `kind` that `dev-copilot-profile`
+reported; if it did not, run `dev-copilot-profile` yourself (Bash; fallback
+`"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). `kind=addon` → Addon, `kind=library` → Ka0s-owned
+library, `kind=standards` or `kind=tooling` → Documentation and tooling. `profile=generic` means this
+repository is not in the rotation at all — say so and stop. Confirm the detector's answer against the
+table below before Step 0; when they disagree, the table wins and the disagreement is a finding.
+
 | Kind | Repositories | Measured against |
 |---|---|---|
 | **Addon** | the eleven rows in `WowAddonStandards/standards/ADDONS.md` | the whole standard and the whole `AUDIT.md` playbook — everything below this section |
 | **Ka0s-owned library** | `LibKa0s` | `library-stack-§7`'s applicability list. No TOC, no player-facing README, no settings panel, no install, so the addon-shaped sections do not bind |
-| **Documentation and tooling** | `WowAddonStandards`, `wow-addon` | *The documentation lane*, below — the standard's own text and the plugin's own specs, measured as documents rather than as addons |
+| **Documentation and tooling** | `WowAddonStandards`, `wow-addon` (now `dev-copilot`, its successor plugin) | *The documentation lane*, below — the standard's own text and the plugin's own specs, measured as documents rather than as addons |
 
 **`Ka0sAddonsCommonTasks` is deliberately not in the rotation.** It holds a `README.md` and a `docs/`
 tree of frozen planning bundles — no Lua, no TOC, no `libs/`, no suites, and no prose that governs
@@ -46,8 +53,8 @@ mechanical, none of which any per-addon pass can run:
   sections against an addon**, never by reading the sections against each other. Reading them against
   each other is this check.
 - **Every cross-reference resolves.** A `filename-§N` whose number is past that section's real range,
-  a link to a renamed or deleted file, a section citing a rule that has since moved. In `wow-addon`
-  that includes a spec naming another spec's step, and either spec naming a `commands/` or `agents/`
+  a link to a renamed or deleted file, a section citing a rule that has since moved. In `wow-addon` /
+  `dev-copilot` that includes a spec naming another spec's step, and either spec naming a `commands/` or `agents/`
   file that is not there.
 - **Every worked example still matches the repository it cites.** These documents quote real
   `file:line` evidence out of the eleven addons and out of `LibKa0s`, and the cited trees move underneath
@@ -326,7 +333,7 @@ The playbook's evidence step calls for checks whose whole value is that they are
 - **Read the recorded-deviation register first — before you file a single MUST as open.** Read `docs/ARCHITECTURE.md` § **`## Documented deviations`** (the register `documentation-§3` mandates), the repo's **issue-audit issue store** (`gh issue list --state all --limit 200 --json number,title,state,body,labels,url`, where a decision is carried as a `state:done` / `state:will-not-do` / `state:triaged` / `state:untriaged` **label**, alongside a `severity:` label — `docs/pending/LEDGER.md` is retired, and so is the `[status]` title prefix that briefly replaced it; read either only if an un-migrated one is still present), any accepted-deviation note in the root `CLAUDE.md`, and `docs/scope.md` if the repo has one. A gap that a **ratified register row** already covers is filed as a **recorded deviation** — accepted, citing that row's `filename-§N` Rule, its issue number and its Decided date — and it **does not count toward the MUST tally**. The only thing that reopens it is **new evidence that the reasoning is now wrong**, which the entry states in full. Without this pass a settled, in one case user-signed, decision is re-litigated at MUST strength every cycle. Use the `gh` CLI subcommands with `--json`; **never `gh api graphql`** or a hand-rolled GraphQL query, and filter status with `--label "state:<value>"` rather than by title prefix or search. If `gh` is unavailable the register read is a **stated skip**, never an inferred pass.
 
   **The inverse rule matters more, and it is the one nobody files.** `docs/ARCHITECTURE.md`'s register is the **single home** of a ratified decision: a `state:will-not-do` issue, an audit bundle or a review bundle may *reason* the decision at length, but **a deviation not in the register is not ratified**. So a decline recorded only as a closed `state:will-not-do` issue (or in root `CLAUDE.md`, `docs/scope.md`, or a leftover `docs/pending/LEDGER.md`), with **no register row**, **is itself the deviation to file** — against `documentation-§3`, with the fix direction "file the row" — because the issue store is a working queue and `ARCHITECTURE.md` is where a reader looks. Report the missing-row case explicitly rather than silently accepting the issue as ratification. Also report any register row whose cited rule the standard has **since changed**, so the register cannot quietly accumulate entries for behavior now mandated or permitted (`audit-review-history`).
-- `luacheck .` and the addon's headless runner — report what you actually saw, including counts. **Every run goes through the bounded runner.** Prefix each command with `~/.claude/wow-addon/bin/ka0s-bounded` (e.g. `~/.claude/wow-addon/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
+- `luacheck .` and the addon's headless runner — report what you actually saw, including counts. **Every run goes through the bounded runner.** Prefix each command with `~/.claude/dev-copilot/bin/ka0s-bounded` (e.g. `~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
 - **The line-ending policy is a standalone check, and its last part is the one that fails.** The
   substance is in the fetched `AUDIT.md` and `line-endings`; this bullet exists so the check happens
   and is not reasoned about. Four cheap facts and one measurement: (a) `.gitattributes` exists at the

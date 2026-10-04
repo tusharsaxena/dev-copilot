@@ -6,6 +6,13 @@ allowed-tools: [Read, Glob, Grep, Edit, Bash]
 
 Bump the `## Interface:` line in the **current addon repo's** TOC file(s) to the current **Retail / Live Servers** interface number. Scope is this one addon — do **not** walk into subdirectories hunting for other addons.
 
+## Before anything — confirm this is a WoW repo
+
+Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"`). It prints `profile=`, `kind=`, `repo=`, `name=`, `root=`, `reason=`.
+
+- **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-bump-interface` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
+- **`profile=wow`** — Continue. A `kind` other than `addon` has no player-facing TOC to bump: say so and stop.
+
 ## Resolve the target interface number
 
 1. If `$ARGUMENTS` is non-empty, use it as the target. Validate it looks like a 6-digit build number (e.g. `120000`); if it's a comma-separated list, accept it verbatim (some TOCs carry multiple). If the format looks wrong, stop and ask the user to confirm.
