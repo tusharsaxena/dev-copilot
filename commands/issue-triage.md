@@ -90,7 +90,7 @@ Otherwise, repair each stray on sight with `gh issue edit <n> --add-label "state
 
 ### Resume check — before the first question, always
 
-List `~/.claude/dev-copilot/issue-triage/`, and also the legacy journal directory `~/.claude/wow-addon/issue-triage/` (written by the plugin before it was renamed) when it exists. Any journal in either **missing its `complete` line** is a run that recorded decisions and never confirmed they landed — a crashed session, a killed process, a machine that went away mid-run. A legacy journal is reconciled in place, exactly like a current one; new runs never write there.
+List `~/.claude/dev-copilot/issue-triage/`. Any journal **missing its `complete` line** is a run that recorded decisions and never confirmed they landed — a crashed session, a killed process, a machine that went away mid-run.
 
 For each such journal, read its `decision` lines and match them against its `outcome` lines. Decisions with no successful outcome are **unconfirmed**: the user made them, and nobody knows whether GitHub received them.
 

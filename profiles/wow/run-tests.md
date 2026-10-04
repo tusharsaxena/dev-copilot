@@ -6,7 +6,7 @@ on the vendored shared test kit, and any Makefile `test` target — every run th
 runner. Each section below attaches to the `<!-- overlay: <id> -->` marker of the same id in
 `commands/run-tests.md`.
 
-**`kind=standards` / `kind=tooling`** (WowAddonStandards, the dev-copilot plugin repo, and the archived wow-addon):
+**`kind=standards` / `kind=tooling`** (WowAddonStandards, the dev-copilot plugin repo, Ka0sAddonsCommonTasks):
 these are documentation-and-tooling repos, not addons — there is no `.toc` and no Lua harness.
 Apply only the `runner` section below and follow the generic spec for everything else.
 

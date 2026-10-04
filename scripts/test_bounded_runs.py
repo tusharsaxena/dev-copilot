@@ -55,7 +55,6 @@ class Matcher(unittest.TestCase):
     def test_wrapper_passes(self):
         for cmd in ("ka0s-bounded lua tests/run.lua",
                     "~/.claude/dev-copilot/bin/ka0s-bounded luacheck .",
-                    "~/.claude/wow-addon/bin/ka0s-bounded luacheck .",  # legacy path, kept until phase 2
                     "cd X && /opt/p/scripts/ka0s-bounded tests/_kit/run-automated-tests.sh",
                     "KA0S_KIT_PROC_MB=4096 ka0s-bounded lua tests/run.lua"):
             self.assertEqual(self.denied(cmd), [], cmd)
@@ -164,11 +163,11 @@ class HookScript(unittest.TestCase):
         out = json.loads(p.stdout)["hookSpecificOutput"]
         self.assertEqual(out["permissionDecision"], "deny")
         self.assertIn(".claude/dev-copilot/bin/ka0s-bounded", out["permissionDecisionReason"])
-        # The current link, and the legacy wow-addon one that addon docs and kits still name.
-        for state in ("dev-copilot", "wow-addon"):
-            link = os.path.join(home, ".claude", state, "bin", "ka0s-bounded")
-            self.assertTrue(os.path.islink(link), link)
-            self.assertTrue(os.access(os.path.realpath(link), os.X_OK))
+        link = os.path.join(home, ".claude", "dev-copilot", "bin", "ka0s-bounded")
+        self.assertTrue(os.path.islink(link), link)
+        self.assertTrue(os.access(os.path.realpath(link), os.X_OK))
+        # The retired wow-addon plugin's state dir is never recreated.
+        self.assertFalse(os.path.exists(os.path.join(home, ".claude", "wow-addon")))
 
     def test_silent_on_ordinary_commands(self):
         p, _ = self.run_hook("git status", repo())
