@@ -56,7 +56,7 @@ BLANKS = " \t\r"
 class Scanner:
     """Splits a Bash command into simple commands, each a list of words, roughly as the shell would.
 
-    Quoting is honoured, so a control operator inside quotes (`git commit -m "a; lizard b"`) is prose,
+    Quoting is honored, so a control operator inside quotes (`git commit -m "a; lizard b"`) is prose,
     not a new command. A heredoc body is data and yields no words, except when it is fed to a bare
     shell (`bash <<EOF`), where it is commands. Command substitutions (`$(…)`, backticks, also inside
     double quotes) and subshells yield their inner commands as further segments. It is still not a

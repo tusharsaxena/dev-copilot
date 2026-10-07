@@ -63,7 +63,7 @@ Parse `$ARGUMENTS` (trimmed), in this order:
 - One of `critical`, `high`, `medium`, `low` (bare, or written in full as `severity:high`) → a **severity filter** on the label `severity:<value>`, over open issues.
 - Anything else → a plain **label filter** on open issues (e.g. `bug`, `enhancement`).
 
-A status filter and a severity filter **do** combine — `gh issue list --label` is AND across repeated flags, so `untriaged high` is a legitimate and useful request. A plain label filter combines with them the same way. If the user gives two filters of the *same* kind (two statuses, two severities), honour the first and say the second was ignored; the labels are mutually exclusive, so an AND of two of them always returns nothing.
+A status filter and a severity filter **do** combine — `gh issue list --label` is AND across repeated flags, so `untriaged high` is a legitimate and useful request. A plain label filter combines with them the same way. If the user gives two filters of the *same* kind (two statuses, two severities), honor the first and say the second was ignored; the labels are mutually exclusive, so an AND of two of them always returns nothing.
 
 ## Step 3 — Fetch
 

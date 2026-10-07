@@ -1,5 +1,5 @@
 ---
-description: Sweep the repo for everything still hanging — TODO/FIXME/stub markers, unexecuted review/audit plan items, doc open questions and Known Limitations, an Unreleased CHANGELOG section, stashes and follow-up commits, and recorded-but-unacted Claude memory — and file anything not already in the issue store as a new GitHub issue labelled `state:untriaged` plus a severity. Discovery only: it never interviews you and never changes code. Triage is `/dev-copilot:issue-triage`.
+description: Sweep the repo for everything still hanging — TODO/FIXME/stub markers, unexecuted review/audit plan items, doc open questions and Known Limitations, an Unreleased CHANGELOG section, stashes and follow-up commits, and recorded-but-unacted Claude memory — and file anything not already in the issue store as a new GitHub issue labeled `state:untriaged` plus a severity. Discovery only: it never interviews you and never changes code. Triage is `/dev-copilot:issue-triage`.
 argument-hint: [here|all|<repo>] [code|docs|issues|memory|<path>]
 allowed-tools: [Read, Glob, Grep, Bash, AskUserQuestion]
 ---
@@ -42,7 +42,7 @@ There is no local ledger — the durable record is the set of GitHub issues on t
 | Medium | `severity:medium` | yellow `111100` | Maintainability: a stub callers depend on, code/doc drift, a dead path |
 | Low | `severity:low` | green `001100` | Polish, naming, cosmetic, speculative-future notes |
 
-**Every issue always carries one of each.** There is no fifth status, no fifth severity, and no unlabelled state. An issue that arrives without one — filed from the GitHub web UI, or by someone who doesn't use these commands — is repaired on sight: see *Stray issues* below.
+**Every issue always carries one of each.** There is no fifth status, no fifth severity, and no unlabeled state. An issue that arrives without one — filed from the GitHub web UI, or by someone who doesn't use these commands — is repaired on sight: see *Stray issues* below.
 
 **The labels are the data.** No `[status]` title prefix, no emoji marker, no severity word in the title, no second copy of either in the body. The old `[untriaged] …` title-prefix convention is **retired**: a stale prefix on an old issue is leftover text, and the label is what to trust. When you meet one, strip it as part of the stray repair.
 
@@ -101,7 +101,7 @@ gh issue list --state all --limit 200 --json number,title,state,body,labels,crea
 
 ### Stray issues
 
-**A repo new to the scheme is not full of strays.** If the label-set step above had to create the `state:` labels, or no issue in the store carries a `state:` label, the repo is adopting these commands on this run, and its existing issues are a backlog that predates the scheme. Do not repair them in bulk on your own initiative: say so, show the count (open and closed apart), and ask **once** whether to repair them all as below, or to leave them and label only the issues this and later runs file. Silence is a decline. On a decline, skip the rest of this section for that repo and say in Step 5 how many issues were left unlabelled.
+**A repo new to the scheme is not full of strays.** If the label-set step above had to create the `state:` labels, or no issue in the store carries a `state:` label, the repo is adopting these commands on this run, and its existing issues are a backlog that predates the scheme. Do not repair them in bulk on your own initiative: say so, show the count (open and closed apart), and ask **once** whether to repair them all as below, or to leave them and label only the issues this and later runs file. Silence is a decline. On a decline, skip the rest of this section for that repo and say in Step 5 how many issues were left unlabeled.
 
 Otherwise, an issue carrying **no** `state:` label was filed outside these commands. Repair it:
 
@@ -176,7 +176,7 @@ For each discovered item, look for an issue whose body records the same **eviden
 
 Before filing, check whether an existing issue already describes the same work in different words. If one does, **adopt it** rather than filing a second — and say so.
 
-Labelled issues with **no** matching discovered item are not stale. The evidence may live somewhere this run didn't sweep. Leave them alone; **never bulk-close issues because a sweep didn't find their evidence.**
+Labeled issues with **no** matching discovered item are not stale. The evidence may live somewhere this run didn't sweep. Leave them alone; **never bulk-close issues because a sweep didn't find their evidence.**
 
 Classify each new item by **severity** against the ladder in the store table above, each with a one-line justification so the ranking is arguable. The severity becomes the issue's `severity:` label, and it is what `/dev-copilot:issue-triage` orders its queue by — a wrong severity does not just mislabel an item, it puts it in front of or behind the wrong things when somebody sits down to decide.
 
@@ -215,7 +215,7 @@ EOF
 ```
 
 - **Item ID and evidence hash are mandatory.** They are the whole matching key for the next run's Step 3. An issue missing them cannot be reconciled and will be re-filed as a duplicate forever.
-- **Both labels are mandatory.** `state:untriaged` and one `severity:` label go on at creation, in the same call — an issue created bare and labelled afterwards is one failed call away from being invisible to every status query in the family.
+- **Both labels are mandatory.** `state:untriaged` and one `severity:` label go on at creation, in the same call — an issue created bare and labeled afterwards is one failed call away from being invisible to every status query in the family.
 - **The body records the severity *rationale*, not the severity.** The level itself lives in the label; writing it in the body too creates a second copy that drifts the first time triage or a later sweep revises it.
 - **Title** is a crisp statement of the work, derived from the evidence, with **no status prefix and no severity word**. Don't paste a raw `TODO` as a title, and don't invent scope the evidence doesn't support.
 - **Write idempotently.** `gh issue create` can create the issue and *then* time out, so a naive retry files a duplicate. Before creating, search the store for the evidence hash; if an issue carries it, edit rather than create.

@@ -214,7 +214,7 @@ requirement — don't replace `1.0.0` in any of those.
 
 **Then run the de-AI pass over what you just wrote.** `documentation-§1` MUSTs a **de-AI writing
 pass** on every `README.md` edit (anti-pattern #77): run the `/humanize` skill, or audit against a
-published AI-writing pattern catalogue, and fix what it finds **before** the change is committed.
+published AI-writing pattern catalog, and fix what it finds **before** the change is committed.
 
 It binds the README alone — the `CHANGELOG.md` entry in a library repo is a contributor-facing file
 and is exempt — and here it binds the text **this command authored**: the new Version History row's

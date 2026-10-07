@@ -239,7 +239,7 @@ Report the deletion and what was migrated. This one does **not** wait for confir
 
 ### At the end of Step 5, before Step 6: the de-AI pass on the README (MUST)
 
-`documentation-§1` MUSTs a **de-AI writing pass** on every `README.md` edit (anti-pattern #77): run the `/humanize` skill, or audit against a published AI-writing pattern catalogue, and fix what it finds **before** the change is committed.
+`documentation-§1` MUSTs a **de-AI writing pass** on every `README.md` edit (anti-pattern #77): run the `/humanize` skill, or audit against a published AI-writing pattern catalog, and fix what it finds **before** the change is committed.
 
 It binds the README and nothing else. `docs/`, `CLAUDE.md`, `DEPENDENCIES.md` and code comments are contributor surfaces and are deliberately exempt — do not run it over them, and do not "improve the voice" of a comment. Apply it to **what this command changed**, not to the whole file: a README already through the pass is not re-audited section by section on every later edit.
 

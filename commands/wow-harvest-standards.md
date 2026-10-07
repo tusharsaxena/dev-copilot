@@ -58,13 +58,13 @@ Three or more repos solving the same problem the same way, with the standard **s
 
 ### 2. Divergent patterns — the same problem, N different ways
 
-The higher-value half of the same sweep. When repos solve one problem several ways, one of two things is true, and they lead to different places: either the standard should **pick** one (a rule), or the thing is substantial enough that every repo writing its own is the waste, and it belongs in **`LibKa0s`** as a module (an extraction candidate). The five-major LibKa0s extraction came from exactly this observation, so it is a proven shape — but note that an extraction proposal is a **library** change with a standard change trailing it, and it must be labelled that way rather than filed as a rule.
+The higher-value half of the same sweep. When repos solve one problem several ways, one of two things is true, and they lead to different places: either the standard should **pick** one (a rule), or the thing is substantial enough that every repo writing its own is the waste, and it belongs in **`LibKa0s`** as a module (an extraction candidate). The five-major LibKa0s extraction came from exactly this observation, so it is a proven shape — but note that an extraction proposal is a **library** change with a standard change trailing it, and it must be labeled that way rather than filed as a rule.
 
 ### 3. Midnight quirks — client behavior discovered the hard way
 
 Read every addon's own quirks file and its `Compat` module, plus CHANGELOG entries and code comments describing a client behavior worked around. Look for the **same quirk written up more than once**: independent discoveries of one behavior are the clearest possible evidence that the finding belongs upstream, and the versions will differ in depth — one repo will have probed further than the others. **Promote the deepest version, and say which repo it came from**; a merge that averages three write-ups down to their common denominator throws away precisely the part that cost someone an afternoon.
 
-Quirks land upstream in the standard's **quirks catalogue section** and are then vendored back into every addon by `/dev-copilot:wow-revendor-standards`. Find that section through the Sections list. If no such section exists yet, **proposing it is itself a valid harvest proposal** — go through the normal interview and the normal ripple, do not create a section unasked.
+Quirks land upstream in the standard's **quirks catalog section** and are then vendored back into every addon by `/dev-copilot:wow-revendor-standards`. Find that section through the Sections list. If no such section exists yet, **proposing it is itself a valid harvest proposal** — go through the normal interview and the normal ripple, do not create a section unasked.
 
 ### 4. The audit and review corpus
 
@@ -181,7 +181,7 @@ Then print the harvest summary: repos read, findings by category, proposals acce
 - **Read-only on every addon repo and on `LibKa0s`.** Your only writes are inside the `WowAddonStandards` repo. Never edit a frozen `docs/audits/` or `docs/reviews/` bundle anywhere.
 - **Never propose a rule without citations.** Two repos, or one plus a stated cost. Below the bar goes to the watch list, not the standard.
 - **Never auto-resolve an ambiguous signal.** Both readings, with counts, and ask.
-- **Never hard-code a section filename.** Discover every one from the `STANDARDS.md` Sections list — including the quirks catalogue.
+- **Never hard-code a section filename.** Discover every one from the `STANDARDS.md` Sections list — including the quirks catalog.
 - **Never edit a prior `harvests/<date>/`.** Frozen, like every other dated bundle.
 - **Never skip the ripple.** A partial ripple is worse than no change.
 - **Don't lower the standard's register.** Its rules carry their reasons, because a rule without its reason is deleted by the next author who finds it inconvenient. Write proposals the same way.

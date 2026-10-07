@@ -90,7 +90,7 @@ Plus, in any repo that vendors a copy of another repo in scope, the vendor-drift
 
 ### 3c. Commit
 
-Run `/dev-copilot:commit` for that repo, in its default (auto) mode, and honour everything that command already says: named files only, never `git add -A`, never `--amend`, never `--no-verify`, match the repo's own commit-message style, and pause for anything secret-shaped. Do not pass it `push` — pushing happens in 3e, after the merge.
+Run `/dev-copilot:commit` for that repo, in its default (auto) mode, and honor everything that command already says: named files only, never `git add -A`, never `--amend`, never `--no-verify`, match the repo's own commit-message style, and pause for anything secret-shaped. Do not pass it `push` — pushing happens in 3e, after the merge.
 
 One addition when the scope spans repos: **one commit per repo, and the message is written for that repo's reader.** The same changeset looks different from each side — the library's commit is about what it published, the consumer's is about what it now carries and what changed for its users. A message that only makes sense if you have read the other repos' commits is the wrong message.
 

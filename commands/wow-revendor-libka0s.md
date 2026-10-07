@@ -406,7 +406,7 @@ Fences, all four of which hold on every candidate:
 
 **Never push.**
 
-## Step 8 — Summarise → `05_SUMMARY.md`, and report in chat
+## Step 8 — Summarize → `05_SUMMARY.md`, and report in chat
 
 Both carry the same facts:
 
