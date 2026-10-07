@@ -1,5 +1,5 @@
 ---
-description: Run the dev-copilot:wow-standards-audit subagent — a read-only compliance audit of the repository in cwd against the living Ka0s WoW Addon Standard. Covers the whole audit rotation: the eleven addons, LibKa0s, and the two documentation-and-tooling repos (WowAddonStandards, wow-addon). Fetches the AUDIT.md playbook + standards/STANDARDS.md (the standard's index, then every section file it lists) from the WowAddonStandards repo at runtime and writes a frozen dated bundle to docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN), plus a chat summary.
+description: Run the dev-copilot:wow-standards-audit subagent — a read-only compliance audit of the repository in cwd against the living Ka0s WoW Addon Standard. Covers the whole audit rotation: the eleven addons, LibKa0s, and the two documentation-and-tooling repos (WowAddonStandards, dev-copilot). Fetches the AUDIT.md playbook + standards/STANDARDS.md (the standard's index, then every section file it lists) from the WowAddonStandards repo at runtime and writes a frozen dated bundle to docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN), plus a chat summary.
 ---
 
 ## Before anything — confirm this is a WoW repo
