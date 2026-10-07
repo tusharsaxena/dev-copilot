@@ -9,10 +9,11 @@ The toolchain contract for **this** repository (documentation-§7).
 > reasons, and no invented rows. Every entry below names the `file:line` in *this* tree that needs
 > it; an entry with no such line does not belong here.
 >
-> The repo is 61 tracked files: 43 Markdown (22 command specs, 2 agent specs, 13 WoW overlays,
-> 3 design/plan notes under `docs/`, and the 3 root docs), two JSON manifests plus `hooks/hooks.json`,
-> six Python files (the detector, the overlay checker, the bounded-runs matcher and a unit test for
-> each), two Bash scripts, three extensionless executables — the Bash runner `scripts/ka0s-bounded`
+> The repo is 73 tracked files: 54 Markdown (22 command specs, 2 agent specs, 13 WoW overlays,
+> 4 design/plan notes under `docs/superpowers/`, the 3 root docs, and the 10 files of the frozen
+> 2026-10-07 audit and review bundles), two JSON manifests plus `hooks/hooks.json`, seven Python
+> files (the detector, the overlay checker, the bounded-runs matcher, a unit test for each, and a unit
+> test for the line-ending hook), two Bash scripts, three extensionless executables — the Bash runner `scripts/ka0s-bounded`
 > and the two POSIX `sh` exec wrappers on the plugin's PATH entry, `bin/ka0s-bounded` and
 > `bin/dev-copilot-profile` — plus `LICENSE`, `.gitattributes`, `.gitignore` and the `.dev-copilot`
 > profile override. Line endings are **LF** here, not the CRLF the client-bound addon repos pin.
@@ -20,7 +21,7 @@ The toolchain contract for **this** repository (documentation-§7).
 ## The short version
 
 Clone it, then point Claude Code at it as a plugin. There is no build step and no package manifest —
-the six Python files are standard-library-only and the shell scripts are Bash, apart from the two
+the seven Python files are standard-library-only and the shell scripts are Bash, apart from the two
 one-line POSIX `sh` wrappers in `bin/`, which only `exec` the Bash runner and the Python detector.
 
 ```sh
@@ -29,6 +30,7 @@ cd dev-copilot
 python3 scripts/test_detect_profile.py    # the detector
 python3 scripts/test_check_overlays.py    # the overlay checker
 python3 scripts/test_bounded_runs.py      # the bounded-runs matcher and hook
+python3 scripts/test_normalize_eol.py     # the line-ending hook
 python3 scripts/check_overlays.py         # the live overlays against their bases
 ```
 
@@ -42,8 +44,8 @@ Ubuntu install; none needs a language package manager.
 |---|---|---|---|---|---|
 | **bash** ≥ 4.2 | `apt` (`bash`) | Both hooks are invoked as `bash <script>`, and `scripts/ka0s-bounded` uses Bash-only syntax (arrays, `exec {fd}>`). | `hooks/hooks.json:9`, `hooks/hooks.json:20`; `scripts/ka0s-bounded:1`, `:86`, `:117` | preinstalled; `sudo apt update && sudo apt install -y bash` | `bash --version` |
 | **python3** ≥ 3.8 | `apt` (`python3`) | The repo profile detector every command's Step 0 runs (`bin/dev-copilot-profile` `exec`s it), the PreToolUse guard, and the PostToolUse hook's `python3 -c` JSON parse. Standard library only — `glob`, `json`, `os`, `re`, `subprocess`, `sys`. | `bin/dev-copilot-profile:8`; `scripts/detect_profile.py:1`, `:27-30`; `scripts/bounded_runs.py:1`, `:33-36`; `scripts/bounded-runs-hook.sh:33`; `scripts/normalize-eol.sh:15` | `sudo apt install -y python3` | `python3 --version` |
-| **git** ≥ 2.34 | `apt` (`git`) | The detector classifies at the git top-level and reads the `origin` URL; the line-ending hook asks git — and only git — what a written file's declared ending is (`git rev-parse --show-toplevel`, then `git check-attr text eol`). | `scripts/detect_profile.py:41`, `:48`, `:89`; `scripts/normalize-eol.sh:36`, `:52` | `sudo apt install -y git` | `git --version` |
-| **perl** ≥ 5.10 | `apt` (`perl`) | The line-ending hook does the byte rewrite in perl rather than sed, deliberately, because BSD and GNU `sed -i` differ. Both the CRLF and the LF branch use it. | `scripts/normalize-eol.sh:63`, `:68`, `:76` | preinstalled; `sudo apt install -y perl` | `perl --version` |
+| **git** ≥ 2.34 | `apt` (`git`) | The detector classifies at the git top-level and reads the `origin` URL; the line-ending hook asks git — and only git — what a written file's declared ending is (`git rev-parse --show-toplevel`, then `git check-attr text eol`). | `scripts/detect_profile.py:41`, `:48`, `:89`; `scripts/normalize-eol.sh:36`, `:52`; `scripts/test_normalize_eol.py:40` | `sudo apt install -y git` | `git --version` |
+| **perl** ≥ 5.10 | `apt` (`perl`) | The line-ending hook does the byte rewrite in perl rather than sed, deliberately, because BSD and GNU `sed -i` differ. Both the CRLF and the LF branch use it. | `scripts/normalize-eol.sh:63`, `:68`, `:76`; `scripts/test_normalize_eol.py:57-61` | preinstalled; `sudo apt install -y perl` | `perl --version` |
 | **coreutils** (`readlink -f`, `timeout`) ≥ 8.30 | `apt` (`coreutils`) | `bin/dev-copilot-profile` and `bin/ka0s-bounded` resolve their own location with `readlink -f` (GNU). `ka0s-bounded`'s wall-clock bound is `timeout -k 10`, with `--foreground` added only when stdin is a terminal (it keeps Ctrl-C working there; off a terminal, timeout signals the whole process group so forked children die with the run); `timeout` is probed with `command -v`, so an absence drops the bound rather than failing the run. | `bin/dev-copilot-profile:8`; `bin/ka0s-bounded:10`; `scripts/ka0s-bounded:106-111` | preinstalled; `sudo apt install -y coreutils` | `readlink --version`; `timeout --version` |
 
 If the plugin's `bin/` is not on PATH, the bare `dev-copilot-profile` is not found and every Step 0
@@ -63,9 +65,9 @@ are listed because losing one silently weakens the guard the bounded-runs hook e
 
 | Software | Package manager | Why this repo needs it | Evidence | Install (WSL2 / Ubuntu) | Verify |
 |---|---|---|---|---|---|
-| **python3** (with `unittest`) | `apt` (`python3`) | The three test files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:89-92` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
-| **git** | `apt` (`git`) | The detector's tests build fixture repos with `git init` and `git remote add`. `.gitattributes` pins this repo to **LF**, and `git check-attr` is the only correct reader of that pin. | `scripts/test_detect_profile.py:25`, `:27`; `.gitattributes`; `scripts/normalize-eol.sh:52` | `sudo apt install -y git` | `git check-attr text eol -- CLAUDE.md` |
-| **Claude Code** | its own installer | The specs in `commands/`, `agents/` and `profiles/wow/` are only executable as plugin slash commands and subagents; `/reload-plugins` is the load check. | `.claude-plugin/plugin.json`; `CLAUDE.md:95` | see the Claude Code docs | `/reload-plugins` in a session |
+| **python3** (with `unittest`) | `apt` (`python3`) | The four test files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/test_normalize_eol.py:1`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:89-93` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
+| **git** | `apt` (`git`) | The detector's tests build fixture repos with `git init` and `git remote add`, and the line-ending hook's tests build one per case with `git init` and a `.gitattributes`. `.gitattributes` pins this repo to **LF**, and `git check-attr` is the only correct reader of that pin. | `scripts/test_detect_profile.py:25`, `:27`; `scripts/test_normalize_eol.py:40`; `.gitattributes`; `scripts/normalize-eol.sh:52` | `sudo apt install -y git` | `git check-attr text eol -- CLAUDE.md` |
+| **Claude Code** | its own installer | The specs in `commands/`, `agents/` and `profiles/wow/` are only executable as plugin slash commands and subagents; `/reload-plugins` is the load check. | `.claude-plugin/plugin.json`; `CLAUDE.md:96` | see the Claude Code docs | `/reload-plugins` in a session |
 
 ## Required on the machine of whoever *runs* a command (not of this repo)
 
@@ -89,7 +91,7 @@ applicable".
 |---|---|---|
 | **Lua 5.1** | **not used here** | No `.lua` file is tracked in this repo. The Lua the specs talk about runs in the addon repo the command is invoked from. |
 | **luacheck** | **not used here** | Lint needs Lua to lint, and there is no `.luacheckrc`. |
-| **lizard** | **not used here** | Cyclomatic complexity over zero Lua functions is not a measurement. The six Python files and five shell scripts are on no complexity gate. |
+| **lizard** | **not used here** | Cyclomatic complexity over zero Lua functions is not a measurement. The seven Python files and five shell scripts are on no complexity gate. |
 | **A WoW client** | **not used here** | Nothing here loads as an addon; there is no `.toc` and no `docs/smoke-tests.md`. |
-| **pip / a `requirements.txt` / `pyproject.toml`** | **not used here** | All six Python files import only the standard library (`glob`, `json`, `os`, `re`, `subprocess`, `sys`, `tempfile`, `unittest`). Adding a manifest would be the first thing to go stale. |
+| **pip / a `requirements.txt` / `pyproject.toml`** | **not used here** | All seven Python files import only the standard library (`glob`, `json`, `os`, `re`, `subprocess`, `sys`, `tempfile`, `unittest`). Adding a manifest would be the first thing to go stale. |
 | **packager / release tooling** | **not used here** | No `.pkgmeta` and no artifact to publish. The plugin is consumed from the repo by Claude Code (the repo is its own marketplace), not released as a build. |
