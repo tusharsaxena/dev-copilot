@@ -71,9 +71,9 @@ Every issue is classified twice, both times from its **labels**:
 
 **Severity** — exactly one `severity:` label: `severity:critical`, `severity:high`, `severity:medium`, `severity:low`.
 
-**First, is the repo on the label scheme at all?** Run `gh label list -R <owner>/<repo> --search "state:" --json name` once per repo. If none of the four `state:` labels exists, the repo has not adopted these commands yet: make **no** repairs there (they would fail, the labels do not exist), and count its issues in an **`unlabelled`** column split open / closed, with a one-line note that the repo is not on the label scheme and that `/dev-copilot:issue-audit` or `/dev-copilot:issue-add` creates the labels. Never fold those issues into `untriaged`: nobody filed them under this scheme, and a backlog of ordinary issues is not a triage queue.
+**First, is the repo on the label scheme at all?** Run `gh label list -R <owner>/<repo> --search "state:" --json name` once per repo. If none of the four `state:` labels exists, the repo has not adopted these commands yet: make **no** repairs there (they would fail, the labels do not exist), and count its issues in an **`unlabeled`** column split open / closed, with a one-line note that the repo is not on the label scheme and that `/dev-copilot:issue-audit` or `/dev-copilot:issue-add` creates the labels. Never fold those issues into `untriaged`: nobody filed them under this scheme, and a backlog of ordinary issues is not a triage queue.
 
-**In a repo on the scheme, every issue always carries one of each.** There is no unlabelled column for such a repo, because there is no unlabelled state — an issue that arrives without a `state:` label (filed from the GitHub web UI, or by someone not using these commands) is **repaired on sight**:
+**In a repo on the scheme, every issue always carries one of each.** There is no unlabeled column for such a repo, because there is no unlabeled state — an issue that arrives without a `state:` label (filed from the GitHub web UI, or by someone not using these commands) is **repaired on sight**:
 
 - open → `gh issue edit <n> --add-label "state:untriaged"`
 - closed → `state:done` if it was closed as completed, `state:will-not-do` if closed as not planned (`gh api repos/{owner}/{repo}/issues/<n>` reports `state_reason`)
@@ -139,7 +139,7 @@ So after the grids, write a few sentences of analysis. Not a restatement of the 
 - **The `untriaged` count**, and how much of it is serious. This is the backlog nobody has decided on and it is the first number worth reading. Zero across the board is worth stating plainly — it means every open issue has a recorded decision behind it.
 - **Anything critical or high that is `triaged` rather than open work.** Something graded serious and consciously parked is the most interesting row, in either direction: either the grade is wrong or the parking is.
 - **Shape of the closed work.** A repo whose `will-not-do` outnumbers its `done` is deciding more than it is building; the reverse is the opposite. Neither is wrong, and both are worth noticing.
-- **Unlabelled severity.** A large `—` column means the backlog has not been sized, so the severity grid is measuring less than it appears to. Say how much of it is unsized before drawing any conclusion from it.
+- **Unlabeled severity.** A large `—` column means the backlog has not been sized, so the severity grid is measuring less than it appears to. Say how much of it is unsized before drawing any conclusion from it.
 - **Empty repos.** A repo with no issues at all is either genuinely clear or never swept. The grid cannot tell those apart, so say which one you can and cannot distinguish. A repo with no `state:` labels at all has never been swept — that one the grid *can* tell you.
 - **Movement**, only where you can source it — a figure from a previous run in this session, for instance. Never infer a trend from a single snapshot.
 

@@ -19,8 +19,10 @@ The heading reads **The store: GitHub issues on the addon's own repo**. `docs/pe
 
 Replaces only the `all` and repo-name bullets; the base's `absent, or here` default stands. The paragraphs after them apply alongside the base's.
 
-- **`all`** → every addon repo in the collection. Read the roster from `WowAddonStandards/standards/ADDONS.md` (folder + repository per row) rather than hardcoding it; if that repo isn't checked out, fall back to sibling directories containing a `.toc` and **say in the report that the roster was inferred**.
-- **a repo name** → that repo alone, matched case-insensitively against the roster. If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
+- **`all`** → every row of `WowAddonStandards/standards/ADDONS.md`, read rather than hardcoded (folder + repository per row): the *In-scope addons* table, then the *Ka0s-owned library repos* table (`LibKa0s`), then the *Documentation-and-tooling repos* table (`WowAddonStandards`, `dev-copilot`), each in its table's row order. Tag every repo with its kind — `addon` for an addon-table row, `library` for a library-table row, `standards` for `WowAddonStandards` and `tooling` for any other documentation-and-tooling row, the same `kind` `dev-copilot-profile` reports for it. If `ADDONS.md` is unreachable, fall back to the sibling directories next to the cwd that contain a `.toc` (`addon`, except `LibKa0s`) plus the three known upstreams `LibKa0s` (`library`), `WowAddonStandards` (`standards`) and `dev-copilot` (`tooling`), and **say in the report that the roster was inferred** — an inferred roster can silently omit a repo, and a missing repo reads as "nothing here" rather than "not checked".
+- **a repo name** → that repo alone, with its kind tag, matched case-insensitively against the same roster (every row, upstreams included). If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
+
+**What each row gets depends on its kind.** Upstream rows (`library`, `standards`, `tooling`) get the base sweep only: on them `repo-check`'s addon check and `code-scope`'s Lua sweep do not run, and the base's generic text for those two steps applies instead. The addon-specific checks run on `addon` rows only. The collection label set, the severity ladder, the plan-bundle sweep and the hard rules apply to every row.
 
 If the cwd is not an addon repo and no scope was given, **ask** which scope to use rather than guessing — sweeping the wrong repo wastes a run, and sweeping `all` when the user meant one repo files issues on ten repos they weren't thinking about.
 
@@ -28,9 +30,9 @@ The roster is the confirmation: the base's "show the resolved list and confirm i
 
 ## repo-check — replaces
 
-For each repo in scope, confirm it is a WoW addon (at least one `.toc`, or a `docs/`+`.lua` layout), then preflight with the base's two `gh` checks and the same stop-and-say-so rule.
+For each `addon` row in scope, confirm it is a WoW addon (at least one `.toc`, or a `docs/`+`.lua` layout), then preflight with the base's two `gh` checks and the same stop-and-say-so rule. An addon row that fails the addon check is a roster/disk mismatch: say so and skip that row rather than sweeping it as something else.
 
-`kind=addon` and `kind=library` pass the addon check (LibKa0s ships a TOC). A `kind=standards` (WowAddonStandards) or `kind=tooling` repo carries no TOC and is not an addon: say so and ask whether to sweep it anyway rather than assuming either way. If the user says yes, sweep it with the base's generic code-marker scope (its own files, which are not Lua) and this overlay's plan-bundle sweep.
+Upstream rows (`library`, `standards`, `tooling`) skip the addon check — the roster's kind tag is what admits them — and take the base's git-checkout confirmation and `gh` preflight as written. They are swept with the base's generic code-marker scope (their own files, excluding vendored trees) and this overlay's plan-bundle sweep. A cwd repo that is on no roster row (run with the default `here`) uses the `kind` `dev-copilot-profile` reports for it in the same way.
 
 ## label-set — replaces
 

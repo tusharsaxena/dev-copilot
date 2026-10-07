@@ -101,7 +101,7 @@ But a committed artifact is a **claim about a past state of the code**, and the 
 | **Vendor sync** | `diff -r libs/<Lib>/ ../<LibRepo>/<ship folder>/` and `diff -r tests/_kit/ ../LibKa0s/testkit/` | whether a vendored copy has drifted from its source |
 | **Cross-addon** | the four collision-class commands in *The cross-addon pass*, run from the directory holding the siblings | slash-token, vendored-minor, payload-byte and `## Interface:` collisions across the whole collection |
 
-Three notes on the last three rows. **`make test` is usually a wrapper** — if it plainly re-runs lint and the suite, run it *instead of* those and say so, rather than reporting the same suite twice; if it does something additional, run it as its own suite. **Vendor sync only runs when the sibling library repo is on local disk** — it is a `diff`, not a suite, and it needs both copies. When the source repo isn't beside this one, that is a skip, not a pass. It earns its place here because its failure is otherwise **invisible**: both repos stay green while the copies diverge, since each suite tests its own copy. A drift is an `[upstream]`-adjacent finding whose remediation is *re-vendor the whole folder*, never edit either side. **The cross-addon pass has the same precondition and the same failure mode** — it needs the other ten siblings on disk, and every collision it looks for is invisible to a suite that only ever loads one addon. Its own section below carries the commands, the scoping rule and the baseline to re-derive and diff against.
+Three notes on the last three rows. **`make test` is usually a wrapper** — if it plainly re-runs lint and the suite, run it *instead of* those and say so, rather than reporting the same suite twice; if it does something additional, run it as its own suite. **Vendor sync only runs when the sibling library repo is on local disk** — it is a `diff`, not a suite, and it needs both copies. When the source repo isn't beside this one, that is a skip, not a pass. It earns its place here because its failure is otherwise **invisible**: both repos stay green while the copies diverge, since each suite tests its own copy. A drift is an `[upstream]`-adjacent finding whose remediation is *re-vendor the whole folder*, never edit either side. **The cross-addon pass has the same precondition and the same failure mode** — it needs the other ten siblings on disk, and every collision it looks for is invisible to a suite that only ever loads one addon. Its own section below carries the commands, the scoping rule and the baseline to measure at review time.
 
 ## measure-runner — replaces
 
@@ -310,12 +310,15 @@ That distinction is not pedantry; it is the difference between a clean result an
 both directions have real examples here:
 
 - A `RegisterChatCommand` census that walks `libs/` reports the token `mychat`, which no addon registers.
-  It is a comment inside vendored `AceConfigCmd-3.0.lua`, present in seven of the eleven repos.
-- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **359 hits in PrettyChat** and would
-  have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC load list it
-  reports **0**. Every one of those 359 lives in `GlobalStrings/GlobalStrings.lua`, a tracked but
-  deliberately unloaded machine-generated capture of Blizzard's own strings that exists as source data
-  for the split chunks. It is in the repo; it is not in the game.
+  It is a comment inside vendored `AceConfigCmd-3.0.lua`, which every addon vendors.
+- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **well over a thousand hits in PrettyChat**
+  and would have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC
+  load list it reports **0**. Every one of those hits lives under `GlobalStrings/` — the monolithic
+  `GlobalStrings.lua` and several of its split `GlobalStrings_NNN.lua` chunks, tracked,
+  machine-generated captures of Blizzard's own strings that the TOC does not load. They are in the
+  repo; they are not in the game. (Re-measure rather than quote a figure:
+  `grep -rn 'SLASH_' --include='*.lua' PrettyChat | grep -v '^PrettyChat/libs/\|^PrettyChat/tests/_kit/' | cut -d: -f1 | sort | uniq -c`
+  against the same grep over the TOC load list.)
 
 So: derive the file list from the TOC, and **report every count with the command and the scope beside
 it**. A count whose denominator is unstated is not a count.
@@ -346,13 +349,22 @@ still the rule is deregistration: `AceConsole.commands` is the registry `:Unregi
 (`:108-113`), and a hand-rolled `SLASH_MM1` has no entry in it. Nothing detects the collision, which is
 exactly why this census exists. Run both halves.
 
+The roots list goes to a file of its own from `mktemp`, never a fixed name such as `/tmp/<name>.txt`:
+reviews of several repos often run in parallel, and a shared path lets one run truncate the file while
+another reads it, so the collision check reports a false clean. That is the shared-path rule
+`commands/wow-automated-tests.md` states for run logs (*Capture the run's console output to a path no
+other run can share*), applied here.
+
 ```sh
+roots=$(mktemp "${TMPDIR:-/tmp}/ka0s-roots-XXXXXX")
 for a in "$@"; do
   ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
     | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/' | sort -u \
   ) | sed "s|\$|\t$a|"
-done | sort | tee /tmp/roots.txt
-cut -f1 /tmp/roots.txt | uniq -d            # any output is a collision
+done | sort | tee "$roots"
+cut -f1 "$roots" | uniq -d                  # any output is a collision
+wc -l < "$roots"                            # the root count, for the measurement block
+rm -f "$roots"
 
 for a in "$@"; do
   ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
@@ -416,56 +428,63 @@ for a in "$@"; do grep -h '^## Interface:' "$a"/*.toc; done | tr -d '\r' | sort 
 **Clean is** a single line. Note the `tr -d '\r'` — without it a CRLF repo and an LF one report two
 distinct values for the same number, which is a line-ending finding wearing an interface finding's coat.
 
-#### The recorded baseline — re-derive it, then diff against it
+#### The baseline — measure it at review time
 
-All four classes were measured across the eleven on **2026-09-23** and were clean, against **LibKa0s
-v1.56.0**. Every figure below sits beside the command that produced it, so the next pass re-derives it
-in a minute instead of trusting a number that has since moved. **Re-run every command at review time;
-never copy a figure out of this table into a bundle.** Run them from the directory holding the siblings,
-with the eleven names in `$@` as above, and with the library's tag taken from the checkout rather than
-from this page:
+This brief records **no figures** for the baseline, on purpose. A count frozen here goes stale with the
+next LibKa0s release, and from then on every pass would compare against a number that has moved for
+legitimate reasons. So every row below is a command, not a number: **run each one at review time and
+record what it prints in the measurement block, beside the command and the tag you measured at. Never
+copy a figure into a bundle from this page or from an earlier bundle.** Run them from the directory
+holding the siblings, with the eleven names in `$@` as above.
+
+Measure at the LibKa0s tag **the addons currently vendor**, which each addon's `CLAUDE.md` provenance
+line names (`Bundles [LibKa0s](…) vX.Y.Z (MIT).`), not at the library's newest tag:
 
 ```sh
-tag=$(git -C LibKa0s describe --tags --abbrev=0)   # v1.56.0 when this table was recorded
+for a in "$@"; do
+  grep -oE 'Bundles \[LibKa0s\]\([^)]*\) v[0-9]+\.[0-9]+\.[0-9]+' "$a/CLAUDE.md" | sed 's/.* //'
+done | sort -u                              # one line is the tag; more than one is a split
+tag=vX.Y.Z                                  # the single line printed above
 ```
 
-| Figure | Command | Recorded (2026-09-23, `$tag` = v1.56.0) |
+More than one line means the consumers vendor different tags, normally mid-way through a re-vendor
+sweep. Say so, measure the library rows at each tag in use, and expect classes 2 and 3 to report the
+split. The library's own newest tag (`git -C LibKa0s describe --tags --abbrev=0`) may be ahead of what
+the addons vendor. That is the normal state between a library release and the re-vendor sweep that
+follows it, and it is not a cross-addon fault: classes 2 and 3 ask whether the eleven **agree with each
+other**, never whether they agree with the library's newest tag. A consumer behind the newest tag is a
+`/dev-copilot:wow-revendor-libka0s` question, and belongs in this bundle only as the provenance line you
+read.
+
+| Figure | Command | What to record |
 |---|---|---|
-| Addons | the rows of `WowAddonStandards/standards/ADDONS.md`'s *In-scope addons* table, which is the `set --` list above | **11** |
-| LibKa0s majors | `git -C LibKa0s show "${tag}:tests/majors.lua" \| grep -c 'major = "LibKa0s-'` | **15** |
-| Per-major minors at the tag | `git -C LibKa0s grep -hoE 'local MAJOR, MINOR = "LibKa0s-[A-Za-z]+-1\.0", [0-9]+' "$tag" -- LibKa0s \| sed -E 's/.*"LibKa0s-([A-Za-z]+)-1\.0", ([0-9]+)/\1:\2/' \| sort \| tr '\n' ' '` | Bus 2, Compat 1, Core 8, DebugLog 13, Env 1, Item 2, Launcher 2, Lifecycle 2, Media 4, Options 24, Perf 13, Pool 3, Schema 2, Slash 15, Widgets 10 |
-| Per-file minors at the tag | `git -C LibKa0s grep -hoE '^local [A-Z]+_MINOR = [0-9]+' "$tag" -- LibKa0s` | OptionsCompose 7, OptionsScroll 4, OptionsTabs 4, OptionsWidgets 31, PerfPanel 5, WidgetsDragHandle 2 — so the Options key is 24.31.4.7.4, Perf 13.5, Widgets 10.2 (the tag's `CHANGELOG.md` *Versions in this release* line states the same list) |
-| Kit revision at the tag | `git -C LibKa0s grep -h '^Kit.VERSION' "$tag" -- testkit/framework.lua` | **26** |
-| Payload files at the tag | `git -C LibKa0s ls-tree -r --name-only "$tag" LibKa0s \| wc -l` | **146** |
-| Class 1: slash tokens | the two loops under *Slash-token distinctness*; `wc -l < /tmp/roots.txt` for the count | **22** roots across 11 addons, zero collisions — `at`/`am`/`bl`/`cm`/`kcd`/`lh`/`mm`/`pm`/`pfe`/`pc`/`wg` plus each full addon name. All through AceConsole; zero raw `SLASH_*` in loaded source. |
-| Class 2: vendored minors | the loop under *Vendored LibKa0s minors* | a **single line**, agreed by all eleven |
-| Class 3: payload bytes | the loop under *Vendored payload byte-identity*; `find AbsorbTracker/libs/LibKa0s -type f \| wc -l` for the file count | zero output for every addon against AbsorbTracker's copy |
-| Class 4: `## Interface:` | the loop under *`## Interface:` uniformity* | `120100`, uniform |
+| Addons | the rows of `WowAddonStandards/standards/ADDONS.md`'s *In-scope addons* table, which is the `set --` list above | the count |
+| LibKa0s majors | `git -C LibKa0s show "${tag}:tests/majors.lua" \| grep -c 'major = "LibKa0s-'` | the count |
+| Per-major minors at the tag | `git -C LibKa0s grep -hoE 'local MAJOR, MINOR = "LibKa0s-[A-Za-z]+-1\.0", [0-9]+' "$tag" -- LibKa0s \| sed -E 's/.*"LibKa0s-([A-Za-z]+)-1\.0", ([0-9]+)/\1:\2/' \| sort \| tr '\n' ' '` | the line, as printed |
+| Per-file minors at the tag | `git -C LibKa0s grep -hoE '^local [A-Z]+_MINOR = [0-9]+' "$tag" -- LibKa0s` | the list (the tag's `CHANGELOG.md` *Versions in this release* line states the same one) |
+| Kit revision at the tag | `git -C LibKa0s grep -h '^Kit.VERSION' "$tag" -- testkit/framework.lua` | the number |
+| Payload files at the tag | `git -C LibKa0s ls-tree -r --name-only "$tag" LibKa0s \| wc -l` | the count |
+| Class 1: slash tokens | the two loops under *Slash-token distinctness*; the block's `wc -l < "$roots"` line for the count | the root count, the collisions (clean is none) and the raw `SLASH_*` hits in loaded source (clean is none) |
+| Class 2: vendored minors | the loop under *Vendored LibKa0s minors* | the line or lines it prints (clean is a single line) |
+| Class 3: payload bytes | the loop under *Vendored payload byte-identity*; `find AbsorbTracker/libs/LibKa0s -type f \| wc -l` for the file count | the reference addon, the file count and any `diff -rq` output (clean is none) |
+| Class 4: `## Interface:` | the loop under *`## Interface:` uniformity* | the value or values (clean is a single one) |
 
-**What the consumers held on 2026-09-23.** Every one of the eleven still bundled **v1.55.0** (its
-`CLAUDE.md` provenance line), so classes 2 and 3 were clean at the *previous* tag's figures — minors
-Bus 1, Compat 1, Core 7, DebugLog 12, Env 1, Item 1, Launcher 1, Lifecycle 1, Media 3, Options 23,
-Perf 12, Pool 3, Schema 1, Slash 14, Widgets 9, kit revision 25, 146 files — not at the v1.56.0 row
-above. That is the normal state between a library release and the re-vendor sweep that follows it, and
-it is not a cross-addon fault: classes 2 and 3 ask whether the eleven **agree with each other**, never
-whether they agree with the library's newest tag. A consumer behind the tag is a
-`/dev-copilot:wow-revendor-libka0s` question, and belongs in this bundle only as the provenance line you read.
+**How to read a result.**
 
-**How to read a mismatch.** First compare `$tag` with the tag recorded in this table's header.
+- **A class row that departs from *clean* is a finding:** a token claimed twice or a raw registration, a
+  second line out of class 2, a `diff -rq` line out of class 3 that survives CR-normalization, or a second
+  `## Interface:` value.
+- **Class 2's single line should match the per-major minors at `$tag`,** and class 3's file count should
+  match the payload count at `$tag`. A consumer whose bytes agree with its siblings but not with the tag
+  its provenance line names has had its `libs/` edited or copied from somewhere other than that tag. That
+  is a finding under the vendored-code rule above, and its remedy is a re-vendor, not an edit.
+- **A library row that will not measure** (the tag is missing from the `LibKa0s` checkout, or a path has
+  moved) is a gap in the measurement, not a finding against any addon. Say what failed and fetch the tags
+  or adjust the path; never fill the row from memory.
+- **The roster moved** (the `ADDONS.md` count is not the eleven in `$@`). Update `$@` from the roster, not
+  from this page, and re-run all four classes before reading anything; the slash-root count moves with it.
 
-- **The tag moved** (`$tag` is newer than v1.56.0). Every library-derived row may legitimately differ —
-  a new major, a raised minor, a new kit revision, a changed file count. That is a **stale brief, not
-  drift**: record today's figures in the measurement block, name the tag you measured at, and say the
-  brief's baseline is behind. It is not a finding against the addon.
-- **The tag did not move.** A library-derived row that differs means the library checkout is dirty or
-  on another branch — say so and measure at the tag. A class row that departs from *clean* is a
-  **finding**, and the recorded figures tell you which direction it moved: a second line out of class 2,
-  a `diff -rq` line out of class 3, a second `## Interface:` value, or a token claimed twice.
-- **The roster moved** (the `ADDONS.md` count is not 11). Update `$@` from the roster, not from this
-  page, and re-run all four classes before comparing anything; the slash-root count moves with it.
-
-A result that matches is a **non-finding you record in the measurement block**, with the tag you
-measured at. A result that departs is either a stale brief or a finding, and the rules above say which.
+A clean result is a **non-finding you record in the measurement block**, with the tag you measured at.
 
 #### Reporting what you find
 
@@ -526,7 +545,7 @@ In a WoW repo, the general-engineering list below refines the base's *Technical 
 - **Removed or renamed events** still registered. Examples: `LEARNED_SPELL_IN_TAB` → `LEARNED_SPELL_IN_SKILL_LINE`, `PLAYER_TALENT_UPDATE` → `TRAIT_*` events for the modern talent system, `UPDATE_BONUS_ACTIONBAR` patterns in modern bar code, etc. If an event registration looks suspicious, verify before flagging — but do flag.
 
 **The disabled state — a draw gate is a finding, not a design**
-- **The shape to recognize.** The addon's `enabled` flag is consulted in a show-decision ladder, or at the top of each handler as an early return, and nothing is torn down: events stay registered, timers stay armed, hooks stay hooked. It reads as correct — the flag is honestly consulted everywhere it matters and the frames really do go away — which is why it survived eleven compliance audits across this collection. It is `anti-patterns` **#85**, and `slash-commands-§7` now makes the total stand-down a MUST: on the transition to disabled, in the same turn as the write, every registration the addon owns is genuinely unregistered, every timer, ticker and `OnUpdate` cancelled, every owned frame hidden **at the source** inside the show ladder, and no SavedVariables write reachable from a game event. A handler that early-returns does not satisfy it: the addon stopped reacting, it did not stop watching, and it still pays the dispatch — the client walks its registration list on every `UNIT_AURA` in a twenty-five-man raid, builds the argument frame and enters Lua before the comparison that decides to leave. That cost is exactly what a player turning the addon off is trying to stop paying, and it is invisible on every surface they can see.
+- **The shape to recognize.** The addon's `enabled` flag is consulted in a show-decision ladder, or at the top of each handler as an early return, and nothing is torn down: events stay registered, timers stay armed, hooks stay hooked. It reads as correct — the flag is honestly consulted everywhere it matters and the frames really do go away — which is why it survived eleven compliance audits across this collection. It is `anti-patterns` **#85**, and `slash-commands-§7` now makes the total stand-down a MUST: on the transition to disabled, in the same turn as the write, every registration the addon owns is genuinely unregistered, every timer, ticker and `OnUpdate` canceled, every owned frame hidden **at the source** inside the show ladder, and no SavedVariables write reachable from a game event. A handler that early-returns does not satisfy it: the addon stopped reacting, it did not stop watching, and it still pays the dispatch — the client walks its registration list on every `UNIT_AURA` in a twenty-five-man raid, builds the argument frame and enters Lua before the comparison that decides to leave. That cost is exactly what a player turning the addon off is trying to stop paying, and it is invisible on every surface they can see.
 - **Where the real bugs are, and they are ordinary findings you can write up today.** Anything a still-registered handler does while disabled is reachable: a combat-entry handler that writes `locked = true` and prints to chat with the addon off, a coalescing repaint timer that keeps re-arming several times a second in combat, a minimap-button click that writes SavedVariables with no disabled gate. Those are correctness findings with a real `Reachability:` line (*"any player who turns the addon off and enters combat"*), not standards pedantry — grade them on what they do to the user's stored data and session, and cite the handler and the write site.
 - **Don't propose a second teardown path.** Every addon already ships suspend/resume machinery for `performance`'s second arm — the code that calls `UnregisterAllEvents` on the per-unit frames during a perf run is the same teardown disable needs, and it is already tested. The compliant fix **moves** that into one latch with two named holds (`disabled`, `perf`), stood down while either is taken and stood up only when the last is released; a parallel `StandDown` written beside the perf one is the same anti-pattern's other face, and the bug it produces — releasing one hold and resurrecting an addon the other still holds down — is invisible from inside either path. Standing back up rebuilds from the **current** settings, never from a snapshot taken on the way down (`performance-§6`).
 - **The two surfaces, and the one verb people get wrong.** The stand-down does **not** narrow the slash surface: the dispatcher is setup, and `slash-commands-§2` keeps every reserved verb (`diagnostics` included), `config`, the bare `/<slash>` and the schema CLI answering normally while disabled (the standard tried a two-verb `enable`/`help` surface in v2.56.0 and reversed it in v2.57.0 — don't propose it). A disabled addon that refuses `config` or the bare command has hidden the panel the player would switch it back on from, and that is a finding; LibKa0s v1.40.0's Slash minor 12 does exactly this, so the fix is re-vendoring to v1.42.0 or later, not a host-side patch. Refusing a **feature** verb is only a SHOULD — declining it is not a finding. `disable` while already disabled echoes `<enablePath> = false`, since it is an alias onto a schema write; a refusal there would tell the player typing `disable` to type `enable`. Where a feature verb or the launcher's rung (a)/(b) left-click is refused, it prints one tagged refusal line naming `/<slash> enable` and writes nothing, while right-click still opens the panel (`launcher-§2`). Host-side refusal wording is a finding in its own right: the line comes from the dispatcher, so every addon's refusal is one string.
@@ -619,7 +638,7 @@ Write five artifacts to `docs/reviews/<YYYY-MM-DD>/` under the addon root (creat
 
 #### `01_FINDINGS.md` — the requirements doc
 - One-line **verdict** at top: ship-ready / minor issues / blocking issues.
-- **Measurement run** block, immediately under the verdict: one line per out-of-game suite from Step 0 — `luacheck`, the headless test suite, the fresh `--list` inventory, `tests/perf.lua`, the sighted complexity suite, a `make test` target, the vendor-sync `diff`, and the four-class cross-addon pass — each **pass / fail / skipped (reason)**, with counts and the exact command run (for complexity, the blind-file count too, or *unsighted* on a kit below revision 35). Then one line per committed artifact whose fresh run disagrees with it (`docs/test-cases.md`, `docs/automated-tests/RESULTS.md`, `docs/performance.md`). This block is what lets a reader tell what was **measured today** from what was **read off disk**, and it is where a skipped tool is recorded so no downstream claim reads as verified when it isn't. A cross-addon pass that matches the recorded baseline is recorded **here**, as a measured non-finding, so the next reviewer can see it was actually run. In-client checks are deliberately absent here — they live in `03_SMOKE_TESTS.md`.
+- **Measurement run** block, immediately under the verdict: one line per out-of-game suite from Step 0 — `luacheck`, the headless test suite, the fresh `--list` inventory, `tests/perf.lua`, the sighted complexity suite, a `make test` target, the vendor-sync `diff`, and the four-class cross-addon pass — each **pass / fail / skipped (reason)**, with counts and the exact command run (for complexity, the blind-file count too, or *unsighted* on a kit below revision 35). Then one line per committed artifact whose fresh run disagrees with it (`docs/test-cases.md`, `docs/automated-tests/RESULTS.md`, `docs/performance.md`). This block is what lets a reader tell what was **measured today** from what was **read off disk**, and it is where a skipped tool is recorded so no downstream claim reads as verified when it isn't. A clean cross-addon pass is recorded **here**, with the tag it was measured at, as a measured non-finding, so the next reviewer can see it was actually run. In-client checks are deliberately absent here — they live in `03_SMOKE_TESTS.md`.
 - **Every finding carries a `Reachability:` line, and it is written before its severity is chosen.** One sentence: **who hits this, in what configuration, today.** Not "a user could be affected" — name the actor and the path. `Any player on a default profile, every login.` `Only a developer who types /bl debug — an undocumented verb, unreachable from the UI.` `Nobody: the branch is guarded by a flag no shipping build sets.` `Only the test inventory — the assertion is vacuous; the shipped code is correct.` `A comment; no runtime effect.` If you cannot write that sentence from evidence, you do not yet know what the finding is worth, and the answer is not to guess upward.
 
   This exists because defect *kind* alone has graded this collection wrong, repeatedly and in one direction. A format-string arity bug that prints one wrong chat line was filed **Critical**; a LibStub-key typo behind a developer-only diagnostic verb was filed **High**; an inert color picker whose default already equals the color it fails to paint was filed **High**; a vacuous vendor-sync assertion — test-inventory integrity, not shipped behavior — was filed High or Medium in four repos. Every one of those was demoted in triage. Severity is what a reader budgets their week against, so it has to be auditable rather than a matter of taste, and the reachability line is what makes it auditable.

@@ -3,9 +3,11 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -13,8 +15,15 @@ sys.path.insert(0, HERE)
 import bounded_runs  # noqa: E402
 
 
-def repo(kit_version=None):
+def tempdir(test):
+    """A fresh temporary directory that `test` removes when it finishes."""
     d = tempfile.mkdtemp()
+    test.addCleanup(shutil.rmtree, d, True)
+    return d
+
+
+def repo(test, kit_version=None):
+    d = tempdir(test)
     if kit_version is not None:
         os.makedirs(os.path.join(d, "tests", "_kit"))
         with open(os.path.join(d, "tests", "_kit", "framework.lua"), "w") as f:
@@ -24,8 +33,8 @@ def repo(kit_version=None):
 
 class Matcher(unittest.TestCase):
     def setUp(self):
-        self.old = repo(22)
-        self.new = repo(23)
+        self.old = repo(self, 22)
+        self.new = repo(self, 23)
 
     def denied(self, command, cwd=None):
         return bounded_runs.check(command, cwd or self.old)
@@ -34,7 +43,8 @@ class Matcher(unittest.TestCase):
     def test_plain_runs_are_refused(self):
         for cmd in ("lua tests/run.lua", "lua5.1 tests/run.lua -j auto", "lua tests/perf.lua",
                     "luacheck .", "lizard -l lua .", "tests/_kit/run-automated-tests.sh --no-bundle",
-                    "bash tests/_kit/run-automated-tests.sh", "./tests/_kit/run-automated-tests.sh"):
+                    "bash tests/_kit/run-automated-tests.sh", "./tests/_kit/run-automated-tests.sh",
+                    "command luacheck ."):  # `command` without -v/-V is still a transparent wrapper
             self.assertTrue(self.denied(cmd), cmd)
 
     def test_refused_inside_compound_commands(self):
@@ -44,6 +54,20 @@ class Matcher(unittest.TestCase):
                     "out=$(lua tests/run.lua --list)",
                     "FOO=1 env lua tests/run.lua",
                     "timeout 60 lua tests/run.lua"):  # a timeout alone is not a memory bound
+            self.assertTrue(self.denied(cmd), cmd)
+
+    def test_shell_c_script_is_scanned(self):
+        # A `-c` script string is commands, scanned like the top level (DC-R-13).
+        for cmd in ('bash -c "lua tests/run.lua"', 'sh -c "luacheck ."', "bash -lc 'lizard -l lua .'",
+                    "bash -o pipefail -c 'luacheck . | tail -3'", "sh -c 'cd x && lua tests/run.lua'",
+                    "bash -c 'sh -c \"luacheck .\"'"):
+            self.assertTrue(self.denied(cmd), cmd)
+        self.assertEqual(self.denied('sh -c "luacheck ."'), ["luacheck"])
+
+    def test_ulimit_without_a_numeric_limit_is_not_a_bound(self):
+        # `ulimit -v unlimited` lifts the memory cap rather than setting one (DC-R-13).
+        for cmd in ("ulimit -v unlimited; luacheck .", "ulimit -v unlimited; timeout 0 lua tests/run.lua",
+                    "(ulimit -Sv unlimited; timeout 60 lizard -l lua .)"):
             self.assertTrue(self.denied(cmd), cmd)
 
     def test_old_kit_lua_run_refused_through_cd(self):
@@ -68,7 +92,11 @@ class Matcher(unittest.TestCase):
             self.assertEqual(self.denied(cmd), [], cmd)
 
     def test_bounded_by_hand_passes(self):
-        self.assertEqual(self.denied("(ulimit -v 2097152; timeout 180 lua tests/run.lua > o 2>&1)"), [])
+        for cmd in ("(ulimit -v 2097152; timeout 180 lua tests/run.lua > o 2>&1)",
+                    "ulimit -v 2097152; timeout 600 luacheck .", "ulimit -Sv 2097152 && timeout 60 lizard .",
+                    "bash -c 'ulimit -v 2097152; timeout 60 luacheck .'",
+                    "ulimit -v 2097152; timeout 60 bash -c 'luacheck .'"):
+            self.assertEqual(self.denied(cmd), [], cmd)
 
     def test_inline_opt_out_passes(self):
         self.assertEqual(self.denied("KA0S_BOUNDED_HOOK=off lua tests/run.lua"), [])
@@ -83,6 +111,21 @@ class Matcher(unittest.TestCase):
                     "luacheck --version", "lizard --help", "echo 'lua tests/run.lua'",
                     "sed -n 1,20p tests/_kit/run-automated-tests.sh", "lua -v",
                     "lua tools/gen-api-members.lua", "which luacheck lizard"):
+            self.assertEqual(self.denied(cmd), [], cmd)
+
+    def test_shell_c_prose_and_bounded_runs_pass(self):
+        # Scanning a `-c` string must not turn its arguments or quoted prose into runs (DC-R-13).
+        for cmd in ("bash -c 'grep lizard x'", "sh -c 'echo luacheck'", "bash -c 'command -v lizard'",
+                    "bash -c 'ka0s-bounded lua tests/run.lua'", "bash -c 'git commit -m \"lizard; luacheck\"'",
+                    "bash -c 'KA0S_BOUNDED_HOOK=off luacheck .'", "bash -c", "sh -c ''",
+                    "bash -n tests/_kit/run-automated-tests.sh.bak", "zsh -c 'echo ok' lizard luacheck"):
+            self.assertEqual(self.denied(cmd), [], cmd)
+        self.assertEqual(self.denied("bash -c 'lua tests/run.lua'", self.new), [])
+
+    def test_command_v_probe_is_not_a_run(self):
+        # `command -v`/`-V` looks a tool up; it never runs it (DC-A-06).
+        for cmd in ("command -v lizard", "command -V luacheck", "command -v luacheck lua",
+                    "command -v luacheck lizard", "command -v lua5.1 >/dev/null && echo ok"):
             self.assertEqual(self.denied(cmd), [], cmd)
 
     # ── command position only (ATS-22): prose in heredocs and quotes is not a run ──
@@ -133,7 +176,7 @@ class BinWrapper(unittest.TestCase):
         self.assertTrue(p.stdout.startswith("100755 "), p.stdout)
 
     def run_wrapper(self, *args):
-        env = dict(os.environ, XDG_CACHE_HOME=tempfile.mkdtemp(), KA0S_KIT_CGROUP="off")
+        env = dict(os.environ, XDG_CACHE_HOME=tempdir(self), KA0S_KIT_CGROUP="off")
         env.pop("KA0S_BOUNDED_DEPTH", None)
         return subprocess.run([self.PATH, *args], capture_output=True, text=True, env=env, timeout=60)
 
@@ -148,17 +191,39 @@ class BinWrapper(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("usage: ka0s-bounded", p.stderr)
 
+    def test_timeout_kills_children(self):
+        # Non-interactive (stdin not a TTY): a timeout must stop the whole tree, not only the top process,
+        # or forked children outlive a run reported as stopped and keep the slot-pool lock fd.
+        marker = "sleep 4711"
+        self.addCleanup(subprocess.run, ["pkill", "-f", marker], capture_output=True)
+        env = dict(os.environ, XDG_CACHE_HOME=tempdir(self), KA0S_KIT_CGROUP="off", KA0S_KIT_TIMEOUT_S="2")
+        env.pop("KA0S_BOUNDED_DEPTH", None)
+        # Output goes to a file, not a pipe: a survivor would hold a pipe open and hang the wait.
+        with tempfile.TemporaryFile() as err:
+            p = subprocess.run([self.PATH, "bash", "-c", marker + " & " + marker + "; echo done"],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err, env=env,
+                               timeout=60)
+            err.seek(0)
+            self.assertEqual(p.returncode, 124, err.read())
+        survivors = ""
+        for _ in range(20):
+            survivors = subprocess.run(["pgrep", "-f", marker], capture_output=True, text=True).stdout
+            if not survivors:
+                break
+            time.sleep(0.1)
+        self.assertEqual(survivors, "", "children outlived the timeout")
+
 
 class HookScript(unittest.TestCase):
     def run_hook(self, command, cwd):
         payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}, "cwd": cwd})
-        env = dict(os.environ, CLAUDE_PLUGIN_ROOT=os.path.dirname(HERE), HOME=tempfile.mkdtemp())
+        env = dict(os.environ, CLAUDE_PLUGIN_ROOT=os.path.dirname(HERE), HOME=tempdir(self))
         p = subprocess.run(["bash", os.path.join(HERE, "bounded-runs-hook.sh")], input=payload,
                            capture_output=True, text=True, env=env, timeout=30)
         return p, env["HOME"]
 
     def test_denies_with_the_wrapper_path_and_installs_the_link(self):
-        p, home = self.run_hook("lua tests/run.lua", repo(22))
+        p, home = self.run_hook("lua tests/run.lua", repo(self, 22))
         self.assertEqual(p.returncode, 0)
         out = json.loads(p.stdout)["hookSpecificOutput"]
         self.assertEqual(out["permissionDecision"], "deny")
@@ -170,18 +235,22 @@ class HookScript(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(home, ".claude", "wow-addon")))
 
     def test_silent_on_ordinary_commands(self):
-        p, _ = self.run_hook("git status", repo())
+        p, _ = self.run_hook("git status", repo(self))
         self.assertEqual((p.returncode, p.stdout), (0, ""))
 
     def test_heredoc_prose_passes_and_a_bare_lizard_run_is_denied(self):
         p, _ = self.run_hook("cat > ANALYSIS.md <<'EOF'\nlizard -l lua . reported no function above 15\nEOF",
-                             repo())
+                             repo(self))
         self.assertEqual((p.returncode, p.stdout), (0, ""))
-        p, _ = self.run_hook("lizard -l lua .", repo())
+        p, _ = self.run_hook("lizard -l lua .", repo(self))
         self.assertEqual(json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
 
+    def test_silent_on_a_command_v_probe(self):
+        p, _ = self.run_hook("command -v luacheck lizard", repo(self))
+        self.assertEqual((p.returncode, p.stdout), (0, ""))
+
     def test_fails_open_on_garbage(self):
-        env = dict(os.environ, CLAUDE_PLUGIN_ROOT=os.path.dirname(HERE), HOME=tempfile.mkdtemp())
+        env = dict(os.environ, CLAUDE_PLUGIN_ROOT=os.path.dirname(HERE), HOME=tempdir(self))
         p = subprocess.run(["bash", os.path.join(HERE, "bounded-runs-hook.sh")], input="not json lua",
                            capture_output=True, text=True, env=env, timeout=30)
         self.assertEqual((p.returncode, p.stdout), (0, ""))

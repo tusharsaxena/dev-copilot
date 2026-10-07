@@ -10,7 +10,8 @@ command and names the wrapper to prefix.
 
 A segment passes when:
   * its command is `ka0s-bounded` (by any path), or
-  * it is already bounded by hand: a `timeout` wrapper AND a `ulimit -v` earlier in the same command, or
+  * it is already bounded by hand: a `timeout` wrapper AND a numeric `ulimit -v <kB>` earlier in the
+    same command (`ulimit -v unlimited` is no bound), or
   * it carries `KA0S_BOUNDED_HOOK=off` as an inline assignment (a deliberate, visible opt-out), or
   * it is a Lua run of `tests/run.lua` / `tests/perf.lua` in a repo whose vendored kit is revision
     23 or newer: that kit re-launches itself under the same bounds (depth, tree memory, process
@@ -22,8 +23,11 @@ A segment passes when:
 The matcher is deliberately a shell-ish tokenizer, not a shell parser: it splits on the control
 operators outside quotes, skips heredoc bodies (unless a bare shell reads them), drops leading
 assignments, reserved words and transparent wrappers (`env`, `time`, `nice`, `exec`, `command`,
-`timeout …`), and looks at the first real word -- the command position. False negatives on exotic
-shell are acceptable; false positives on ordinary commands are not.
+`timeout …`), and looks at the first real word -- the command position. `command` is transparent
+only without `-v`/`-V`: `command -v luacheck` is a tool-presence probe, so that segment has no
+command at all. A shell's `-c` script string (`bash -c '…'`, `sh -lc '…'`) is commands too, and is
+scanned the same way, two levels deep. False negatives on exotic shell are acceptable; false
+positives on ordinary commands are not.
 """
 
 import json
@@ -38,6 +42,9 @@ TRANSPARENT = {"env", "time", "nice", "exec", "command", "nohup", "stdbuf", "ion
 INFO_FLAGS = {"--version", "-v", "--help", "-h"}
 LUA_RUNNERS = ("tests/run.lua", "tests/perf.lua")
 KIT_MIN_REVISION = 23
+MAX_SHELL_DEPTH = 2  # how many nested `sh -c '…'` levels are scanned
+# A memory bound set by hand needs a numeric limit: `ulimit -v unlimited` lifts the cap instead.
+ULIMIT_V = re.compile(r"\bulimit\s+(-[A-Za-z]*v|-v)\s+\d+")
 
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Words that open a command position without being the command: `{ …; }`, `! cmd`, `if cmd; then cmd`.
@@ -49,7 +56,7 @@ BLANKS = " \t\r"
 class Scanner:
     """Splits a Bash command into simple commands, each a list of words, roughly as the shell would.
 
-    Quoting is honoured, so a control operator inside quotes (`git commit -m "a; lizard b"`) is prose,
+    Quoting is honored, so a control operator inside quotes (`git commit -m "a; lizard b"`) is prose,
     not a new command. A heredoc body is data and yields no words, except when it is fed to a bare
     shell (`bash <<EOF`), where it is commands. Command substitutions (`$(…)`, backticks, also inside
     double quotes) and subshells yield their inner commands as further segments. It is still not a
@@ -232,6 +239,8 @@ def strip_prefix(words):
             i += 1
             # `env -i`, `nice -n 5`, `stdbuf -oL`: skip their options
             while i < len(words) and words[i].startswith("-"):
+                if w == "command" and words[i] in ("-v", "-V"):
+                    return [], assignments, timed  # `command -v lizard` looks a tool up, never runs it
                 i += 1
                 if i < len(words) and words[i - 1] in ("-n", "-u") and not words[i].startswith("-"):
                     i += 1
@@ -302,9 +311,31 @@ def heavy(words, cwd):
     return None
 
 
-def check(command, cwd):
-    """The heavy runs in `command` that are not bounded, as a list of kinds."""
-    bounded_by_hand = re.search(r"\bulimit\s+(-[A-Za-z]*v|-v)\b", command) is not None
+def shell_script(words):
+    """The script string of `bash -c '…'` (any shell in SHELLS, any short cluster holding `c`), or None."""
+    if not words or os.path.basename(words[0]) not in SHELLS:
+        return None
+    has_c = False
+    args = iter(words[1:])
+    for a in args:
+        if a in ("-o", "+o", "-O", "+O"):
+            next(args, None)  # `bash -o pipefail -c …`: the option's value
+        elif a == "--":
+            return next(args, None) if has_c else None
+        elif a.startswith("-") and not a.startswith("--") and "c" in a[1:]:
+            has_c = True
+        elif not a.startswith(("-", "+")):
+            return a if has_c else None
+    return None
+
+
+def check(command, cwd, depth=0, outer_bounds=False, outer_timed=False):
+    """The heavy runs in `command` that are not bounded, as a list of kinds.
+
+    A `sh -c '…'` script is scanned the same way, up to MAX_SHELL_DEPTH levels deep; a `ulimit -v`
+    or `timeout` outside it still bounds what runs inside it.
+    """
+    bounded_by_hand = outer_bounds or ULIMIT_V.search(command) is not None
     found = []
     here = cwd
     for words in segments(command):
@@ -316,6 +347,12 @@ def check(command, cwd):
             here = target if os.path.isabs(target) else os.path.normpath(os.path.join(here, target))
             continue
         if assignments.get("KA0S_BOUNDED_HOOK") == "off":
+            continue
+        timed = timed or outer_timed
+        script = shell_script(rest)
+        if script is not None:
+            if depth < MAX_SHELL_DEPTH:
+                found.extend(check(script, here, depth + 1, bounded_by_hand, timed))
             continue
         kind = heavy(rest, here)
         if kind is None:

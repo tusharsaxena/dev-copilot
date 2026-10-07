@@ -90,7 +90,7 @@ Plus, in any repo that vendors a copy of another repo in scope, the vendor-drift
 
 ### 3c. Commit
 
-Run `/dev-copilot:commit` for that repo, in its default (auto) mode, and honour everything that command already says: named files only, never `git add -A`, never `--amend`, never `--no-verify`, match the repo's own commit-message style, and pause for anything secret-shaped. Do not pass it `push` — pushing happens in 3e, after the merge.
+Run `/dev-copilot:commit` for that repo, in its default (auto) mode, and honor everything that command already says: named files only, never `git add -A`, never `--amend`, never `--no-verify`, match the repo's own commit-message style, and pause for anything secret-shaped. Do not pass it `push` — pushing happens in 3e, after the merge.
 
 One addition when the scope spans repos: **one commit per repo, and the message is written for that repo's reader.** The same changeset looks different from each side — the library's commit is about what it published, the consumer's is about what it now carries and what changed for its users. A message that only makes sense if you have read the other repos' commits is the wrong message.
 
@@ -102,7 +102,7 @@ First find the repo's default branch — **do not assume `main` or `master`**: `
 
 If there is a feature branch:
 
-1. `git checkout <default> && git pull --ff-only origin <default>` — a diverged `<default>` is a stop, not something to force.
+1. `git checkout <default> && git fetch origin <default> && git merge --ff-only origin/<default>` — a diverged `<default>` is a stop, not something to force.
 2. `git merge --no-ff <branch>` — `--no-ff` so the branch's shape survives in history.
 3. Conflicts are a **stop**. Do not resolve a conflict you did not anticipate as part of a finalize; report it and leave the repo mid-merge for the user, naming the conflicted paths.
 4. Re-run the gate on the merge result. A merge that compiles is not a merge that passes.
@@ -111,7 +111,7 @@ If there is a feature branch:
 
 `git push origin <default>`. This command **does** push on its own — that is the point of it, and it is the only spec in this plugin that pushes without being asked (`/dev-copilot:commit` pushes only when passed `push`). Paste the real output; a push that says `Everything up-to-date` when you expected a new ref is a finding.
 
-If the push is rejected (someone else moved origin), run `git pull --ff-only origin <default>` once. If it fast-forwards, re-run the gate and push again; if it cannot (the histories diverged), stop that repo and report, leaving the merge for the user. Never `--force`, and never rebase or merge origin in on your own.
+If the push is rejected (someone else moved origin), **stop that repo**. Local `<default>` carries the unpushed merge from 3d (or the commit from 3c), so a rejection means the histories have diverged and no fast-forward can reconcile them. Paste the push output verbatim. You may `git fetch origin` and report how far each side has moved with `git rev-list --left-right --count <default>...origin/<default>` (left: local-only commits, right: origin-only commits), but leave the reconciliation to the user. Never `--force`, and never rebase or merge origin in on your own.
 
 If the repo has no `origin` remote at all, there is nothing to push: say so in the report, and run 3f after the merge instead of after a push.
 

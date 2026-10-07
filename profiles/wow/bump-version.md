@@ -214,7 +214,7 @@ requirement — don't replace `1.0.0` in any of those.
 
 **Then run the de-AI pass over what you just wrote.** `documentation-§1` MUSTs a **de-AI writing
 pass** on every `README.md` edit (anti-pattern #77): run the `/humanize` skill, or audit against a
-published AI-writing pattern catalogue, and fix what it finds **before** the change is committed.
+published AI-writing pattern catalog, and fix what it finds **before** the change is committed.
 
 It binds the README alone — the `CHANGELOG.md` entry in a library repo is a contributor-facing file
 and is exempt — and here it binds the text **this command authored**: the new Version History row's
@@ -295,8 +295,8 @@ Rules for that sentence:
   sentence; a release where `perf` was NOT EVALUATED never reaches Step 4 at all (Step 2 item 4
   stopped it).
 - **Only this release's notes.** Past CHANGELOG entries and existing Version History rows are never
-  retro-fitted, per the hard rules — five addons in the collection are permanent perf-skippers and
-  their history stays as written.
+  retro-fitted, per the hard rules — an addon without `tests/perf.lua` or `PerfSetup.lua` records
+  perf as a skip with its reason on every release, and its history stays as written.
 
 ### Write up the release run
 

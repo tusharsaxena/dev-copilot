@@ -26,7 +26,7 @@ Three commands touch the same doc set from different directions; keep them apart
 
 **"Revendor" here means the *reference*, never a copy — with exactly one exception.** Do not write the standard's rules, its section files, or the scaffolding context pack into the addon under any name. A stored copy of the standard's *rules* is the same failure as a stored context pack (`documentation-§3`, anti-pattern #49) — it describes the standard on the day it was copied, forever, and because it sits inside the repo it wins over the live document for every agent that reads it. What lives in the addon is a **pointer** plus the small canonical block the standard itself says to carry.
 
-The exception is the **quirks catalogue** (Step 3d). It is not a rule and not scaffolding — it is reference data about the game client, and a working addon needs it at hand, offline, next to the code that works around it. It is carried as a **vendored block**, under the same discipline as `libs/LibKa0s/`: copied whole, replaced wholesale, never patched locally, and stamped with the version it came from. Keep the two straight — the rules are pointed at, the catalogue is vendored — because relaxing the first rule to accommodate the second is how a whole copy of the standard ends up in a repo.
+The exception is the **quirks catalog** (Step 3d). It is not a rule and not scaffolding — it is reference data about the game client, and a working addon needs it at hand, offline, next to the code that works around it. It is carried as a **vendored block**, under the same discipline as `libs/LibKa0s/`: copied whole, replaced wholesale, never patched locally, and stamped with the version it came from. Keep the two straight — the rules are pointed at, the catalog is vendored — because relaxing the first rule to accommodate the second is how a whole copy of the standard ends up in a repo.
 
 ## Standards source
 
@@ -139,15 +139,15 @@ This is a deliberate, narrow relaxation of this command's blanket "never edit co
 - Verify `docs/` against the canonical set — `ARCHITECTURE.md`, `testing.md`, `smoke-tests.md`; the five verification-and-record docs `test-cases.md`, `performance.md`, `perf-analysis/README.md`, `automated-tests/README.md` and `automated-tests/RESULTS.md`; the six **Tier 1** docs `scope.md`, `module-map.md`, `schema.md`, `settings-panel.md`, `data-flow.md` and `common-tasks.md`; plus fired **Tier 2** triggers and any **Tier 3** docs (`documentation-§3`). A surviving `docs/complexity.md`, `docs/file-index.md` or `docs/conventions.md` is a **pre-adoption finding to report**, never a missing member to create — and so is a Tier 1/2 subject filed under a non-canonical name (`data-model.md`, `saved-variables.md`, `pipeline.md`, `settings-system.md`, `wow-quirks.md`, `slash-commands.md`, `debug-console.md`, …): report the rename, do not perform it.
 - **Flag missing members; do not create them** — root and `docs/` alike. Writing an `ARCHITECTURE.md` requires reading the addon's code, which this command does not do; a `DEPENDENCIES.md` must be **evidence-based** (`documentation-§7`), which means reading the scripts, the harness and the TOC, and a speculative one costs the reader's trust in the whole list; and the automated-test record is produced by running the vendored runner, which this command does not run. An empty or invented one is worse than an absent one — `/dev-copilot:sync-docs` owns the scaffolding, and the record is regenerated at release by `/dev-copilot:bump-version`.
 
-### 3d. The vendored quirks catalogue
+### 3d. The vendored quirks catalog
 
-The standard carries a **quirks catalogue** — client behaviors the collection discovered the hard way, promoted upstream by `/dev-copilot:wow-harvest-standards` so no addon pays the discovery cost twice. Find that section through the fetched Sections list; **never hard-code its filename**. If the standard has no such section yet, skip this step entirely and say so — there is nothing to vendor, and inventing a catalogue from this repo's own notes is the harvest command's job, in the other direction.
+The standard carries a **quirks catalog** — client behaviors the collection discovered the hard way, promoted upstream by `/dev-copilot:wow-harvest-standards` so no addon pays the discovery cost twice. Find that section through the fetched Sections list; **never hard-code its filename**. If the standard has no such section yet, skip this step entirely and say so — there is nothing to vendor, and inventing a catalog from this repo's own notes is the harvest command's job, in the other direction.
 
 The addon's quirks file is **two parts**, and the split is the whole design:
 
 ```markdown
-<!-- BEGIN VENDORED: quirks catalogue v2.17.1 (source: WowAddonStandards) -->
-… the upstream catalogue, whole …
+<!-- BEGIN VENDORED: quirks catalog v2.17.1 (source: WowAddonStandards) -->
+… the upstream catalog, whole …
 <!-- END VENDORED -->
 
 ## <Addon>-specific quirks
@@ -156,10 +156,10 @@ The addon's quirks file is **two parts**, and the split is the whole design:
 ```
 
 - **Replace the vendored block wholesale.** Same rule as `libs/LibKa0s/`: whole payload, never a subset, never a local patch. A local edit inside the markers is reverted silently by the next revendor, and the behavior it fixed comes back as a regression with **no cause in this repo's history** — the exact failure the vendoring discipline exists to prevent. If a repo has edited inside the markers, do not merge it: report the edit verbatim, tell the user it belongs in the addon's own section (where `wow-harvest-standards` will find it and promote it), and overwrite only once they have somewhere to put it.
-- **Stamp the block with the catalogue's version.** This is the one place a standard version *does* belong in the repo — a vendored payload with no source version cannot be told stale from current, which is why LibStub minors exist. It does not contradict the no-version-stamp rule in Step 5: that rule governs the **reference**, which points at a live document and is dated by its own staleness; this is a **copy**, which is not.
+- **Stamp the block with the catalog's version.** This is the one place a standard version *does* belong in the repo — a vendored payload with no source version cannot be told stale from current, which is why LibStub minors exist. It does not contradict the no-version-stamp rule in Step 5: that rule governs the **reference**, which points at a live document and is dated by its own staleness; this is a **copy**, which is not.
 - **Prune what has been promoted.** Any quirk in the addon's own section that now appears in the vendored block is duplicated — the upstream version won, and it is usually the deeper write-up, since the harvest promotes the deepest of several independent discoveries. Remove the addon's copy and say which entries you removed. Two live copies of one finding is how they diverge.
 - **Never touch the addon's own section otherwise.** Everything below the end marker belongs to the repo. It is the harvest's input, and editing it here would let this command launder its own text into the next harvest's evidence.
-- If the file does not exist and the standard has a catalogue, **creating it is one of the mechanical items** — a vendored block plus an empty addon section is complete and correct, and unlike an `ARCHITECTURE.md` it requires no knowledge of this addon's code.
+- If the file does not exist and the standard has a catalog, **creating it is one of the mechanical items** — a vendored block plus an empty addon section is complete and correct, and unlike an `ARCHITECTURE.md` it requires no knowledge of this addon's code.
 
 ### 3e. `docs/agent-context.md` — report, do not delete
 
@@ -169,7 +169,7 @@ You **may** still fix references *to* it — a `CLAUDE.md` pointer naming it is 
 
 ### 3f. Normative claims the standard has since changed
 
-3b sweeps forms the standard has **retired**. This sweep is the other half: a doc sentence that still *paraphrases correctly-named rules the standard has since rewritten*. It is scoped narrowly and deliberately — to statements about **which checkpoint gates on what** — because that is where the collection's docs are one template with eleven copies, and because the rewrite is fully determined by the fetched section rather than by judgement.
+3b sweeps forms the standard has **retired**. This sweep is the other half: a doc sentence that still *paraphrases correctly-named rules the standard has since rewritten*. It is scoped narrowly and deliberately — to statements about **which checkpoint gates on what** — because that is where the collection's docs are one template with eleven copies, and because the rewrite is fully determined by the fetched section rather than by judgment.
 
 Read `automated-tests-§3` ("What gates, and what only records", including its release-gate subsection) from the fetched section file and hold its current wording. Then check these locations, by name:
 
@@ -195,18 +195,20 @@ Read the fetched `line-endings` section and hold its two canonical bodies. Then,
 - **Does its pin match the repo's kind?** `* text=auto eol=crlf` where the repo ships Lua to the
   client — it has a `.toc`, or a client-bound `libs/` payload; `* text=auto eol=lf` where it has
   neither (`line-endings-§2`).
-- **Is `*.sh text eol=lf` present?** Mandatory in both kinds (`line-endings-§3`).
+- **Are both shebang carve-outs, `*.sh text eol=lf` and `*.py text eol=lf`, present?** Mandatory in
+  both kinds (`line-endings-§3`).
 - **Are binaries marked `binary`?** (`line-endings-§4`.)
 - **Does the working tree agree with the declared pin?** One number, with the command that produced
   it:
 
   ```sh
-  git ls-files -z | xargs -0 -I{} sh -c '
-    set -- $(git check-attr text eol -- "{}" | sed "s/.*: //")
+  # the path arrives as "$1" (positional), never spliced into the script text
+  git ls-files -z | xargs -0 -n1 sh -c '
+    p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //")
     [ "$1" = unset ] && exit                      # binary: git converts nothing here
-    cr=$(tr -dc "\r" < "{}" | wc -c); lf=$(tr -dc "\n" < "{}" | wc -c)
-    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && echo "{}";;
-                 lf)   [ "$cr" -gt 0 ] && echo "{}";; esac' 2>/dev/null | wc -l
+    cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
+    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
+                 lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac' _ 2>/dev/null | wc -l
   ```
 
   Paste it as written. It asks git for `text` as well as `eol` and counts bytes rather than asking
@@ -257,7 +259,7 @@ docs/testing.md
 .gitattributes
   MISSING: no pin — file carries only "*.sh text eol=lf" (line-endings-§1, line-endings-§2)
   STRAYS:  9 tracked files disagree with the declared pin, from
-    git ls-files -z | xargs -0 -I{} sh -c 'set -- $(git check-attr text eol -- "{}" | sed "s/.*: //"); …' | wc -l
+    git ls-files -z | xargs -0 -n1 sh -c 'p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //"); …' _ | wc -l
     (reported only — renormalization is the user's own commit, line-endings-§6)
 
 CODE / CONFIG — comment-only, needs your confirmation before anything is written
@@ -301,7 +303,7 @@ Per repo:
 - Items applied, items deferred by the user, and items **flagged for another command** (with the command named).
 - Anything you could not reconcile — an unresolvable section reference, a doc whose intent was ambiguous — stated plainly rather than resolved by guess.
 - **The 3b sweep's command and its count**, verbatim, so the number is reproducible rather than asserted (`documentation-§6`'s reporting shape) — one rolled-up line for the retired-notation half, plus the exclusions and, where any exist, how many hits were left standing inside frozen `docs/audits/`, `docs/reviews/` and `docs/automated-tests/` bundles **on purpose**. A count with no stated scope is not a count.
-- **The 3g line-ending state**: whether `.gitattributes` exists, whether its pin matches the repo's kind, whether the `*.sh` carve-out and the binary markings are present, and the **worktree straggler count with the command that produced it** — as one rolled-up line, never a file list. Say explicitly that renormalization was **not** performed here and name the two commands that do it, so the count does not read as fixed.
+- **The 3g line-ending state**: whether `.gitattributes` exists, whether its pin matches the repo's kind, whether the `*.sh` and `*.py` carve-outs and the binary markings are present, and the **worktree straggler count with the command that produced it** — as one rolled-up line, never a file list. Say explicitly that renormalization was **not** performed here and name the two commands that do it, so the count does not read as fixed.
 - **Every out-of-range and malformed reference, individually**, whether it was corrected or left flagged — these are `documentation-§6`'s MUST-fix half and the one part of this sweep that never rolls up.
 - **Every code or config hit**, split into applied-after-confirmation and declined, and the fact that each applied one was comment-only.
 - **Whenever 3f changed anything**: the sentence that the `docs/automated-tests/RESULTS.md` lead-in carries the same gate claim, is **runner-generated**, was therefore **not** swept, and is fixed by re-vendoring a corrected `tests/_kit/run-automated-tests.sh` from `LibKa0s` and re-running. Say it even when the repo's `RESULTS.md` is currently absent.
