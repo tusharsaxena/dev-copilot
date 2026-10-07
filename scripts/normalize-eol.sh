@@ -31,6 +31,11 @@ for key in ("file_path", "filePath", "path"):
 [[ -z "$file_path" ]] && exit 0
 [[ ! -f "$file_path" ]] && exit 0
 
+# perl -i on a link path replaces the link with a regular file and leaves the target unconverted;
+# resolving first lets the target's own repo and .gitattributes decide.
+file_path="$(readlink -f -- "$file_path")" || exit 0
+[[ -f "$file_path" ]] || exit 0
+
 # Resolve the file's repo root (if any). No repo → nothing to do.
 file_dir="$(dirname -- "$file_path")"
 repo_root="$(git -C "$file_dir" rev-parse --show-toplevel 2>/dev/null || true)"

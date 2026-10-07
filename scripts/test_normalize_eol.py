@@ -118,9 +118,8 @@ class Hook(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(self.root)), before)
 
     # ── symlinks ──
-    # Expected red until DC-05: `perl -i` replaces the link with a converted regular file and leaves
-    # the target unconverted.
-    @unittest.expectedFailure
+    # `perl -i` on a link path would replace the link with a regular file and leave the target
+    # unconverted; the hook resolves the link first, so the target's own repo decides.
     def test_symlink_converts_the_target_and_keeps_the_link(self):
         d = self.repo(CRLF_PIN)
         target = self.write(d, "target.lua", b"one\ntwo\n")
@@ -129,6 +128,19 @@ class Hook(unittest.TestCase):
         self.run_on(alias)
         self.assertTrue(os.path.islink(alias), "the alias is no longer a symlink")
         self.assertEqual(self.read(target), b"one\r\ntwo\r\n")
+
+    def test_symlink_to_a_file_outside_any_repo_leaves_the_target_untouched(self):
+        # The link lives in a CRLF-pinned repo, but the target is outside any repo: the target's
+        # location decides, so nothing is rewritten and the link survives.
+        d = self.repo(CRLF_PIN)
+        outside = os.path.join(self.root, "outside")
+        os.makedirs(outside)
+        target = self.write(outside, "loose.lua", b"one\ntwo\n")
+        alias = os.path.join(d, "alias.lua")
+        os.symlink(target, alias)
+        self.run_on(alias)
+        self.assertTrue(os.path.islink(alias), "the alias is no longer a symlink")
+        self.assertEqual(self.read(target), b"one\ntwo\n")
 
 
 if __name__ == "__main__":
