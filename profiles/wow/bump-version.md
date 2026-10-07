@@ -295,8 +295,8 @@ Rules for that sentence:
   sentence; a release where `perf` was NOT EVALUATED never reaches Step 4 at all (Step 2 item 4
   stopped it).
 - **Only this release's notes.** Past CHANGELOG entries and existing Version History rows are never
-  retro-fitted, per the hard rules — five addons in the collection are permanent perf-skippers and
-  their history stays as written.
+  retro-fitted, per the hard rules — an addon without `tests/perf.lua` or `PerfSetup.lua` records
+  perf as a skip with its reason on every release, and its history stays as written.
 
 ### Write up the release run
 

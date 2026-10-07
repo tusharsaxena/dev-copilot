@@ -310,12 +310,15 @@ That distinction is not pedantry; it is the difference between a clean result an
 both directions have real examples here:
 
 - A `RegisterChatCommand` census that walks `libs/` reports the token `mychat`, which no addon registers.
-  It is a comment inside vendored `AceConfigCmd-3.0.lua`, present in seven of the eleven repos.
-- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **359 hits in PrettyChat** and would
-  have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC load list it
-  reports **0**. Every one of those 359 lives in `GlobalStrings/GlobalStrings.lua`, a tracked but
-  deliberately unloaded machine-generated capture of Blizzard's own strings that exists as source data
-  for the split chunks. It is in the repo; it is not in the game.
+  It is a comment inside vendored `AceConfigCmd-3.0.lua`, which every addon vendors.
+- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **hundreds of hits in PrettyChat**
+  and would have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC
+  load list it reports **0**. Every one of those hits lives under `GlobalStrings/` — the monolithic
+  `GlobalStrings.lua` and several of its split `GlobalStrings_NNN.lua` chunks, tracked,
+  machine-generated captures of Blizzard's own strings that the TOC does not load. They are in the
+  repo; they are not in the game. (Re-measure rather than quote a figure:
+  `grep -rn 'SLASH_' --include='*.lua' PrettyChat | grep -v '^PrettyChat/libs/\|^PrettyChat/tests/_kit/' | cut -d: -f1 | sort | uniq -c`
+  against the same grep over the TOC load list.)
 
 So: derive the file list from the TOC, and **report every count with the command and the scope beside
 it**. A count whose denominator is unstated is not a count.

@@ -152,14 +152,16 @@ the test and the bug agree. All eleven addons in this collection now carry a Non
 section (each opening with `LOC-1`, re-measured 2026-09-29) — but the section being present is not its
 checks being right, and the two addons whose code is most locale-sensitive are still where the worked
 examples come from.
-`LootHistory/core/Compat.lua:194-201` hard-codes the English
+LootHistory `core/Compat.lua` hard-codes the English
 wordings — `WARBAND_LINES`, `BIND_TO_WARBAND_PREFIX`, `UE_LITERAL = "until equipped"` — as the fallback
-for when the client leaves the `ITEM_ACCOUNTBOUND*` globals nil, reaches them at `:213-214` and `:237`,
-and the
+for when the client leaves the `ITEM_ACCOUNTBOUND*` globals nil, reaches them from `isWarbandLine` and
+`Compat.ScanBound`, and the
 same file calls the tooltip "the ONLY witness" for items whose bind type lies; its cases assert against
-those literals (`tests/test_compat.lua:62-65` passes `"Auction House"` and `"Auction won: %s"`).
-PrettyChat's entire function is overwriting localized `_G` chat format strings across 4957 lines of
-loaded source, against a 120-line `locales/enUS.lua`. Neither gap was visible from inside either repo's
+those literals (`tests/test_compat.lua`'s case `Compat: IsAuctionHouseMail matches AH sender +
+won-subject` passes `"Auction House"` and `"Auction won: %s"`).
+PrettyChat's entire function is overwriting localized `_G` chat format strings — as of
+`PrettyChat@6853211`, across 4957 lines of TOC-loaded source outside `libs/`, against a 120-line
+`locales/enUS.lua`. Neither gap was visible from inside either repo's
 green suite, and neither was found by a review that ran per-addon.
 
 **Write the LOC checks from the addon's own seams, not from a template.** The section is unconditional;
