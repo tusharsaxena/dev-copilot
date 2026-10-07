@@ -149,7 +149,7 @@ For each accepted proposal, touch **every** one of these that applies — resolv
 1. **The section file** — the normative change itself.
 2. **`standards/STANDARDS.md`** — the Sections list blurb for that section, if the change alters what the section covers.
 3. **The anti-patterns range** — adding an anti-pattern changes the `#1–#N` range cited in the Sections list. The number in the blurb and the last entry in the file must agree.
-4. **The changelog entry** at the top of `STANDARDS.md`, in the house register: what changed, why, the evidence, the bump classification, and the pass it was drawn from.
+4. **The changelog entry**, written as the current entry under `STANDARDS.md`'s `## Changelog`, in the house register: what changed, why, the evidence, the bump classification, and the pass it was drawn from. The index carries only the current entry, so in the same change the **previous** current entry moves verbatim to the top of **`standards/CHANGELOG.md`** (newest first), where every earlier entry lives. Moving it is part of the ripple, not a follow-up: an index left holding two entries, or a history file missing the one that was displaced, is the same self-contradiction as a stale blurb.
 5. **The version bump** — front matter version and date.
 6. **`standards/NEW_ADDON_CONTEXT.md`** — if the change affects how a new addon is born, plus the pack's own version.
 7. **`standards/EXECUTIVE_SUMMARY.md`** — the summary and its current-version pointer.

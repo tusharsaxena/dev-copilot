@@ -78,9 +78,12 @@ observation. Everything else about grading — naming the MUST whatever the grad
 `derived from <ID>` dependents, both tallies with their basis — is unchanged.
 
 **Which of the mechanical checks below apply.** The line-ending policy applies in full and both repos
-are the `* text=auto eol=lf` kind, shipping no client Lua. The register read applies with a
-substitution: neither repo has a `docs/ARCHITECTURE.md`, so the ratified-decision register is the root
-`CLAUDE.md` plus the repo's own GitHub issue store, read through `gh` under the same rules. Lint, the
+are the `* text=auto eol=lf` kind, shipping no client Lua. The register read applies in full: both
+repos carry a `docs/ARCHITECTURE.md` hub (`documentation-§8`), and its `## Documented deviations`
+section is the ratified-decision register, read first. The repo's own GitHub issue store, read through
+`gh` under the same rules, is the second input. A missing hub, or a hub with no
+`## Documented deviations` section, is itself a `documentation-§8` finding to file, not a reason to
+read the register out of the root `CLAUDE.md` instead. Lint, the
 headless runner, the vendored-library `diff -r`, the provenance line and the `lizard` complexity run
 have nothing to bind to and are recorded **not applicable**, with that reason — never "not run", which
 means a check that should have happened did not.
@@ -105,7 +108,7 @@ RAW=https://raw.githubusercontent.com/tusharsaxena/WowAddonStandards/master
 Fetch these **faithfully** (see the fetch rule below), in order:
 
 1. `$RAW/AUDIT.md` — the audit playbook. It is authoritative for *how the run is structured*: the output folder shape, the five artifacts, the stable deviation-ID scheme, the 8 steps, and the hard rules.
-2. `$RAW/standards/STANDARDS.md` — the standard's **entry point / index**. It carries the front matter, the reading guide, the changelog, and a **Sections** list that links every section file (each under `standards/standards/`).
+2. `$RAW/standards/STANDARDS.md` — the standard's **entry point / index**. It carries the front matter, the reading guide, the **current** changelog entry, and a **Sections** list that links every section file (each under `standards/standards/`). Every earlier changelog entry lives in `standards/CHANGELOG.md`, listed under the index's "Related documents" rather than Sections because history is not normative; fetch it only when the run needs history (for example, to date when a rule changed).
 3. **Every section file the `STANDARDS.md` Sections list links.** *These are the normative rules* — the index alone is not the standard. **Discover them by following the Sections links and fetch each `$RAW/standards/standards/<file>.md`; do NOT hard-code section filenames here.** The standard is deliberately split so it can be re-organized (files renamed, split, added) without any change to this agent — the only fixed paths are `AUDIT.md` and `standards/STANDARDS.md`; everything else you reach by following links.
 4. Any further file those reference and you need to complete the audit (e.g. `standards/ADDONS.md` for the addon's prefix) — follow the links under `STANDARDS.md`'s "Related documents". Fetch on demand.
 
@@ -214,11 +217,8 @@ second pass with no stated scope is not a check on the first; it is a second gue
 false the addon is not running — every registration it owns is genuinely unregistered, every timer,
 ticker and `OnUpdate` cancelled, every frame it owns hidden at the source, no SavedVariables write
 reachable from a game event. The slash surface is **not** part of the stand-down: the dispatcher is
-setup, and `slash-commands-§2` keeps it answering. This is newly
-auditable, it is the check this rotation has never run, and **it is expected to fail**: the upstream
-audit that produced the rule found **11 of 11 addons failing it** — 107 survivors, of which 34 are live
-event registrations, 13 are timers still running and 18 are SavedVariables writes. Not one addon in the
-collection genuinely stands down today.
+setup, and `slash-commands-§2` keeps it answering. Measure it as a census of what survives the
+stand-down, below, and file what you count; do not assume the outcome either way.
 
 **Do not audit the slash surface against v2.56.0's narrowed text.** For one release (v2.56.0) the
 standard cut a disabled addon's slash surface to exactly `enable` and `help` and made refusing everything
@@ -234,7 +234,8 @@ two-verb surface, say so rather than inheriting the verdict, and re-measure from
 files. The surface also tells you nothing about whether the addon is inert — the other four parts
 below measure that.
 
-**Why every previous pass passed it.** Disable is implemented as a **draw gate** in all eleven: the
+**Why every previous pass passed it.** Disable was implemented as a **draw gate** in all eleven when the
+rule was written: the
 stored flag is one rung of a show-decision ladder, or one early return at the top of each handler, and
 from the outside that is indistinguishable from standing down. The frames are gone, the addon is quiet,
 and the auditor reading the code sees a flag that is honestly consulted everywhere it matters. It is
@@ -275,8 +276,9 @@ So measure it the way the rule is written — five parts, each backed by `file:l
   `<enablePath> = false`, because it is an alias onto a schema write. Where the addon implements `slash-commands-§2`'s
   feature-verb **SHOULD**, a refused feature verb prints **one** tagged refusal line naming
   `/<slash> enable` (`slash-commands-§7`, *The refusal line*) and reaches no write seam; where it declines the SHOULD,
-  that is not a finding. The launcher's left-click on rungs (a) and (b) prints that same line and
-  **writes nothing**, while right-click still opens the panel in either state (`launcher-§2`).
+  that is not a finding. The launcher is setup too (`launcher-§2`): left-click opens the settings
+  panel in either state, and right-click opens the options menu in either state, where *Enabled* stays
+  clickable while every other entry is grayed, calls no handler and **writes nothing**.
 - **The conformance suite.** `tests/test_disabled.lua`, listed in `tests/run.lua` and inside the green
   gate. Its absence is a MUST failure. Its **presence is not a pass**: read it for whether step 3 asserts
   on the **mock's registration set** or on a handler's return value, and whether the mocks record at all
@@ -340,16 +342,18 @@ The playbook's evidence step calls for checks whose whole value is that they are
   and is not reasoned about. Four cheap facts and one measurement: (a) `.gitattributes` exists at the
   repo root; (b) its pin matches the repo's **kind** — `* text=auto eol=crlf` where the repo ships Lua
   to the client (a `.toc`, or a client-bound `libs/` payload), `* text=auto eol=lf` where it ships
-  neither; (c) `*.sh text eol=lf` is present, mandatory in **both** kinds; (d) binaries are marked
+  neither; (c) both shebang carve-outs, `*.sh text eol=lf` and `*.py text eol=lf`, are present,
+  mandatory in **both** kinds (`line-endings-§3`; AUDIT.md (c) greps for the pair); (d) binaries are marked
   `binary`; and (e) the **working tree actually agrees with the declared pin**:
 
   ```sh
-  git ls-files -z | xargs -0 -I{} sh -c '
-    set -- $(git check-attr text eol -- "{}" | sed "s/.*: //")
+  # the path arrives as "$1" (positional), never spliced into the script text
+  git ls-files -z | xargs -0 -n1 sh -c '
+    p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //")
     [ "$1" = unset ] && exit                      # binary: git converts nothing here
-    cr=$(tr -dc "\r" < "{}" | wc -c); lf=$(tr -dc "\n" < "{}" | wc -c)
-    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && echo "{}";;
-                 lf)   [ "$cr" -gt 0 ] && echo "{}";; esac' 2>/dev/null | wc -l
+    cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
+    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
+                 lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac' _ 2>/dev/null | wc -l
   ```
 
   **Run it as written, and do not "simplify" it back toward `file(1)`.** It asks git for `text` as

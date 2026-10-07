@@ -195,18 +195,20 @@ Read the fetched `line-endings` section and hold its two canonical bodies. Then,
 - **Does its pin match the repo's kind?** `* text=auto eol=crlf` where the repo ships Lua to the
   client — it has a `.toc`, or a client-bound `libs/` payload; `* text=auto eol=lf` where it has
   neither (`line-endings-§2`).
-- **Is `*.sh text eol=lf` present?** Mandatory in both kinds (`line-endings-§3`).
+- **Are both shebang carve-outs, `*.sh text eol=lf` and `*.py text eol=lf`, present?** Mandatory in
+  both kinds (`line-endings-§3`).
 - **Are binaries marked `binary`?** (`line-endings-§4`.)
 - **Does the working tree agree with the declared pin?** One number, with the command that produced
   it:
 
   ```sh
-  git ls-files -z | xargs -0 -I{} sh -c '
-    set -- $(git check-attr text eol -- "{}" | sed "s/.*: //")
+  # the path arrives as "$1" (positional), never spliced into the script text
+  git ls-files -z | xargs -0 -n1 sh -c '
+    p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //")
     [ "$1" = unset ] && exit                      # binary: git converts nothing here
-    cr=$(tr -dc "\r" < "{}" | wc -c); lf=$(tr -dc "\n" < "{}" | wc -c)
-    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && echo "{}";;
-                 lf)   [ "$cr" -gt 0 ] && echo "{}";; esac' 2>/dev/null | wc -l
+    cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
+    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
+                 lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac' _ 2>/dev/null | wc -l
   ```
 
   Paste it as written. It asks git for `text` as well as `eol` and counts bytes rather than asking
@@ -257,7 +259,7 @@ docs/testing.md
 .gitattributes
   MISSING: no pin — file carries only "*.sh text eol=lf" (line-endings-§1, line-endings-§2)
   STRAYS:  9 tracked files disagree with the declared pin, from
-    git ls-files -z | xargs -0 -I{} sh -c 'set -- $(git check-attr text eol -- "{}" | sed "s/.*: //"); …' | wc -l
+    git ls-files -z | xargs -0 -n1 sh -c 'p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //"); …' _ | wc -l
     (reported only — renormalization is the user's own commit, line-endings-§6)
 
 CODE / CONFIG — comment-only, needs your confirmation before anything is written
@@ -301,7 +303,7 @@ Per repo:
 - Items applied, items deferred by the user, and items **flagged for another command** (with the command named).
 - Anything you could not reconcile — an unresolvable section reference, a doc whose intent was ambiguous — stated plainly rather than resolved by guess.
 - **The 3b sweep's command and its count**, verbatim, so the number is reproducible rather than asserted (`documentation-§6`'s reporting shape) — one rolled-up line for the retired-notation half, plus the exclusions and, where any exist, how many hits were left standing inside frozen `docs/audits/`, `docs/reviews/` and `docs/automated-tests/` bundles **on purpose**. A count with no stated scope is not a count.
-- **The 3g line-ending state**: whether `.gitattributes` exists, whether its pin matches the repo's kind, whether the `*.sh` carve-out and the binary markings are present, and the **worktree straggler count with the command that produced it** — as one rolled-up line, never a file list. Say explicitly that renormalization was **not** performed here and name the two commands that do it, so the count does not read as fixed.
+- **The 3g line-ending state**: whether `.gitattributes` exists, whether its pin matches the repo's kind, whether the `*.sh` and `*.py` carve-outs and the binary markings are present, and the **worktree straggler count with the command that produced it** — as one rolled-up line, never a file list. Say explicitly that renormalization was **not** performed here and name the two commands that do it, so the count does not read as fixed.
 - **Every out-of-range and malformed reference, individually**, whether it was corrected or left flagged — these are `documentation-§6`'s MUST-fix half and the one part of this sweep that never rolls up.
 - **Every code or config hit**, split into applied-after-confirmation and declined, and the fact that each applied one was comment-only.
 - **Whenever 3f changed anything**: the sentence that the `docs/automated-tests/RESULTS.md` lead-in carries the same gate claim, is **runner-generated**, was therefore **not** swept, and is fixed by re-vendoring a corrected `tests/_kit/run-automated-tests.sh` from `LibKa0s` and re-running. Say it even when the repo's `RESULTS.md` is currently absent.

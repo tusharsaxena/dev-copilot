@@ -2,7 +2,7 @@
 
 A Claude Code plugin for day-to-day development: git diff and commit helpers, documentation drift sync, a principal-engineer review, test and release helpers, a GitHub-issue workflow, and progress reporting. It works in any repository.
 
-It is also the home of the World of Warcraft addon tooling that used to ship as the separate [`wow-addon`](https://github.com/tusharsaxena/wow-addon) plugin. Every command checks what kind of repository it is running in. In a WoW addon repo (or `LibKa0s`, `WowAddonStandards` or a tooling repo) it applies the full Ka0s WoW Addon Standard behavior; everywhere else it stays generic and never loads the WoW instructions.
+It is also the home of the World of Warcraft addon tooling that used to ship as the separate [`wow-addon`](https://github.com/tusharsaxena/wow-addon) plugin. Every command checks what kind of repository it is running in. In a WoW addon repo (or `LibKa0s`, `WowAddonStandards` or a tooling repo) it applies the full Ka0s WoW Addon Standard behavior; everywhere else it stays generic and never loads the WoW instructions. Its WoW specs are written against the Ka0s WoW Addon Standard v2.77.0; the commands that fetch the standard at runtime follow whichever version is current.
 
 ## Repo profiles
 
