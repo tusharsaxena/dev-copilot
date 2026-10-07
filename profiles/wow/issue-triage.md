@@ -15,8 +15,10 @@ Applied by `/dev-copilot:issue-triage` to every repo in scope for which `dev-cop
 
 Replaces only the `all` and repo-name bullets; the base's `absent, or here` default stands. The paragraphs after them apply alongside the base's.
 
-- **`all`** → every addon repo in the collection, roster read from `WowAddonStandards/standards/ADDONS.md`; if unreachable, fall back to sibling directories with a `.toc` and **say the roster was inferred**.
-- **a repo name** → that repo alone, matched case-insensitively. No match → say so, list the valid names, stop.
+- **`all`** → every row of `WowAddonStandards/standards/ADDONS.md`, read rather than hardcoded (folder + repository per row): the *In-scope addons* table, then the *Ka0s-owned library repos* table (`LibKa0s`), then the *Documentation-and-tooling repos* table (`WowAddonStandards`, `dev-copilot`), each in its table's row order. Tag every repo with its kind — `addon` for an addon-table row, `library` for a library-table row, `standards` for `WowAddonStandards` and `tooling` for any other documentation-and-tooling row, the same `kind` `dev-copilot-profile` reports for it. If `ADDONS.md` is unreachable, fall back to the sibling directories next to the cwd that contain a `.toc` (`addon`, except `LibKa0s`) plus the three known upstreams `LibKa0s` (`library`), `WowAddonStandards` (`standards`) and `dev-copilot` (`tooling`), and **say in the report that the roster was inferred** — an inferred roster can silently omit a repo, and a missing repo reads as "nothing here" rather than "not checked".
+- **a repo name** → that repo alone, with its kind tag, matched case-insensitively against the same roster (every row, upstreams included). If it matches nothing, say so, list the valid names, and stop. Don't guess at a near-miss.
+
+**What each row gets depends on its kind.** Upstream rows (`library`, `standards`, `tooling`) get the base triage only: this overlay's `resolutions` section, which frames its options around an addon's code and audit bundle, applies on `addon` rows only, and an upstream item is offered the base's resolutions. The collection label set, the severity ladder, the rationale rule and the hard rules apply to every row.
 
 If the cwd is not an addon repo and no scope was given, **ask**. Don't guess.
 
