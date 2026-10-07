@@ -9,19 +9,24 @@ The toolchain contract for **this** repository (documentation-§7).
 > reasons, and no invented rows. Every entry below names the `file:line` in *this* tree that needs
 > it; an entry with no such line does not belong here.
 >
-> The repo is 73 tracked files: 54 Markdown (22 command specs, 2 agent specs, 13 WoW overlays,
-> 4 design/plan notes under `docs/superpowers/`, the 3 root docs, and the 10 files of the frozen
-> 2026-10-07 audit and review bundles), two JSON manifests plus `hooks/hooks.json`, seven Python
-> files (the detector, the overlay checker, the bounded-runs matcher, a unit test for each, and a unit
-> test for the line-ending hook), two Bash scripts, three extensionless executables — the Bash runner `scripts/ka0s-bounded`
-> and the two POSIX `sh` exec wrappers on the plugin's PATH entry, `bin/ka0s-bounded` and
+> The inventory is stated by the commands that produce it, not by counts that drift with every
+> commit: `git ls-files | wc -l` for the whole tree, `git ls-files '*.md' | wc -l` for the Markdown,
+> and `git ls-files docs` for the docs store. The Markdown is the command specs (`commands/`), the
+> agent specs (`agents/`), the WoW overlays (`profiles/wow/`), the root docs, and `docs/` — the
+> `docs/ARCHITECTURE.md` hub plus three frozen stores it registers as directory rows:
+> `docs/superpowers/` (design specs and plans), `docs/audits/<date>/` and `docs/reviews/<date>/`.
+> Beside the Markdown sit the two JSON manifests under `.claude-plugin/`, `hooks/hooks.json`, the
+> Python under `scripts/` — the modules (the detector, the overlay checker, the bounded-runs matcher)
+> and one `test_*.py` each for those three and for the line-ending hook — the Bash hook scripts
+> (`scripts/*.sh`), three extensionless executables — the Bash runner `scripts/ka0s-bounded` and the
+> two POSIX `sh` exec wrappers on the plugin's PATH entry, `bin/ka0s-bounded` and
 > `bin/dev-copilot-profile` — plus `LICENSE`, `.gitattributes`, `.gitignore` and the `.dev-copilot`
 > profile override. Line endings are **LF** here, not the CRLF the client-bound addon repos pin.
 
 ## The short version
 
 Clone it, then point Claude Code at it as a plugin. There is no build step and no package manifest —
-the seven Python files are standard-library-only and the shell scripts are Bash, apart from the two
+the Python files are standard-library-only and the shell scripts are Bash, apart from the two
 one-line POSIX `sh` wrappers in `bin/`, which only `exec` the Bash runner and the Python detector.
 
 ```sh
@@ -43,10 +48,10 @@ Ubuntu install; none needs a language package manager.
 | Software | Package manager | Why this repo needs it | Evidence | Install (WSL2 / Ubuntu) | Verify |
 |---|---|---|---|---|---|
 | **bash** ≥ 4.2 | `apt` (`bash`) | Both hooks are invoked as `bash <script>`, and `scripts/ka0s-bounded` uses Bash-only syntax (arrays, `exec {fd}>`). | `hooks/hooks.json:9`, `hooks/hooks.json:20`; `scripts/ka0s-bounded:1`, `:86`, `:117` | preinstalled; `sudo apt update && sudo apt install -y bash` | `bash --version` |
-| **python3** ≥ 3.8 | `apt` (`python3`) | The repo profile detector every command's Step 0 runs (`bin/dev-copilot-profile` `exec`s it), the PreToolUse guard, and the PostToolUse hook's `python3 -c` JSON parse. Standard library only — `glob`, `json`, `os`, `re`, `subprocess`, `sys`. | `bin/dev-copilot-profile:8`; `scripts/detect_profile.py:1`, `:27-30`; `scripts/bounded_runs.py:1`, `:33-36`; `scripts/bounded-runs-hook.sh:33`; `scripts/normalize-eol.sh:15` | `sudo apt install -y python3` | `python3 --version` |
-| **git** ≥ 2.34 | `apt` (`git`) | The detector classifies at the git top-level and reads the `origin` URL; the line-ending hook asks git — and only git — what a written file's declared ending is (`git rev-parse --show-toplevel`, then `git check-attr text eol`). | `scripts/detect_profile.py:41`, `:48`, `:89`; `scripts/normalize-eol.sh:41`, `:57`; `scripts/test_normalize_eol.py:40` | `sudo apt install -y git` | `git --version` |
-| **perl** ≥ 5.10 | `apt` (`perl`) | The line-ending hook does the byte rewrite in perl rather than sed, deliberately, because BSD and GNU `sed -i` differ. Both the CRLF and the LF branch use it. | `scripts/normalize-eol.sh:68`, `:73`, `:81`; `scripts/test_normalize_eol.py:57-61` | preinstalled; `sudo apt install -y perl` | `perl --version` |
-| **coreutils** (`readlink -f`, `timeout`) ≥ 8.30 | `apt` (`coreutils`) | `bin/dev-copilot-profile` and `bin/ka0s-bounded` resolve their own location with `readlink -f` (GNU), and the line-ending hook resolves a symlinked file to its target with it before rewriting. `ka0s-bounded`'s wall-clock bound is `timeout -k 10`, with `--foreground` added only when stdin is a terminal (it keeps Ctrl-C working there; off a terminal, timeout signals the whole process group so forked children die with the run); `timeout` is probed with `command -v`, so an absence drops the bound rather than failing the run. | `bin/dev-copilot-profile:8`; `bin/ka0s-bounded:10`; `scripts/normalize-eol.sh:36`; `scripts/ka0s-bounded:106-111` | preinstalled; `sudo apt install -y coreutils` | `readlink --version`; `timeout --version` |
+| **python3** ≥ 3.8 (Ubuntu 20.04's; the scripts use nothing newer, so any recent python3) | `apt` (`python3`) | The repo profile detector every command's Step 0 runs (`bin/dev-copilot-profile` `exec`s it), the PreToolUse guard, and the PostToolUse hook's `python3 -c` JSON parse. Standard library only — `glob`, `json`, `os`, `re`, `subprocess`, `sys`. | `bin/dev-copilot-profile:8`; `scripts/detect_profile.py:1`, `:27-30`; `scripts/bounded_runs.py:1`, `:33-36`; `scripts/bounded-runs-hook.sh:30`; `scripts/normalize-eol.sh:15` | `sudo apt install -y python3` | `python3 --version` |
+| **git** ≥ 2.34 (Ubuntu 22.04's; any recent git has `check-attr` and `rev-parse --show-toplevel`) | `apt` (`git`) | The detector classifies at the git top-level and reads the `origin` URL; the line-ending hook asks git — and only git — what a written file's declared ending is (`git rev-parse --show-toplevel`, then `git check-attr text eol`). | `scripts/detect_profile.py:41`, `:48`, `:89`; `scripts/normalize-eol.sh:41`, `:57`; `scripts/test_normalize_eol.py:40` | `sudo apt install -y git` | `git --version` |
+| **perl** ≥ 5.10 (the hook uses only `-i`, `-0777` and a fixed-width lookbehind, all far older; any recent perl) | `apt` (`perl`) | The line-ending hook does the byte rewrite in perl rather than sed, deliberately, because BSD and GNU `sed -i` differ. Both the CRLF and the LF branch use it. | `scripts/normalize-eol.sh:68`, `:73`, `:81`; `scripts/test_normalize_eol.py:57-60` | preinstalled; `sudo apt install -y perl` | `perl --version` |
+| **coreutils** (`readlink -f`, `timeout`) ≥ 8.30 (Ubuntu 20.04's; any recent GNU coreutils has `readlink -f` and `timeout -k`) | `apt` (`coreutils`) | `bin/dev-copilot-profile` and `bin/ka0s-bounded` resolve their own location with `readlink -f` (GNU), and the line-ending hook resolves a symlinked file to its target with it before rewriting. `ka0s-bounded`'s wall-clock bound is `timeout -k 10`, with `--foreground` added only when stdin is a terminal (it keeps Ctrl-C working there; off a terminal, timeout signals the whole process group so forked children die with the run); `timeout` is probed with `command -v`, so an absence drops the bound rather than failing the run. | `bin/dev-copilot-profile:8`; `bin/ka0s-bounded:10`; `scripts/normalize-eol.sh:36`; `scripts/ka0s-bounded:106-111` | preinstalled; `sudo apt install -y coreutils` | `readlink --version`; `timeout --version` |
 
 If the plugin's `bin/` is not on PATH, the bare `dev-copilot-profile` is not found and every Step 0
 falls back to `"${CLAUDE_PLUGIN_ROOT}/bin/dev-copilot-profile"` — same script, same python3.
@@ -65,7 +70,7 @@ are listed because losing one silently weakens the guard the bounded-runs hook e
 
 | Software | Package manager | Why this repo needs it | Evidence | Install (WSL2 / Ubuntu) | Verify |
 |---|---|---|---|---|---|
-| **python3** (with `unittest`) | `apt` (`python3`) | The four test files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/test_normalize_eol.py:1`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:77-81` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
+| **python3** (with `unittest`) | `apt` (`python3`) | The `test_*.py` files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/test_normalize_eol.py:1`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:77-81` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
 | **git** | `apt` (`git`) | The detector's tests build fixture repos with `git init` and `git remote add`, and the line-ending hook's tests build one per case with `git init` and a `.gitattributes`. `.gitattributes` pins this repo to **LF**, and `git check-attr` is the only correct reader of that pin. | `scripts/test_detect_profile.py:25`, `:27`; `scripts/test_normalize_eol.py:40`; `.gitattributes`; `scripts/normalize-eol.sh:57` | `sudo apt install -y git` | `git check-attr text eol -- CLAUDE.md` |
 | **Claude Code** | its own installer | The specs in `commands/`, `agents/` and `profiles/wow/` are only executable as plugin slash commands and subagents; `/reload-plugins` is the load check. | `.claude-plugin/plugin.json`; `CLAUDE.md:84` | see the Claude Code docs | `/reload-plugins` in a session |
 
@@ -76,11 +81,11 @@ them — but a command will report a skip or a stall without them, so they are n
 
 | Software | Package manager | Which specs need it | What happens without it |
 |---|---|---|---|
-| **`gh`** (GitHub CLI), authenticated | `apt` (`gh`, from the GitHub apt repository) | the six `issue-*` commands (any repo), `wow-harvest-standards`, `wow-revendor-libka0s`'s decline filing, the `wow-standards-audit` agent's register read | `issue-audit` treats it as a skipped sweep; the others stop or report an unfiled write rather than degrading silently (`CLAUDE.md:123`, `CLAUDE.md:124`) |
+| **`gh`** (GitHub CLI), authenticated | `apt` (`gh`, from the GitHub apt repository) | the six `issue-*` commands (any repo), `wow-harvest-standards`, `wow-revendor-libka0s`'s decline filing, the `wow-standards-audit` agent's register read | the `issue-*` commands stop rather than degrade (`commands/issue-audit.md:72`, `CLAUDE.md:123`); the others report an unfiled write rather than degrading silently (`CLAUDE.md:124`) |
 | **network access to raw GitHub** | — | `wow-standards-audit`, `wow-new-addon`, `wow-revendor-standards`, `wow-automated-tests`, `wow-perf-analysis` fetch the `WowAddonStandards` playbooks at runtime; the WoW review fetches the standard for its guardrail | the first three hard-stop rather than work from memory; the review proceeds and says the cross-check was skipped (`CLAUDE.md:106`) |
 | **sibling checkouts on local disk** | — | `wow-revendor-libka0s` reads `../LibKa0s` at a git tag; `wow-harvest-standards` reads every addon repo and the standards working tree; `finalize` and the issue commands' `all` scope read sibling repos | reported as not run, never inferred (`commands/wow-revendor-libka0s.md`, `commands/wow-harvest-standards.md`) |
 | **the target repo's own toolchain** | whatever that repo uses | `run-tests`, `review`, `bump-version` and `finalize`'s gate run the lint/test/type-check tools a *generic* repo declares (npm/pnpm/yarn, pytest/ruff/mypy, go, cargo, make, gradle/maven, dotnet, …) | a **stated skip**, never an inferred pass (`commands/run-tests.md`) |
-| **Lua 5.1**, **luacheck**, **lizard** | `apt` (`lua5.1`), `luarocks` (`luacheck`), `pipx` (`lizard`; bare `pip` fails on Ubuntu 24.04's PEP 668 marker) | in a WoW repo: `run-tests`, `review`, `bump-version`, `wow-standards-audit`, `wow-automated-tests`, `wow-new-addon` (its first automated-test bundle), plus Lua and `luacheck` for the gates `finalize` and `wow-revendor-libka0s` run — all of which execute **inside an addon repo**, never here (`commands/wow-new-addon.md:244`, `profiles/wow/finalize.md:28-29`, `commands/wow-revendor-libka0s.md:316`) | a **stated skip** / *not run*, never an inferred pass and never a fabricated number (`CLAUDE.md:114`, `CLAUDE.md:109`) |
+| **Lua 5.1**, **luacheck**, **lizard** | `apt` (`lua5.1`), `luarocks` (`luacheck`), `pipx` (`lizard`; bare `pip` fails on Ubuntu 24.04's PEP 668 marker) | in a WoW repo: `run-tests`, `review`, `bump-version`, `wow-standards-audit`, `wow-automated-tests`, `wow-new-addon` (its first automated-test bundle), plus Lua and `luacheck` for the gates `finalize` and `wow-revendor-libka0s` run — all of which execute **inside an addon repo**, never here (`commands/wow-new-addon.md:246`, `profiles/wow/finalize.md:32-33`, `commands/wow-revendor-libka0s.md:317`) | a **stated skip** / *not run*, never an inferred pass and never a fabricated number (`CLAUDE.md:114`, `CLAUDE.md:109`) |
 
 ## Not used here, and why
 
@@ -91,7 +96,7 @@ applicable".
 |---|---|---|
 | **Lua 5.1** | **not used here** | No `.lua` file is tracked in this repo. The Lua the specs talk about runs in the addon repo the command is invoked from. |
 | **luacheck** | **not used here** | Lint needs Lua to lint, and there is no `.luacheckrc`. |
-| **lizard** | **not used here** | Cyclomatic complexity over zero Lua functions is not a measurement. The seven Python files and five shell scripts are on no complexity gate. |
+| **lizard** | **not used here** | Cyclomatic complexity over zero Lua functions is not a measurement. The Python files and shell scripts are on no complexity gate. |
 | **A WoW client** | **not used here** | Nothing here loads as an addon; there is no `.toc` and no `docs/smoke-tests.md`. |
-| **pip / a `requirements.txt` / `pyproject.toml`** | **not used here** | All seven Python files import only the standard library (`glob`, `json`, `os`, `re`, `subprocess`, `sys`, `tempfile`, `unittest`). Adding a manifest would be the first thing to go stale. |
+| **pip / a `requirements.txt` / `pyproject.toml`** | **not used here** | All the Python files import only the standard library (`glob`, `json`, `os`, `re`, `subprocess`, `sys`, `tempfile`, `unittest`). Adding a manifest would be the first thing to go stale. |
 | **packager / release tooling** | **not used here** | No `.pkgmeta` and no artifact to publish. The plugin is consumed from the repo by Claude Code (the repo is its own marketplace), not released as a build. |
