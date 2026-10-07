@@ -311,7 +311,7 @@ both directions have real examples here:
 
 - A `RegisterChatCommand` census that walks `libs/` reports the token `mychat`, which no addon registers.
   It is a comment inside vendored `AceConfigCmd-3.0.lua`, which every addon vendors.
-- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **hundreds of hits in PrettyChat**
+- A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **well over a thousand hits in PrettyChat**
   and would have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC
   load list it reports **0**. Every one of those hits lives under `GlobalStrings/` — the monolithic
   `GlobalStrings.lua` and several of its split `GlobalStrings_NNN.lua` chunks, tracked,
