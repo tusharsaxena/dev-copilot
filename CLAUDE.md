@@ -88,7 +88,7 @@ No build. Run all of these after touching `scripts/`, `bin/`, `commands/`, `agen
 
 - `python3 scripts/test_detect_profile.py` — the detector (17 cases).
 - `python3 scripts/test_check_overlays.py` — the checker (15 cases).
-- `python3 scripts/test_bounded_runs.py` — the bounded-runs matcher and hook script, including both symlinks (20 cases).
+- `python3 scripts/test_bounded_runs.py` — the bounded-runs matcher and hook script, including both symlinks (22 cases).
 - `python3 scripts/check_overlays.py` — the live tree; prints `OK: 13 overlays`.
 - `python3 -c "import json; [json.load(open(f)) for f in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')]"` — both manifests parse.
 - `dev-copilot-profile <path>` against a real addon, `LibKa0s`, `WowAddonStandards`, `Ka0sAddonsCommonTasks`, this repo (`wow/tooling`, `reason=override`) and a generic repo.

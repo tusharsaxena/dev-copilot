@@ -22,8 +22,10 @@ A segment passes when:
 The matcher is deliberately a shell-ish tokenizer, not a shell parser: it splits on the control
 operators outside quotes, skips heredoc bodies (unless a bare shell reads them), drops leading
 assignments, reserved words and transparent wrappers (`env`, `time`, `nice`, `exec`, `command`,
-`timeout …`), and looks at the first real word -- the command position. False negatives on exotic
-shell are acceptable; false positives on ordinary commands are not.
+`timeout …`), and looks at the first real word -- the command position. `command` is transparent
+only without `-v`/`-V`: `command -v luacheck` is a tool-presence probe, so that segment has no
+command at all. False negatives on exotic shell are acceptable; false positives on ordinary commands
+are not.
 """
 
 import json
@@ -232,6 +234,8 @@ def strip_prefix(words):
             i += 1
             # `env -i`, `nice -n 5`, `stdbuf -oL`: skip their options
             while i < len(words) and words[i].startswith("-"):
+                if w == "command" and words[i] in ("-v", "-V"):
+                    return [], assignments, timed  # `command -v lizard` looks a tool up, never runs it
                 i += 1
                 if i < len(words) and words[i - 1] in ("-n", "-u") and not words[i].startswith("-"):
                     i += 1
