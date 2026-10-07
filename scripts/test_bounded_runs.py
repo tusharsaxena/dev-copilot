@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -189,6 +190,28 @@ class BinWrapper(unittest.TestCase):
         p = self.run_wrapper()
         self.assertEqual(p.returncode, 2)
         self.assertIn("usage: ka0s-bounded", p.stderr)
+
+    def test_timeout_kills_children(self):
+        # Non-interactive (stdin not a TTY): a timeout must stop the whole tree, not only the top process,
+        # or forked children outlive a run reported as stopped and keep the slot-pool lock fd.
+        marker = "sleep 4711"
+        self.addCleanup(subprocess.run, ["pkill", "-f", marker], capture_output=True)
+        env = dict(os.environ, XDG_CACHE_HOME=tempdir(self), KA0S_KIT_CGROUP="off", KA0S_KIT_TIMEOUT_S="2")
+        env.pop("KA0S_BOUNDED_DEPTH", None)
+        # Output goes to a file, not a pipe: a survivor would hold a pipe open and hang the wait.
+        with tempfile.TemporaryFile() as err:
+            p = subprocess.run([self.PATH, "bash", "-c", marker + " & " + marker + "; echo done"],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err, env=env,
+                               timeout=60)
+            err.seek(0)
+            self.assertEqual(p.returncode, 124, err.read())
+        survivors = ""
+        for _ in range(20):
+            survivors = subprocess.run(["pgrep", "-f", marker], capture_output=True, text=True).stdout
+            if not survivors:
+                break
+            time.sleep(0.1)
+        self.assertEqual(survivors, "", "children outlived the timeout")
 
 
 class HookScript(unittest.TestCase):

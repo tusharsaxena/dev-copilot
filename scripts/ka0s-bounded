@@ -15,13 +15,17 @@
 #                     of RAM), MemorySwapMax=0 and TasksMax (KA0S_KIT_TASKS, default 256), so a
 #                     runaway tree is killed as one unit instead of by the kernel picking among
 #                     everything on the machine. Skipped where systemd is absent, or KA0S_KIT_CGROUP=off
-#   * the CLOCK    -- `timeout --foreground` (KA0S_KIT_TIMEOUT_S, default 900); --foreground keeps
-#                     Ctrl-C working
+#   * the CLOCK    -- `timeout -k 10` (KA0S_KIT_TIMEOUT_S, default 900). Off a terminal (Claude's
+#                     Bash tool, CI) timeout signals the whole process group, so forked children die
+#                     with the run instead of outliving it with the slot lock fd. --foreground is added
+#                     only when stdin is a terminal, where it keeps Ctrl-C working; there a timeout
+#                     stops only the top process
 #   * the MACHINE  -- a flock slot pool under ${XDG_CACHE_HOME:-~/.cache}/ka0s-kit/slots, so any
 #                     number of repos and agents can start runs in parallel and the ones past the
 #                     memory the machine has wait for a slot rather than piling on. Slot count is
 #                     max(1, floor(MemAvailable * 0.6 / KA0S_KIT_SLOT_MB)), default slot 2048 MB,
-#                     or KA0S_KIT_SLOTS exactly
+#                     recomputed on every pass while waiting so a run queued under memory pressure
+#                     can take a higher slot once memory frees; or KA0S_KIT_SLOTS exactly
 #
 # The variables and defaults are the ones LibKa0s' test kit (revision 23) reads in its own guard,
 # so a bounded run and a self-guarded run mean the same thing. A limit of 0 drops that limit;
@@ -48,8 +52,9 @@ meminfo_mb() { awk -v k="$1:" '$1 == k { print int($2 / 1024) }' /proc/meminfo 2
 
 is_uint() { case "$1" in ''|*[!0-9]*) return 1 ;; *) return 0 ;; esac; }
 
+avail_mb() { local a; a="$(meminfo_mb MemAvailable)"; is_uint "$a" || a=4096; echo "$a"; }
+
 total_mb="$(meminfo_mb MemTotal)"; is_uint "$total_mb" || total_mb=16384
-avail_mb="$(meminfo_mb MemAvailable)"; is_uint "$avail_mb" || avail_mb=4096
 
 proc_mb="${KA0S_KIT_PROC_MB:-2048}";            is_uint "$proc_mb" || proc_mb=2048
 tree_mb="${KA0S_KIT_TREE_MB:-$(( total_mb / 2 ))}"; is_uint "$tree_mb" || tree_mb=$(( total_mb / 2 ))
@@ -63,16 +68,19 @@ export KA0S_BOUNDED_DEPTH=$(( ${KA0S_BOUNDED_DEPTH:-0} + 1 ))
 
 # ── the slot pool ─────────────────────────────────────────────────────────────────────────────
 if [ "$nested" -eq 0 ] && command -v flock >/dev/null 2>&1; then
+    # The slot count from MemAvailable: max(1, floor(avail * 0.6 / slot_mb)).
+    mem_slots() { local n; n=$(( $(avail_mb) * 6 / 10 / slot_mb )); [ "$n" -lt 1 ] && n=1; echo "$n"; }
+    fixed_slots=1
     slots="${KA0S_KIT_SLOTS:-}"
     if ! is_uint "$slots" || [ "$slots" -lt 1 ]; then
-        slots=$(( avail_mb * 6 / 10 / slot_mb ))
-        [ "$slots" -lt 1 ] && slots=1
+        fixed_slots=0
     fi
     slot_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ka0s-kit/slots"
     mkdir -p "$slot_dir" 2>/dev/null
     waited=0
     acquired=0
     while [ "$acquired" -eq 0 ]; do
+        [ "$fixed_slots" -eq 0 ] && slots="$(mem_slots)"
         i=1
         while [ "$i" -le "$slots" ]; do
             exec {slot_fd}>"$slot_dir/slot.$i"
@@ -96,7 +104,11 @@ fi
 # ── the command ───────────────────────────────────────────────────────────────────────────────
 cmd=("$@")
 if [ "$secs" -gt 0 ] && command -v timeout >/dev/null 2>&1; then
-    cmd=(timeout --foreground -k 10 "$secs" "${cmd[@]}")
+    if [ -t 0 ]; then
+        cmd=(timeout --foreground -k 10 "$secs" "${cmd[@]}")
+    else
+        cmd=(timeout -k 10 "$secs" "${cmd[@]}")
+    fi
 fi
 scoped=0
 if [ "$nested" -eq 0 ] && [ "${KA0S_KIT_CGROUP:-}" != "off" ] && [ "$tree_mb" -gt 0 ] \
