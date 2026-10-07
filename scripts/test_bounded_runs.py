@@ -55,6 +55,20 @@ class Matcher(unittest.TestCase):
                     "timeout 60 lua tests/run.lua"):  # a timeout alone is not a memory bound
             self.assertTrue(self.denied(cmd), cmd)
 
+    def test_shell_c_script_is_scanned(self):
+        # A `-c` script string is commands, scanned like the top level (DC-R-13).
+        for cmd in ('bash -c "lua tests/run.lua"', 'sh -c "luacheck ."', "bash -lc 'lizard -l lua .'",
+                    "bash -o pipefail -c 'luacheck . | tail -3'", "sh -c 'cd x && lua tests/run.lua'",
+                    "bash -c 'sh -c \"luacheck .\"'"):
+            self.assertTrue(self.denied(cmd), cmd)
+        self.assertEqual(self.denied('sh -c "luacheck ."'), ["luacheck"])
+
+    def test_ulimit_without_a_numeric_limit_is_not_a_bound(self):
+        # `ulimit -v unlimited` lifts the memory cap rather than setting one (DC-R-13).
+        for cmd in ("ulimit -v unlimited; luacheck .", "ulimit -v unlimited; timeout 0 lua tests/run.lua",
+                    "(ulimit -Sv unlimited; timeout 60 lizard -l lua .)"):
+            self.assertTrue(self.denied(cmd), cmd)
+
     def test_old_kit_lua_run_refused_through_cd(self):
         parent = os.path.dirname(self.old)
         name = os.path.basename(self.old)
@@ -77,7 +91,11 @@ class Matcher(unittest.TestCase):
             self.assertEqual(self.denied(cmd), [], cmd)
 
     def test_bounded_by_hand_passes(self):
-        self.assertEqual(self.denied("(ulimit -v 2097152; timeout 180 lua tests/run.lua > o 2>&1)"), [])
+        for cmd in ("(ulimit -v 2097152; timeout 180 lua tests/run.lua > o 2>&1)",
+                    "ulimit -v 2097152; timeout 600 luacheck .", "ulimit -Sv 2097152 && timeout 60 lizard .",
+                    "bash -c 'ulimit -v 2097152; timeout 60 luacheck .'",
+                    "ulimit -v 2097152; timeout 60 bash -c 'luacheck .'"):
+            self.assertEqual(self.denied(cmd), [], cmd)
 
     def test_inline_opt_out_passes(self):
         self.assertEqual(self.denied("KA0S_BOUNDED_HOOK=off lua tests/run.lua"), [])
@@ -93,6 +111,15 @@ class Matcher(unittest.TestCase):
                     "sed -n 1,20p tests/_kit/run-automated-tests.sh", "lua -v",
                     "lua tools/gen-api-members.lua", "which luacheck lizard"):
             self.assertEqual(self.denied(cmd), [], cmd)
+
+    def test_shell_c_prose_and_bounded_runs_pass(self):
+        # Scanning a `-c` string must not turn its arguments or quoted prose into runs (DC-R-13).
+        for cmd in ("bash -c 'grep lizard x'", "sh -c 'echo luacheck'", "bash -c 'command -v lizard'",
+                    "bash -c 'ka0s-bounded lua tests/run.lua'", "bash -c 'git commit -m \"lizard; luacheck\"'",
+                    "bash -c 'KA0S_BOUNDED_HOOK=off luacheck .'", "bash -c", "sh -c ''",
+                    "bash -n tests/_kit/run-automated-tests.sh.bak", "zsh -c 'echo ok' lizard luacheck"):
+            self.assertEqual(self.denied(cmd), [], cmd)
+        self.assertEqual(self.denied("bash -c 'lua tests/run.lua'", self.new), [])
 
     def test_command_v_probe_is_not_a_run(self):
         # `command -v`/`-V` looks a tool up; it never runs it (DC-A-06).
