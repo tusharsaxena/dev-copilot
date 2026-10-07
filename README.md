@@ -102,6 +102,12 @@ The repo is its own Claude Code marketplace. Inside any Claude Code session:
 /reload-plugins
 ```
 
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): the doc hub. It holds the file-and-path map (including which names and paths are breaking to rename), the known limitations, the register of every doc in the repo and the documented-deviations register.
+- [`CLAUDE.md`](CLAUDE.md): the agent brief, with the overlay contract and the conventions for changing the plugin.
+- [`DEPENDENCIES.md`](DEPENDENCIES.md): what the hooks, the detector and the commands need on the machine.
+
 ## License
 
 MIT © 2026 Tushar Saxena
