@@ -30,8 +30,9 @@ command Reads at run time from the detector's `root`.
 **One plugin, two profiles.** Every command first runs `dev-copilot-profile` to classify the repo it is
 in. In a `generic` repo it follows its base spec and never reads WoW text; in a `wow` repo (a Ka0s
 addon, `LibKa0s`, `WowAddonStandards`, or a tooling repo such as this one, which opts in through its
-`.dev-copilot` override) it also applies its `profiles/wow/<name>.md` overlay. The eight `wow-*`
-commands refuse in a generic repo. Five of the WoW commands and the WoW review fetch the living
+`.dev-copilot` override) it also applies its `profiles/wow/<name>.md` overlay. Seven of the eight
+`wow-*` commands refuse in a generic repo; `wow-new-addon` never refuses, because the addon it
+scaffolds does not exist yet. Five of the WoW commands and the WoW review fetch the living
 Ka0s WoW Addon Standard over HTTPS at run time, so the standard can change without a plugin release.
 
 ## Module Map
@@ -63,7 +64,8 @@ which are **addressed by name or path** and therefore breaking to rename.
     `issue-fetch-all`, `issue-summary`. Generic core; WoW behavior in an overlay.
   - **8 WoW-only**: `wow-new-addon`, `wow-bump-interface`, `wow-automated-tests`,
     `wow-perf-analysis`, `wow-revendor-libka0s`, `wow-revendor-standards`, `wow-harvest-standards`,
-    `wow-standards-audit`. Each opens with a refusal step; no overlay.
+    `wow-standards-audit`. Each opens with a guard step (a refusal, or for
+    `wow-new-addon` a nesting check); no overlay.
   - Two are thin **wrappers that dispatch to a subagent**: `review` → `dev-copilot:review`,
     `wow-standards-audit` → `dev-copilot:wow-standards-audit`. The other twenty act directly.
 - `agents/*.md` — **2** subagent specs: `review` (generic principal-level review → `reviews/<date>/`;
@@ -102,8 +104,9 @@ which are **addressed by name or path** and therefore breaking to rename.
   deep) are scanned as commands. A probe such as `command -v luacheck` is not a run. The runner caps
   process memory, process-tree memory and tasks, and wall-clock time (a timeout kills the whole run,
   children included), and queues on a machine-wide `flock` slot pool whose size it recomputes while
-  it waits. `scripts/test_bounded_runs.py` — the matcher, the hook script, both symlinks and the
-  runner's timeout.
+  it waits. `scripts/test_bounded_runs.py` — the matcher, the hook script, the runner symlink (and
+  that the retired `~/.claude/wow-addon/` dir is never recreated), the `bin/ka0s-bounded` wrapper and
+  the runner's timeout.
 - `docs/` — design notes and frozen records kept out of the root docs: this hub, the
   `docs/superpowers/` specs and plans, and this repo's own `docs/audits/<date>/` and
   `docs/reviews/<date>/` bundles (see *Documentation map*). Nothing here is loaded by Claude Code.
