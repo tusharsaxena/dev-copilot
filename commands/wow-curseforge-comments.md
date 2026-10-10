@@ -111,7 +111,7 @@ whether the owner has replied. Ask with AskUserQuestion:
   - **Labels:** `state:untriaged`, a `severity:` label chosen against the collection's severity ladder
     that `issue-add` uses in a WoW repo, `bug` or `enhancement` to match the class, and
     `source:curseforge`.
-  - **Body:** the CurseForge comment URL, the author and date, the comment quoted (and its parent when
+  - **Body:** the addon's CurseForge comments page (a comment has no URL of its own), the author and date, the comment quoted (and its parent when
     it is a reply), and the classification reason. A short note on what to check first is optional.
 
   Show the draft and get approval before filing. Once approved:
@@ -136,8 +136,25 @@ Skip this step on `--dry-run`.
 
 Run `ka0s-curseforge report-comments <ts> <scope words>` with the `ts` from Step 3. It writes
 `reports/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself, named and dated in the journal's local
-timezone (`timezone` in `journal.config.json`), the same as every time you show the owner: what was new, edited or deleted in
-that run, the issues filed, and the bug and feature comments still unfiled.
+timezone (`timezone` in `journal.config.json`), the same as every time you show the owner.
+
+The report shows each addon's comments as **conversation trees**: every thread on record, newest thread
+first, each reply nested under the comment it answers, oldest reply first. Each node is one line:
+
+```
+## AbsorbTracker — [CurseForge comments](https://www.curseforge.com/wow/addons/ka0s-absorb-tracker/comments)
+
+- [[bob](https://www.curseforge.com/members/bob) 2026-09-20 18:05 IST] Please add a scale slider _(feature, new, issue [AbsorbTracker#15](https://github.com/tusharsaxena/AbsorbTracker/issues/15))_
+  - [[add1kted2ka0s](https://www.curseforge.com/members/add1kted2ka0s) 2026-09-20 18:40 IST] Added in 1.3 _(owner, new)_
+```
+
+The node gives the author, the local date, a snippet of the comment's text (up to 200 characters, on one
+line), and its tags: the class (`owner` for the owner's own comments), `new` or `edited` when this run saw
+it, `deleted`, and `issue <ref>` or `issue declined`. **CurseForge gives a comment no URL of its own**:
+the page has no anchor or id for it, and the endpoint returns none. So the addon heading carries the one
+real link, the addon's comments page; each author links to their CurseForge profile, and an issue tag
+links to the GitHub issue itself. The snippets are for the report only. In chat, keep
+to the one-line gists of Step 4.
 
 ```bash
 git -C <journalRepo> add journal/curseforge

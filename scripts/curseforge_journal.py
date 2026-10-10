@@ -30,6 +30,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -611,7 +612,7 @@ class Context:
     def _render_releases(self, names, run_ts):
         """The releases report for one run, derived from the journal alone, so it can be regenerated."""
         addons = [a for a in (self._release_view(n, run_ts) for n in names) if a]
-        addons.sort(key=lambda a: -a["total"])
+        addons.sort(key=lambda a: a["name"].lower())
         run = next((r for r in load_lines(os.path.join(self.journal, "runs.jsonl"))
                     if r.get("ts") == run_ts and r.get("command") == "releases"), {})
         body = render_releases(addons, run, run_ts, self.tz)
@@ -723,33 +724,70 @@ def render_releases(addons, run, run_ts, tz):
     return "\n".join(lines)
 
 
-def quote(text, limit=300):
-    text = (text or "").strip()
-    text = text if len(text) <= limit else text[:limit].rstrip() + "…"
-    return "\n".join("> " + l for l in text.split("\n"))
+SNIPPET = 200
+MEMBERS = SITE + "/members/"
+
+
+def author_link(name):
+    """CurseForge has no per-comment URL, so a node links its author's profile instead."""
+    return "[%s](%s%s)" % (name, MEMBERS, urllib.parse.quote(name or "")) if name else "?"
+
+
+def issue_link(ref):
+    """`owner/repo#N` as a real GitHub link, labelled `repo#N`."""
+    repo, num = ref.rsplit("#", 1)
+    return "[%s#%s](https://github.com/%s/issues/%s)" % (repo.split("/")[-1], num, repo, num)
+
+
+def snippet(text, limit=SNIPPET):
+    text = " ".join((text or "").split())
+    return text if len(text) <= limit else text[:limit].rstrip() + "…"
+
+
+def node_tags(rec, run_ts):
+    tags = ["owner" if rec.get("isOwner") else effective_class(rec) or "unclassified"]
+    if rec.get("firstSeen") == run_ts:
+        tags.append("new")
+    if rec.get("editedAt") == run_ts:
+        tags.append("edited")
+    if rec.get("deleted"):
+        tags.append("deleted")
+    if rec.get("issueRef") == "declined":
+        tags.append("issue declined")
+    elif rec.get("issueRef"):
+        tags.append("issue " + issue_link(rec["issueRef"]))
+    return tags
 
 
 def render_comment_section(name, data, run_ts, tz):
-    recs = sorted(data.values(), key=lambda r: r.get("postedAt") or "")
-    new = [r for r in recs if r.get("firstSeen") == run_ts]
-    edited = [r for r in recs if r.get("editedAt") == run_ts]
-    deleted = [r for r in recs if r.get("deletedAt") == run_ts]
-    filed = [r for r in recs if (r.get("issueAt") or "") >= run_ts and r.get("issueRef")]
+    """One addon's comments as conversation trees: every thread on record, newest thread first, each
+    reply nested under the comment it answers, oldest reply first."""
+    recs = list(data.values())
+    children = {}
+    for r in recs:
+        parent = r.get("parentId")
+        children.setdefault(parent if str(parent) in data else None, []).append(r)
+    by_date = lambda r: (r.get("postedAt") or "", r["commentId"])
+    lines = []
+
+    def walk(rec, depth):
+        lines.append("%s- [%s %s] %s _(%s)_" % ("  " * depth, author_link(rec.get("author")),
+                                             fmt_local(rec.get("postedAt"), tz),
+                                             snippet(rec.get("text")), ", ".join(node_tags(rec, run_ts))))
+        for child in sorted(children.get(rec["commentId"], []), key=by_date):
+            walk(child, depth + 1)
+
+    for root in sorted(children.get(None, []), key=by_date, reverse=True):
+        walk(root, 0)
+    count = lambda key: sum(1 for r in recs if r.get(key) == run_ts)
+    page = next((r["url"] for r in recs if r.get("url")), None)
+    head = ["## %s — [CurseForge comments](%s)" % (name, page) if page else "## %s" % name, "",
+            "%d comments on record; this run: %d new, %d edited, %d deleted." % (
+                len(recs), count("firstSeen"), count("editedAt"), count("deletedAt")), ""]
     open_ = [r for r in recs if effective_class(r) in ("bug", "feature") and not r.get("issueRef")
              and not r.get("deleted")]
-    lines = ["## %s" % name, "",
-             "%d comments on record; this run: %d new, %d edited, %d deleted." % (len(recs), len(new), len(edited),
-                                                                                len(deleted)), ""]
-    for title, group in (("New", new), ("Edited", edited), ("Deleted", deleted)):
-        for r in group:
-            who = "owner" if r.get("isOwner") else effective_class(r) or "unclassified"
-            lines += ["**%s · %s** — %s, %s" % (title, who, r.get("author"), fmt_local(r.get("postedAt"), tz)),
-                      quote(r.get("text")), ""]
-    for r in filed:
-        lines.append("Issue for comment %s (%s): %s" % (r["commentId"], r.get("author"), r["issueRef"]))
-    if open_:
-        lines.append("Bug and feature comments with no issue yet: %d." % len(open_))
-    return "\n".join(lines) + "\n"
+    tail = [""] + (["Bug and feature comments with no issue yet: %d." % len(open_)] if open_ else [])
+    return "\n".join(head + (lines or ["No comments on record."]) + tail) + "\n"
 
 
 # ---------------------------------------------------------------- CLI

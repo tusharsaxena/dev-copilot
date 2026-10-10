@@ -19,6 +19,9 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
 
 | CF-09 | dev-copilot + Ka0sAddonsCommonTasks | Store changelogs as one `- subject (sha7)` line per commit, plus `changelogCommits` (added during CF-08, see below) | CF-08 |
 | CF-10 | dev-copilot + Ka0sAddonsCommonTasks | Reports in the owner's local time (`timezone` in `journal.config.json`), the releases report as one Addon / Version / Release Date / Downloads / Changes-since table, and `report-releases` to rebuild a run's report from the journal | CF-09 |
+| CF-11 | dev-copilot + Ka0sAddonsCommonTasks | The releases table sorted by addon name, and always shown in full in chat | CF-10 |
+| CF-12 | dev-copilot | The comments report as conversation trees: one `[author date] snippet` node per comment, replies nested | CF-11 |
+| CF-13 | dev-copilot | Links in the comments tree: the addon's comments page on its heading, authors to their profiles, issue tags to the GitHub issue | CF-12 |
 
 ## Execution notes
 
@@ -36,6 +39,14 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
   releases table in their own layout: a Total row per addon, then one row per version. The data stays
   UTC. The report is now derived from the journal alone, so the earlier runs' reports were rebuilt in
   the new form.
+- **CF-11 (2026-10-10).** The owner asked for the full table in every chat summary, not an excerpt, and
+  for the addons in name order instead of by downloads.
+- **CF-12 (2026-10-10).** The owner asked to see the comments themselves in the report, as a conversation
+  tree with `[<author> <date>] <comment>` nodes. Chat keeps the one-line gists.
+- **CF-13 (2026-10-10).** The owner asked for a link to every comment. CurseForge has none: a
+  Playwright check of the comments page found no anchor, id or permalink per comment, only Reply and
+  Quote buttons. The owner chose one comments-page link per addon heading, with author profile links
+  on each node, and real GitHub links for issues.
 
 ## Checkpoint
 
