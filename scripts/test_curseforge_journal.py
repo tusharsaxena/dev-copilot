@@ -394,7 +394,7 @@ class CommentsTest(Collection):
         out = ctx.report_comments(["Alpha"], "2026-10-10T00:00:00Z")
         text = read_text(out["report"])
         self.assertIn("It errors", text)
-        self.assertIn("example/Alpha#4", text)
+        self.assertIn("[Alpha#4](https://github.com/example/Alpha/issues/4)", text)
         self.assertTrue(out["report"].endswith("20261010-053000-comments.md"))
 
 
@@ -464,16 +464,21 @@ class CommentTreeReportTest(Collection):
         ctx.issue("Alpha", 11, "example/Alpha#4")
         text = read_text(ctx.report_comments(["Alpha"], "2026-10-10T00:00:00Z")["report"])
         nodes = [l for l in text.splitlines() if l.lstrip().startswith("- [")]
-        self.assertEqual(nodes[0], "- [bob 2026-09-20 18:05 IST] Please add a scale slider and a colour picker"
-                                   " _(feature, new)_")
-        self.assertTrue(nodes[1].startswith("  - [dave 2026-09-20 18:06 IST] " + "x" * 200 + "… _("))
+        M = "https://www.curseforge.com/members/"
+        self.assertIn("## Alpha — [CurseForge comments](https://www.curseforge.com/wow/addons/ka0s-alpha/comments)",
+                      text)
+        self.assertEqual(nodes[0], "- [[bob](%sbob) 2026-09-20 18:05 IST] Please add a scale slider and a colour"
+                                   " picker _(feature, new)_" % M)
+        self.assertTrue(nodes[1].startswith("  - [[dave](%sdave) 2026-09-20 18:06 IST] " % M + "x" * 200 + "… _("))
         self.assertEqual(nodes[2:], [
-            "- [alice 2026-09-20 17:05 IST] It errors on login _(bug, new, issue example/Alpha#4)_",
-            "  - [TheOwner 2026-09-20 17:06 IST] Fixed in 1.1 _(owner, new)_",
-            "    - [carol 2026-09-20 17:07 IST] Still broken _(bug, new)_",
+            "- [[alice](%salice) 2026-09-20 17:05 IST] It errors on login"
+            " _(bug, new, issue [Alpha#4](https://github.com/example/Alpha/issues/4))_" % M,
+            "  - [[TheOwner](%sTheOwner) 2026-09-20 17:06 IST] Fixed in 1.1 _(owner, new)_" % M,
+            "    - [[carol](%scarol) 2026-09-20 17:07 IST] Still broken _(bug, new)_" % M,
         ])
 
     def test_later_run_marks_only_what_changed_and_keeps_deleted(self):
+        M = "https://www.curseforge.com/members/"
         ctx = self.ctx()
         first = comments_page([comment(11, "alice", "v1", posted=self.P), comment(20, "bob", "gone",
                                                                                  posted=self.P + 1)], total=2)
@@ -483,8 +488,8 @@ class CommentTreeReportTest(Collection):
         ctx.comments(["Alpha"], FakeHttp({"page=0&": second, "page=1&": comments_page([], 1),
                                           "/v1/mods/100": mod(100, 1)}), ts="2026-10-11T00:00:00Z")
         text = read_text(ctx.report_comments(["Alpha"], "2026-10-11T00:00:00Z")["report"])
-        self.assertIn("- [bob 2026-09-20 17:05 IST] gone _(unclassified, deleted)_", text)
-        self.assertIn("- [alice 2026-09-20 17:05 IST] v2 _(unclassified, edited)_", text)
+        self.assertIn("- [[bob](%sbob) 2026-09-20 17:05 IST] gone _(unclassified, deleted)_" % M, text)
+        self.assertIn("- [[alice](%salice) 2026-09-20 17:05 IST] v2 _(unclassified, edited)_" % M, text)
 
     def test_addon_without_comments_says_so(self):
         ctx = self.ctx()
@@ -546,7 +551,7 @@ class LocalTimeReportTest(Collection):
                                           "/v1/mods/100": mod(100, 1)}), ts="2026-10-10T00:00:00Z")
         text = read_text(ctx.report_comments(["Alpha"], "2026-10-10T00:00:00Z")["report"])
         self.assertIn("# CurseForge comments — run 2026-10-10 05:30 IST", text)
-        self.assertIn("- [alice 2026-09-20 17:05 IST] hi", text)
+        self.assertIn("- [[alice](https://www.curseforge.com/members/alice) 2026-09-20 17:05 IST] hi", text)
 
     def test_unknown_timezone_stops(self):
         path = os.path.join(self.journal, "journal.config.json")

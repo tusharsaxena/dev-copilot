@@ -30,6 +30,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -724,6 +725,18 @@ def render_releases(addons, run, run_ts, tz):
 
 
 SNIPPET = 200
+MEMBERS = SITE + "/members/"
+
+
+def author_link(name):
+    """CurseForge has no per-comment URL, so a node links its author's profile instead."""
+    return "[%s](%s%s)" % (name, MEMBERS, urllib.parse.quote(name or "")) if name else "?"
+
+
+def issue_link(ref):
+    """`owner/repo#N` as a real GitHub link, labelled `repo#N`."""
+    repo, num = ref.rsplit("#", 1)
+    return "[%s#%s](https://github.com/%s/issues/%s)" % (repo.split("/")[-1], num, repo, num)
 
 
 def snippet(text, limit=SNIPPET):
@@ -742,7 +755,7 @@ def node_tags(rec, run_ts):
     if rec.get("issueRef") == "declined":
         tags.append("issue declined")
     elif rec.get("issueRef"):
-        tags.append("issue " + rec["issueRef"])
+        tags.append("issue " + issue_link(rec["issueRef"]))
     return tags
 
 
@@ -758,7 +771,8 @@ def render_comment_section(name, data, run_ts, tz):
     lines = []
 
     def walk(rec, depth):
-        lines.append("%s- [%s %s] %s _(%s)_" % ("  " * depth, rec.get("author"), fmt_local(rec.get("postedAt"), tz),
+        lines.append("%s- [%s %s] %s _(%s)_" % ("  " * depth, author_link(rec.get("author")),
+                                             fmt_local(rec.get("postedAt"), tz),
                                              snippet(rec.get("text")), ", ".join(node_tags(rec, run_ts))))
         for child in sorted(children.get(rec["commentId"], []), key=by_date):
             walk(child, depth + 1)
@@ -766,7 +780,8 @@ def render_comment_section(name, data, run_ts, tz):
     for root in sorted(children.get(None, []), key=by_date, reverse=True):
         walk(root, 0)
     count = lambda key: sum(1 for r in recs if r.get(key) == run_ts)
-    head = ["## %s" % name, "",
+    page = next((r["url"] for r in recs if r.get("url")), None)
+    head = ["## %s — [CurseForge comments](%s)" % (name, page) if page else "## %s" % name, "",
             "%d comments on record; this run: %d new, %d edited, %d deleted." % (
                 len(recs), count("firstSeen"), count("editedAt"), count("deletedAt")), ""]
     open_ = [r for r in recs if effective_class(r) in ("bug", "feature") and not r.get("issueRef")
