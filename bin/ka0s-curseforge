@@ -1,0 +1,8 @@
+#!/bin/sh
+# dev-copilot plugin: the CurseForge journal fetcher on the plugin's PATH entry.
+#
+# The wow-curseforge-releases and wow-curseforge-comments commands run the bare name:
+#   ka0s-curseforge scope all
+#   ka0s-curseforge releases AuraMaster --dry-run
+# The logic lives in scripts/curseforge_journal.py; this only resolves its own location and hands over.
+exec python3 "$(dirname "$(readlink -f "$0")")/../scripts/curseforge_journal.py" "$@"
