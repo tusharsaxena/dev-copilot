@@ -14,7 +14,7 @@ Engineer context for **this** repository, and the hub of its doc set (`documenta
 ## Overview
 
 A **Claude Code plugin**: Markdown command, agent and overlay specs, a stdlib-only Python profile
-detector and overlay checker, two hooks (line endings and bounded runs) with the bounded runner they
+detector, overlay checker and CurseForge journal fetcher, two hooks (line endings and bounded runs) with the bounded runner they
 point at, and two JSON manifests. There is no compiled code and no package manifest. The root
 `CLAUDE.md` is the full agent brief (purpose, repo profiles, the overlay contract, conventions and
 footguns); `README.md` is the user-facing description of every command; `DEPENDENCIES.md` is the
@@ -62,7 +62,7 @@ which are **addressed by name or path** and therefore breaking to rename.
 - `scripts/curseforge_journal.py` — the CurseForge journal fetcher behind `wow-curseforge-releases`
   and `wow-curseforge-comments`: scope against the roster, the API key read literally, the journal-path
   guard, the Core API and site-endpoint fetches, and the journal merges. It writes only to
-  `Ka0sAddonsCommonTasks/journal/curseforge/`. `scripts/test_curseforge_journal.py` — its unit test,
+  `Ka0sAddonsCommonTasks/journal/curseforge/` (or `$KA0S_CF_JOURNAL`). `scripts/test_curseforge_journal.py` — its unit test,
   over synthetic payloads only.
 - `commands/*.md` — **24** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
   of the same name:
@@ -140,6 +140,10 @@ a breaking change (a major version bump), not a refactor:
 - **`~/.claude/dev-copilot/bin/ka0s-bounded`** — the stable runner path the hook keeps pointed at the
   installed runner, named in specs, in the hook's refusal message, in the README and in other repos'
   plans and briefs. Moving the state dir from `~/.claude/wow-addon/` is what made 2.0.0 a major.
+- **`~/.claude/dev-copilot/curseforge.env`, `CURSEFORGE_API_KEY` and `KA0S_CF_JOURNAL`** — where the
+  owner put the CurseForge key and where the journal lives. `scripts/curseforge_journal.py` reads the
+  file by that fixed path and the two names from the environment; renaming any of them strands a
+  configured machine with a missing-key or no-journal error.
 - **`commands/<name>.md` and `agents/<name>.md` filenames** — the filename **is** the public name:
   `/dev-copilot:<name>`, the Skill `dev-copilot:<name>`, and the subagent `dev-copilot:<name>`. Every
   other repo's docs, plans and memory cite these names.
