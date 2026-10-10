@@ -18,6 +18,7 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
 | CF-08 | Ka0sAddonsCommonTasks | First real run: `releases all`, then `comments all` with classification, committed on master; no issue is filed without the owner, and nothing is pushed without the owner | CF-06, CF-07 |
 
 | CF-09 | dev-copilot + Ka0sAddonsCommonTasks | Store changelogs as one `- subject (sha7)` line per commit, plus `changelogCommits` (added during CF-08, see below) | CF-08 |
+| CF-10 | dev-copilot + Ka0sAddonsCommonTasks | Reports in the owner's local time (`timezone` in `journal.config.json`), the releases report as one Addon / Version / Release Date / Downloads / Changes-since table, and `report-releases` to rebuild a run's report from the journal | CF-09 |
 
 ## Execution notes
 
@@ -30,6 +31,11 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
   characters.
 - **CF-08 hand-off.** Two AbsorbTracker comments were linked to existing issues (#15, #13) and two were
   declined; no new issues were filed.
+
+- **CF-10 (2026-10-10).** The owner asked for every time a person reads to be in IST, with the
+  releases table in their own layout: a Total row per addon, then one row per version. The data stays
+  UTC. The report is now derived from the journal alone, so the earlier runs' reports were rebuilt in
+  the new form.
 
 ## Checkpoint
 

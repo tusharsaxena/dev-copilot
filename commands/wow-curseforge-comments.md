@@ -90,7 +90,7 @@ Write the verdicts as a JSON list to the session scratchpad, never into a repo:
 `ka0s-curseforge classify <that file>`. It rejects a verdict for an owner comment, a comment with an
 `override`, or an unknown class. Report any rejection rather than forcing it.
 
-Then show the new comments grouped by class, each with its author, date, a one-line gist, and whether
+Then show the new comments grouped by class, each with its author, date (local time, as in Step 6), a one-line gist, and whether
 the owner has replied.
 
 ## Step 5 — Issue hand-off
@@ -135,7 +135,8 @@ so, skip the hand-off and leave every candidate as it is.
 Skip this step on `--dry-run`.
 
 Run `ka0s-curseforge report-comments <ts> <scope words>` with the `ts` from Step 3. It writes
-`reports/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself: what was new, edited or deleted in
+`reports/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself, named and dated in the journal's local
+timezone (`timezone` in `journal.config.json`), the same as every time you show the owner: what was new, edited or deleted in
 that run, the issues filed, and the bug and feature comments still unfiled.
 
 ```bash

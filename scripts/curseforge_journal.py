@@ -8,6 +8,7 @@ Usage (normally through bin/ka0s-curseforge):
   curseforge_journal.py classify <verdicts.json>
   curseforge_journal.py handoff  [all | <Addon>...]
   curseforge_journal.py issue    <Addon> <commentId> <owner/repo#N | declined>
+  curseforge_journal.py report-releases <run-ts> [all | <Addon>...]
   curseforge_journal.py report-comments <run-ts> [all | <Addon>...]
 
 Every subcommand prints one JSON object. Errors print to stderr and exit 2.
@@ -56,8 +57,32 @@ def now_ts():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def stamp(ts):
-    return ts.replace("-", "").replace(":", "").replace("T", "-").rstrip("Z")
+def parse_ts(ts):
+    """A journal or API UTC timestamp (`2026-10-09T17:30:24.77Z`) as an aware datetime."""
+    return datetime.strptime(re.sub(r"\.\d+", "", ts).rstrip("Z"), "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+
+
+def local_tz(name):
+    """The journal's report timezone: `timezone` in journal.config.json, else the machine's own."""
+    if not name:
+        return datetime.now().astimezone().tzinfo
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(name)
+    except Exception:
+        raise JournalError("unknown timezone %r in journal.config.json" % name)
+
+
+def fmt_local(ts, tz):
+    return parse_ts(ts).astimezone(tz).strftime("%Y-%m-%d %H:%M %Z") if ts else "—"
+
+
+def stamp(ts, tz):
+    return parse_ts(ts).astimezone(tz).strftime("%Y%m%d-%H%M%S")
+
+
+def version_label(display_name):
+    return re.sub(r"-release$", "", display_name or "")
 
 
 def ms_to_ts(ms):
@@ -366,7 +391,9 @@ class Context:
             if is_within(journal, forbidden):
                 raise JournalError("refusing a journal inside %s: journal data never goes into an addon "
                                    "repo or dev-copilot" % forbidden)
-        return cls(journal, config, roster, cwd)
+        ctx = cls(journal, config, roster, cwd)
+        ctx.tz = local_tz(config.get("timezone"))
+        return ctx
 
     # -- scope
 
@@ -414,9 +441,12 @@ class Context:
                 out["addons"].append(self._release_one(addon, http, ts, dry_run))
             except JournalError as e:
                 out["errors"].append({"addon": addon["name"], "error": str(e)})
+        out["tsLocal"] = fmt_local(ts, self.tz)
+        for a in out["addons"]:
+            a["sinceLocal"] = fmt_local(a["previousTs"], self.tz) if a["previousTs"] else None
         if not dry_run:
-            out["report"] = self._write_report(ts, "releases", render_releases(out))
             append_lines(os.path.join(self.journal, "runs.jsonl"), [run_line(ts, "releases", out)])
+            out["report"] = self._render_releases([a["name"] for a in out["addons"]], ts)
         return out
 
     def _release_one(self, addon, http, ts, dry_run):
@@ -459,6 +489,7 @@ class Context:
                 "ts": ts, "projectId": pid, "totalDownloads": total,
                 "websiteUrl": (mod.get("links") or {}).get("websiteUrl")}])
         return {"name": addon["name"], "projectId": pid, "totalDownloads": total,
+                "previousTs": projects[-1]["ts"] if projects else None,
                 "downloadDelta": None if prev_total is None else total - prev_total,
                 "newFiles": new, "removedFiles": removed, "files": summary}
 
@@ -570,12 +601,52 @@ class Context:
         sections = []
         for addon in self.scope(args)["addons"]:
             data = load_json(os.path.join(self.adir(addon["name"]), "comments.json"), {})
-            sections.append(render_comment_section(addon["name"], data, run_ts))
-        body = "# CurseForge comments — run %s\n\n%s" % (run_ts, "\n".join(sections))
+            sections.append(render_comment_section(addon["name"], data, run_ts, self.tz))
+        body = "# CurseForge comments — run %s\n\n%s" % (fmt_local(run_ts, self.tz), "\n".join(sections))
         return {"report": self._write_report(run_ts, "comments", body)}
 
+    def report_releases(self, args, run_ts):
+        return {"report": self._render_releases([a["name"] for a in self.scope(args)["addons"]], run_ts)}
+
+    def _render_releases(self, names, run_ts):
+        """The releases report for one run, derived from the journal alone, so it can be regenerated."""
+        addons = [a for a in (self._release_view(n, run_ts) for n in names) if a]
+        addons.sort(key=lambda a: -a["total"])
+        run = next((r for r in load_lines(os.path.join(self.journal, "runs.jsonl"))
+                    if r.get("ts") == run_ts and r.get("command") == "releases"), {})
+        body = render_releases(addons, run, run_ts, self.tz)
+        return self._write_report(run_ts, "releases", body)
+
+    def _release_view(self, name, run_ts):
+        adir = self.adir(name)
+        projects = load_lines(os.path.join(adir, "project.jsonl"))
+        current = [p for p in projects if p["ts"] == run_ts]
+        if not current:
+            return None
+        before = [p for p in projects if p["ts"] < run_ts]
+        counts, previous = {}, {}
+        for row in load_lines(os.path.join(adir, "downloads.jsonl")):
+            if row["ts"] == run_ts:
+                counts[row["fileId"]] = row["downloadCount"]
+            elif row["ts"] < run_ts:
+                previous[row["fileId"]] = row["downloadCount"]
+        files = load_json(os.path.join(adir, "files.json"), {})
+        rows = []
+        for fid, count in counts.items():
+            rec = files.get(str(fid), {})
+            rows.append({"version": version_label(rec.get("displayName")), "fileDate": rec.get("fileDate"),
+                         "downloads": count, "delta": None if fid not in previous else count - previous[fid],
+                         "new": rec.get("firstSeen") == run_ts})
+        rows.sort(key=lambda r: r["fileDate"] or "", reverse=True)
+        total = current[-1]["totalDownloads"]
+        prev_total = before[-1]["totalDownloads"] if before else None
+        return {"name": name, "total": total, "delta": None if prev_total is None else total - prev_total,
+                "since": before[-1]["ts"] if before else None, "files": rows,
+                "removed": [version_label(r.get("displayName")) for r in files.values()
+                            if r.get("removed") and int(r["fileId"]) not in counts]}
+
     def _write_report(self, ts, kind, body):
-        path = os.path.join(self.journal, "reports", "%s-%s.md" % (stamp(ts), kind))
+        path = os.path.join(self.journal, "reports", "%s-%s.md" % (stamp(ts, self.tz), kind))
         write_text(path, body.rstrip() + "\n")
         return path
 
@@ -624,23 +695,30 @@ def fmt_delta(d):
     return "—" if d is None else "%+d" % d
 
 
-def render_releases(out):
-    lines = ["# CurseForge releases — run %s" % out["ts"], ""]
-    for a in out["addons"]:
-        lines += ["## %s" % a["name"], "",
-                  "Total downloads: %d (%s since the last run)." % (a["totalDownloads"], fmt_delta(a["downloadDelta"]))]
-        if a["newFiles"]:
-            lines.append("New files: %s." % ", ".join(a["newFiles"]))
-        if a["removedFiles"]:
-            lines.append("No longer listed: %s." % ", ".join(a["removedFiles"]))
-        lines += ["", "| File | Date | Downloads | Change |", "|---|---|---|---|"]
-        for f in sorted(a["files"], key=lambda f: f["fileDate"] or "", reverse=True):
-            lines.append("| %s | %s | %d | %s |" % (f["displayName"], (f["fileDate"] or "")[:10], f["downloads"],
-                                                   fmt_delta(f["delta"])))
-        lines.append("")
-    for s in out["skipped"]:
-        lines.append("Skipped %s: %s." % (s["name"], s["reason"]))
-    for e in out["errors"]:
+def render_releases(addons, run, run_ts, tz):
+    sinces = {a["since"] for a in addons}
+    since = fmt_local(next(iter(sinces)), tz) if len(sinces) == 1 and None not in sinces else None
+    head = "Changes since %s" % since if since else "Changes since last run"
+    lines = ["# CurseForge releases — run %s" % fmt_local(run_ts, tz), "",
+             "| Addon | Version | Release Date | Downloads | %s |" % head, "|---|---|---|---:|---|"]
+    for a in addons:
+        lines.append("| %s | Total | - | %d | %s |" % (a["name"], a["total"], fmt_delta(a["delta"])))
+        for f in a["files"]:
+            lines.append("|  | %s | %s | %d | %s |" % (f["version"], fmt_local(f["fileDate"], tz), f["downloads"],
+                                                      fmt_delta(f["delta"])))
+    lines.append("")
+    if not since and len(sinces - {None}) > 1:
+        lines.append("Each addon's change is since its own previous run: %s." % "; ".join(
+            "%s %s" % (a["name"], fmt_local(a["since"], tz) if a["since"] else "first run") for a in addons))
+    new = ["%s %s" % (a["name"], f["version"]) for a in addons for f in a["files"] if f["new"] and a["since"]]
+    if new:
+        lines.append("New this run: %s." % "; ".join(new))
+    removed = ["%s %s" % (a["name"], v) for a in addons for v in a["removed"]]
+    if removed:
+        lines.append("No longer listed: %s." % "; ".join(removed))
+    for name in run.get("skipped") or []:
+        lines.append("Skipped %s: no ## X-Curse-Project-ID line in the TOC." % name)
+    for e in run.get("errors") or []:
         lines.append("Failed %s: %s." % (e["addon"], e["error"]))
     return "\n".join(lines)
 
@@ -651,7 +729,7 @@ def quote(text, limit=300):
     return "\n".join("> " + l for l in text.split("\n"))
 
 
-def render_comment_section(name, data, run_ts):
+def render_comment_section(name, data, run_ts, tz):
     recs = sorted(data.values(), key=lambda r: r.get("postedAt") or "")
     new = [r for r in recs if r.get("firstSeen") == run_ts]
     edited = [r for r in recs if r.get("editedAt") == run_ts]
@@ -665,7 +743,7 @@ def render_comment_section(name, data, run_ts):
     for title, group in (("New", new), ("Edited", edited), ("Deleted", deleted)):
         for r in group:
             who = "owner" if r.get("isOwner") else effective_class(r) or "unclassified"
-            lines += ["**%s · %s** — %s, %s" % (title, who, r.get("author"), (r.get("postedAt") or "")[:10]),
+            lines += ["**%s · %s** — %s, %s" % (title, who, r.get("author"), fmt_local(r.get("postedAt"), tz)),
                       quote(r.get("text")), ""]
     for r in filed:
         lines.append("Issue for comment %s (%s): %s" % (r["commentId"], r.get("author"), r["issueRef"]))
@@ -690,9 +768,10 @@ def main(argv=None, env=None, cwd=None):
     p.add_argument("addon")
     p.add_argument("comment_id", type=int)
     p.add_argument("ref")
-    p = sub.add_parser("report-comments")
-    p.add_argument("run_ts")
-    p.add_argument("targets", nargs="*")
+    for name in ("report-comments", "report-releases"):
+        p = sub.add_parser(name)
+        p.add_argument("run_ts")
+        p.add_argument("targets", nargs="*")
     args = parser.parse_args(argv)
     try:
         ctx = Context.load(cwd or os.getcwd(), env)
@@ -708,6 +787,8 @@ def main(argv=None, env=None, cwd=None):
             result = ctx.handoff(args.targets)
         elif args.cmd == "issue":
             result = ctx.issue(args.addon, args.comment_id, args.ref)
+        elif args.cmd == "report-releases":
+            result = ctx.report_releases(args.targets, args.run_ts)
         else:
             result = ctx.report_comments(args.targets, args.run_ts)
     except JournalError as e:
