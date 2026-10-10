@@ -30,7 +30,7 @@ command Reads at run time from the detector's `root`.
 **One plugin, two profiles.** Every command first runs `dev-copilot-profile` to classify the repo it is
 in. In a `generic` repo it follows its base spec and never reads WoW text; in a `wow` repo (a Ka0s
 addon, `LibKa0s`, `WowAddonStandards`, or a tooling repo such as this one, which opts in through its
-`.dev-copilot` override) it also applies its `profiles/wow/<name>.md` overlay. Seven of the eight
+`.dev-copilot` override) it also applies its `profiles/wow/<name>.md` overlay. Nine of the ten
 `wow-*` commands refuse in a generic repo; `wow-new-addon` never refuses, because the addon it
 scaffolds does not exist yet. Five of the WoW commands and the WoW review fetch the living
 Ka0s WoW Addon Standard over HTTPS at run time, so the standard can change without a plugin release.
@@ -50,6 +50,8 @@ which are **addressed by name or path** and therefore breaking to rename.
 - `bin/dev-copilot-profile` — POSIX `sh` one-liner that `exec`s `python3 ../scripts/detect_profile.py`
   (resolved through `readlink -f`). Claude Code puts the plugin's `bin/` on `PATH`, so this is what
   makes the **bare** `dev-copilot-profile` in every Step 0 resolve. Keep it LF and `+x`.
+- `bin/ka0s-curseforge` — the same shape for the CurseForge journal fetcher: a POSIX `sh` one-liner
+  that `exec`s `python3 ../scripts/curseforge_journal.py`. Keep it LF and `+x`.
 - `bin/ka0s-bounded` — the same shape for the bounded runner: a POSIX `sh` one-liner that `exec`s
   `../scripts/ka0s-bounded`, making the **bare** name `ka0s-bounded` resolve. Keep it LF and `+x`.
 - `scripts/detect_profile.py` — the repo profile detector (`CLAUDE.md` § *Repo profiles*).
@@ -57,17 +59,22 @@ which are **addressed by name or path** and therefore breaking to rename.
   dir, nested/Interface-less `.toc`, override with CRLF/comments/odd spacing, CLI key order).
 - `scripts/check_overlays.py` — overlay ↔ base consistency checker (`CLAUDE.md` § *Overlay contract*);
   holds `STEP0_BLOCK` and the `SHARED` command list. `scripts/test_check_overlays.py` — its unit test.
-- `commands/*.md` — **22** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
+- `scripts/curseforge_journal.py` — the CurseForge journal fetcher behind `wow-curseforge-releases`
+  and `wow-curseforge-comments`: scope against the roster, the API key read literally, the journal-path
+  guard, the Core API and site-endpoint fetches, and the journal merges. It writes only to
+  `Ka0sAddonsCommonTasks/journal/curseforge/`. `scripts/test_curseforge_journal.py` — its unit test,
+  over synthetic payloads only.
+- `commands/*.md` — **24** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
   of the same name:
   - **14 shared**: `diff`, `commit`, `sync-docs`, `review`, `run-tests`, `bump-version`, `finalize`,
     `execution-status`, `issue-add`, `issue-audit`, `issue-triage`, `issue-details`,
     `issue-fetch-all`, `issue-summary`. Generic core; WoW behavior in an overlay.
-  - **8 WoW-only**: `wow-new-addon`, `wow-bump-interface`, `wow-automated-tests`,
+  - **10 WoW-only**: `wow-new-addon`, `wow-bump-interface`, `wow-automated-tests`,
     `wow-perf-analysis`, `wow-revendor-libka0s`, `wow-revendor-standards`, `wow-harvest-standards`,
-    `wow-standards-audit`. Each opens with a guard step (a refusal, or for
+    `wow-standards-audit`, `wow-curseforge-releases`, `wow-curseforge-comments`. Each opens with a guard step (a refusal, or for
     `wow-new-addon` a nesting check); no overlay.
   - Two are thin **wrappers that dispatch to a subagent**: `review` → `dev-copilot:review`,
-    `wow-standards-audit` → `dev-copilot:wow-standards-audit`. The other twenty act directly.
+    `wow-standards-audit` → `dev-copilot:wow-standards-audit`. The other twenty-two act directly.
 - `agents/*.md` — **2** subagent specs: `review` (generic principal-level review → `reviews/<date>/`;
   in a WoW repo, via its overlay, the WoW review → `docs/reviews/<date>/` with `03_SMOKE_TESTS.md`;
   fetches the standard only to keep its own remediation compliant, and does **not** audit) and
@@ -121,7 +128,7 @@ which are **addressed by name or path** and therefore breaking to rename.
 Each of these is reached **by its name or path** from outside the file that defines it, so a rename is
 a breaking change (a major version bump), not a refactor:
 
-- **`bin/dev-copilot-profile` and `bin/ka0s-bounded`** — the bare command names every Step 0, every
+- **`bin/dev-copilot-profile`, `bin/ka0s-bounded` and `bin/ka0s-curseforge`** — the bare command names every Step 0, every
   suite-running spec and every user's shell history call through `PATH`.
 - **The script paths in `hooks/hooks.json`** — `scripts/bounded-runs-hook.sh` and
   `scripts/normalize-eol.sh`, invoked by `${CLAUDE_PLUGIN_ROOT}`-relative path. A renamed script turns
@@ -161,6 +168,9 @@ a breaking change (a major version bump), not a refactor:
 - **The runtime-fetch commands need network and a reachable standard.** `wow-standards-audit`,
   `wow-new-addon` and `wow-revendor-standards` hard-stop without it; `review` degrades and says so.
   The `issue-*` family stops without an authenticated `gh`.
+- **The CurseForge comments come from an undocumented endpoint.** It is the site's own call, not part
+  of the Core API, so it can change without notice. The fetcher reports a shape change per addon and
+  continues with the rest; it never falls back to scraping the page.
 
 ## Documentation map
 
@@ -174,7 +184,7 @@ tree of executable specs, or a single row for a frozen store.
 | `DEPENDENCIES.md` | The toolchain contract (`documentation-§7`, read per `documentation-§8`) |
 | `docs/ARCHITECTURE.md` | This file, the hub |
 | `LICENSE` | MIT |
-| `commands/*.md` (22 files) | Slash-command specs: executable instructions Claude Code runs, not documentation |
+| `commands/*.md` (24 files) | Slash-command specs: executable instructions Claude Code runs, not documentation |
 | `agents/*.md` (2 files) | Subagent specs: executable, not documentation |
 | `profiles/wow/*.md` (13 files) | WoW overlays read by the bases' Step 0: executable, not documentation |
 | `docs/superpowers/` | Frozen design specs and plans with their execution ledgers, named once here rather than per file |
