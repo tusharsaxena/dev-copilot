@@ -79,7 +79,7 @@ No build. Run all of these after touching `scripts/`, `bin/`, `commands/`, `agen
 - `python3 scripts/test_check_overlays.py` — the checker (15 cases).
 - `python3 scripts/test_bounded_runs.py` — the bounded-runs matcher and hook script, including the runner symlink and the runner's timeout (26 cases).
 - `python3 scripts/test_normalize_eol.py` — the line-ending hook (13 cases).
-- `python3 scripts/test_curseforge_journal.py` — the CurseForge journal fetcher over synthetic payloads (42 cases).
+- `python3 scripts/test_curseforge_journal.py` — the CurseForge journal fetcher over synthetic payloads (45 cases).
 - `python3 scripts/check_overlays.py` — the live tree; prints `OK: 13 overlays`.
 - `python3 -c "import json; [json.load(open(f)) for f in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')]"` — both manifests parse.
 - `dev-copilot-profile <path>` against a real addon, `LibKa0s`, `WowAddonStandards`, `Ka0sAddonsCommonTasks`, this repo (`wow/tooling`, `reason=override`) and a generic repo.

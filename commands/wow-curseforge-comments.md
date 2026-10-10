@@ -136,8 +136,20 @@ Skip this step on `--dry-run`.
 
 Run `ka0s-curseforge report-comments <ts> <scope words>` with the `ts` from Step 3. It writes
 `reports/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself, named and dated in the journal's local
-timezone (`timezone` in `journal.config.json`), the same as every time you show the owner: what was new, edited or deleted in
-that run, the issues filed, and the bug and feature comments still unfiled.
+timezone (`timezone` in `journal.config.json`), the same as every time you show the owner.
+
+The report shows each addon's comments as **conversation trees**: every thread on record, newest thread
+first, each reply nested under the comment it answers, oldest reply first. Each node is one line:
+
+```
+- [bob 2026-09-20 18:05 IST] Please add a scale slider and a colour picker _(feature, new)_
+  - [aDd1kTeD2Ka0s 2026-09-20 18:40 IST] Added in 1.3 _(owner, new)_
+```
+
+The node gives the author, the local date, a snippet of the comment's text (up to 200 characters, on one
+line), and its tags: the class (`owner` for the owner's own comments), `new` or `edited` when this run saw
+it, `deleted`, and `issue <ref>` or `issue declined`. The snippets are for the report only. In chat, keep
+to the one-line gists of Step 4.
 
 ```bash
 git -C <journalRepo> add journal/curseforge

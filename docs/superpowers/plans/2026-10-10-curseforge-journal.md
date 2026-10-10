@@ -20,6 +20,7 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
 | CF-09 | dev-copilot + Ka0sAddonsCommonTasks | Store changelogs as one `- subject (sha7)` line per commit, plus `changelogCommits` (added during CF-08, see below) | CF-08 |
 | CF-10 | dev-copilot + Ka0sAddonsCommonTasks | Reports in the owner's local time (`timezone` in `journal.config.json`), the releases report as one Addon / Version / Release Date / Downloads / Changes-since table, and `report-releases` to rebuild a run's report from the journal | CF-09 |
 | CF-11 | dev-copilot + Ka0sAddonsCommonTasks | The releases table sorted by addon name, and always shown in full in chat | CF-10 |
+| CF-12 | dev-copilot | The comments report as conversation trees: one `[author date] snippet` node per comment, replies nested | CF-11 |
 
 ## Execution notes
 
@@ -39,6 +40,8 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
   the new form.
 - **CF-11 (2026-10-10).** The owner asked for the full table in every chat summary, not an excerpt, and
   for the addons in name order instead of by downloads.
+- **CF-12 (2026-10-10).** The owner asked to see the comments themselves in the report, as a conversation
+  tree with `[<author> <date>] <comment>` nodes. Chat keeps the one-line gists.
 
 ## Checkpoint
 
