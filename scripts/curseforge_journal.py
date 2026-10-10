@@ -702,8 +702,9 @@ def fmt_delta(d):
 
 
 def render_releases(addons, run, run_ts, tz):
-    sinces = {a["since"] for a in addons}
-    since = fmt_local(next(iter(sinces)), tz) if len(sinces) == 1 and None not in sinces else None
+    # An addon on its first run has no "since"; it shows "—" and must not hide the time the rest share.
+    sinces = {a["since"] for a in addons} - {None}
+    since = fmt_local(next(iter(sinces)), tz) if len(sinces) == 1 else None
     head = "Changes since %s" % since if since else "Changes since last run"
     lines = ["# CurseForge releases — run %s" % fmt_local(run_ts, tz), "",
              "| Addon | Version | Release Date | Downloads | %s |" % head, "|---|---|---|---:|---|"]
@@ -713,9 +714,12 @@ def render_releases(addons, run, run_ts, tz):
             lines.append("|  | %s | %s | %d | %s |" % (f["version"], fmt_local(f["fileDate"], tz), f["downloads"],
                                                       fmt_delta(f["delta"])))
     lines.append("")
-    if not since and len(sinces - {None}) > 1:
+    if len(sinces) > 1:
         lines.append("Each addon's change is since its own previous run: %s." % "; ".join(
             "%s %s" % (a["name"], fmt_local(a["since"], tz) if a["since"] else "first run") for a in addons))
+    first = [a["name"] for a in addons if a["since"] is None]
+    if first and sinces:
+        lines.append("First run for: %s." % ", ".join(first))
     new = ["%s %s" % (a["name"], f["version"]) for a in addons for f in a["files"] if f["new"] and a["since"]]
     if new:
         lines.append("New this run: %s." % "; ".join(new))

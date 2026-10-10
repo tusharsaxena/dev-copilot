@@ -539,6 +539,26 @@ class LocalTimeReportTest(Collection):
         self.assertIsNone(out["addons"][0]["latest"])
         self.assertEqual(out["addons"][0]["totalChange"], "—")
 
+    def test_a_first_run_addon_does_not_hide_the_shared_since(self):
+        ctx = self.ctx()
+        ctx.releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
+        out = ctx.releases(["Alpha", "Beta"], self.http([cf_file(1, "1.0.0-release", 6)]), ts="2026-10-11T00:00:00Z")
+        text = read_text(out["report"])
+        self.assertIn("| Changes since 2026-10-10 05:30 IST |", text)
+        self.assertIn("| Beta | Total | - | 70 | — |", text)
+        self.assertIn("First run for: Beta.", text)
+        self.assertNotIn("its own previous run", text)
+
+    def test_differing_previous_runs_fall_back_with_a_note(self):
+        ctx = self.ctx()
+        ctx.releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
+        ctx.releases(["Beta"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T06:00:00Z")
+        out = ctx.releases(["Alpha", "Beta"], self.http([cf_file(1, "1.0.0-release", 6)]), ts="2026-10-11T00:00:00Z")
+        text = read_text(out["report"])
+        self.assertIn("| Changes since last run |", text)
+        self.assertIn("Each addon's change is since its own previous run: Alpha 2026-10-10 05:30 IST; "
+                      "Beta 2026-10-10 11:30 IST.", text)
+
     def test_first_run_has_no_since(self):
         out = self.ctx().releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
         text = read_text(out["report"])

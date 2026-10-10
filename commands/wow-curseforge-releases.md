@@ -105,8 +105,10 @@ release first.
 - **Version** is the file's display name without a `-release` suffix. A `-beta` or `-alpha` suffix is
   kept, because it says something.
 - **Changes since** is a signed change (`+3`), or `—` for a file or project with no earlier count.
-- When the addons' previous runs differ, the header reads `Changes since last run`, and a line under the
-  table gives each addon's own previous run.
+- The header names the previous run's time when every addon that has a previous run shares it. An addon
+  on its **first run** does not change that: its rows show `—`, and a `First run for:` line under the
+  table names it. Only when the previous runs really differ does the header read
+  `Changes since last run`, with a line under the table giving each addon's own previous run.
 
 Below the table, list the new releases, any files no longer listed, and anything skipped or failed, with
 the reason. Link the report file. Don't paste whole changelogs; they are in `files.json`.
