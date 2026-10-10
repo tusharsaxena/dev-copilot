@@ -1,14 +1,14 @@
 ---
 name: wow-standards-audit
-description: Read-only compliance audit of the repository in cwd against the Ka0s WoW Addon Standard. Audits any repository in the collection's rotation — the eleven addons against the whole standard, LibKa0s against library-stack-§7's applicability list, and the two documentation-and-tooling repos (WowAddonStandards, dev-copilot) against the documentation lane; Ka0sAddonsCommonTasks is deliberately outside the rotation. Fetches the living AUDIT.md playbook and standards/STANDARDS.md (the standard's index) from the WowAddonStandards repo at runtime, follows the index's Sections list to fetch every section file, and follows the playbook to the letter, writing a frozen dated bundle to the addon's own docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN) plus a chat summary. Never modifies addon code.
+description: Read-only compliance audit of the repository in cwd against the Ka0s WoW Addon Standard. Audits any repository in the collection's rotation — every addon in the standard's roster (standards/ADDONS.md) against the whole standard, LibKa0s against library-stack-§7's applicability list, and the two documentation-and-tooling repos (WowAddonStandards, dev-copilot) against the documentation lane; Ka0sAddonsCommonTasks is deliberately outside the rotation. Fetches the living AUDIT.md playbook and standards/STANDARDS.md (the standard's index) from the WowAddonStandards repo at runtime, follows the index's Sections list to fetch every section file, and follows the playbook to the letter, writing a frozen dated bundle to the addon's own docs/audits/<YYYY-MM-DD>/ (01_CURRENT_STATE, 02_DEVIATIONS, 03_EVIDENCE, 04_TECHNICAL_DESIGN, 05_EXECUTION_PLAN) plus a chat summary. Never modifies addon code.
 tools: Read, Write, Glob, Grep, Bash, WebFetch
 ---
 
-You audit the repository in the current working directory against the **Ka0s WoW Addon Standard**. Usually that is one of the eleven addons; the section immediately below says which rule set binds the repository you are actually standing in, and it is the first thing to settle. You do **not** carry the audit rules yourself — the canonical rules and the audit procedure live in the `WowAddonStandards` repo and evolve there. Your job is to fetch the current playbook and standard, then **follow the playbook to the letter** against this repository.
+You audit the repository in the current working directory against the **Ka0s WoW Addon Standard**. Usually that is one of the addons in the standard's roster (`WowAddonStandards/standards/ADDONS.md`); the section immediately below says which rule set binds the repository you are actually standing in, and it is the first thing to settle. You do **not** carry the audit rules yourself — the canonical rules and the audit procedure live in the `WowAddonStandards` repo and evolve there. Your job is to fetch the current playbook and standard, then **follow the playbook to the letter** against this repository.
 
 ## Which rule set binds this repository
 
-**The rotation is not only the eleven addons, and the addon rule set does not bind every repository in
+**The rotation is not only the roster's addons, and the addon rule set does not bind every repository in
 it.** Three kinds are audited and each is measured against a different set of rules. Decide the kind
 **before Step 0** — running the wrong checklist against a repository manufactures findings instead of
 finding them, which is the failure `library-stack-§7` already names for auditing a library as if it
@@ -23,7 +23,7 @@ table below before Step 0; when they disagree, the table wins and the disagreeme
 
 | Kind | Repositories | Measured against |
 |---|---|---|
-| **Addon** | the eleven rows in `WowAddonStandards/standards/ADDONS.md` | the whole standard and the whole `AUDIT.md` playbook — everything below this section |
+| **Addon** | every row in `WowAddonStandards/standards/ADDONS.md` | the whole standard and the whole `AUDIT.md` playbook — everything below this section |
 | **Ka0s-owned library** | `LibKa0s` | `library-stack-§7`'s applicability list. No TOC, no player-facing README, no settings panel, no install, so the addon-shaped sections do not bind |
 | **Documentation and tooling** | `WowAddonStandards`, `dev-copilot` (the plugin repo; the archived `wow-addon` before it) | *The documentation lane*, below — the standard's own text and the plugin's own specs, measured as documents rather than as addons |
 
@@ -58,7 +58,7 @@ mechanical, none of which any per-addon pass can run:
   `profiles/wow/` file that is not there, and an overlay section whose hook point its base lacks
   (`python3 scripts/check_overlays.py` measures the last two).
 - **Every worked example still matches the repository it cites.** These documents quote real
-  `file:line` evidence out of the eleven addons and out of `LibKa0s`, and the cited trees move underneath
+  `file:line` evidence out of the roster's addons and out of `LibKa0s`, and the cited trees move underneath
   them. Re-read each citation in the repository it names and quote what is actually there, exactly as
   the evidence rule below requires of an addon audit.
 - **Every inventory matches the tree it describes.** A count of modules, files, sections, commands or
@@ -181,9 +181,9 @@ git ls-files '*.lua' | grep -vE '^(libs/|tests/_kit/)'
 `tests/` is **in**: `layout-§1` states that the cap binds every authored `.lua` the repo tracks, and a
 census that silently drops `tests/` measures a different repository than the one the rule governs.
 `libs/` and `tests/_kit/` are out because they are vendored — this repo must not patch them
-(library-stack-§5, testing-§1), they are audited where they are authored, and they sit in eleven
-near-identical copies across the collection, so counting them turns one upstream fact into eleven
-findings. Generated
+(library-stack-§5, testing-§1), they are audited where they are authored, and they sit in one
+near-identical copy per addon across the collection, so counting them turns one upstream fact into one
+finding per addon. Generated
 non-shipping data is exempt from the **cap** by rule and is not thereby exempt from every census: it is
 still tracked, so a sweep about the checkout counts it and a sweep about the cap does not.
 
@@ -197,7 +197,7 @@ Two scopes are legitimately *not* the default, and an audit that uses one says s
 
 **What this costs when it is left unwritten.** In the 2026-09-07 cycle four censuses came out wrong in
 both directions and at both stages, none of them by arithmetic. Every figure in this paragraph is as
-measured then, over the nine-addon roster of the day; the roster is eleven now. Eleven files were
+measured then, over the nine-addon roster of the day, not today's `ADDONS.md`. Eleven files were
 reported over the cap
 where the default scope finds eighteen, and two of the five repositories named have none. A hard-coded
 `Interface\` census read 93 in PrettyChat against a scoped 1, the extra 92 sitting inside a

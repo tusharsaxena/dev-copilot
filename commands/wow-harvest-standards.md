@@ -26,7 +26,7 @@ The reason the pair exists is that knowledge in this collection is discovered **
 
 **Never write to an addon repo. Not one byte.** Not a fix, not a doc, not a `midnight-quirks.md` entry, not a tidy-up of a file you are reading. Your only writes are inside the `WowAddonStandards` repo.
 
-This is not a safety nicety, it is what makes the harvest trustworthy. You are about to read N repos' worth of evidence and argue from it; if you also edit as you go, the evidence stops being independent of the argument, and the next run reads your own edits back as if they were nine repos agreeing. Downstream adoption is a **separate, per-repo, user-initiated** act (`/dev-copilot:wow-standards-audit`, then `/dev-copilot:wow-revendor-standards`) — you name the debt at the end and stop there.
+This is not a safety nicety, it is what makes the harvest trustworthy. You are about to read N repos' worth of evidence and argue from it; if you also edit as you go, the evidence stops being independent of the argument, and the next run reads your own edits back as if they were N repos agreeing. Downstream adoption is a **separate, per-repo, user-initiated** act (`/dev-copilot:wow-standards-audit`, then `/dev-copilot:wow-revendor-standards`) — you name the debt at the end and stop there.
 
 The corollary: **never edit a frozen `docs/audits/<date>/` or `docs/reviews/<date>/` bundle**, in any repo, for any reason. Those are the harvest's primary source. A bundle records what was true on its date against the standard of its date; that is exactly what makes it evidence.
 
