@@ -22,6 +22,8 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
 | CF-11 | dev-copilot + Ka0sAddonsCommonTasks | The releases table sorted by addon name, and always shown in full in chat | CF-10 |
 | CF-12 | dev-copilot | The comments report as conversation trees: one `[author date] snippet` node per comment, replies nested | CF-11 |
 | CF-13 | dev-copilot | Links in the comments tree: the addon's comments page on its heading, authors to their profiles, issue tags to the GitHub issue | CF-12 |
+| CF-14 | dev-copilot | Chat shows each addon's Total and latest release only; the report keeps the full table; `latest` and `totalChange` in the releases JSON | CF-13 |
+| CF-15 | dev-copilot | A first-run addon no longer hides the shared previous-run time in the releases header; it is named in a `First run for:` line | CF-14 |
 
 ## Execution notes
 
@@ -47,6 +49,11 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
   Playwright check of the comments page found no anchor, id or permalink per comment, only Reply and
   Quote buttons. The owner chose one comments-page link per addon heading, with author profile links
   on each node, and real GitHub links for issues.
+- **CF-14 (2026-10-10).** The full table in chat proved too much (12 addons, about 80 rows). The owner
+  asked to keep it in the report file only, and to show each addon's Total and latest release in chat.
+  This partly reverses CF-11's "always show it whole", which now applies to the report alone.
+- **CF-15 (2026-10-10).** PremadeGroupsFilterExtension's first run (18:41 IST) turned the header into
+  `Changes since last run` although every other addon shared 15:18 IST, and no note named the time.
 
 ## Checkpoint
 
