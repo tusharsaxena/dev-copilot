@@ -80,23 +80,27 @@ journal's data stays in UTC; only what a person reads is converted. The script's
 `tsLocal` and, per addon, `sinceLocal` (the previous run, or `null` on a first run), and its report file
 is named and written in local time.
 
-**Always show the full table**, exactly as the report file holds it: every addon in scope, and every
-file row of every addon, including the rows that did not move. Never trim it to what changed, collapse an
-addon to its `Total` row, or stand in an ellipsis row for the rest. Read the table from the report file
-and reproduce it whole.
+**The report file holds the full table; the chat summary does not.** The report
+(`reports/<YYYYMMDD-HHMMSS>-releases.md`) lists every addon and every file. In chat, show only **two rows
+per addon**: its `Total` and its **latest release** (the newest file). Never paste the full table into
+chat; link the report file for it. Take both rows from the script's JSON, which formats them the way the
+report does: per addon, `totalDownloads` and `totalChange`, and `latest` (`version`, `releaseDate`,
+`downloads`, `change`), or `null` when the addon has no files yet, in which case show the `Total` row
+alone.
 
-It is one table for the whole run. The addons are in name order (A to Z, ignoring case), and each addon
-has a `Total` row followed by one row per file, newest release first:
+It is one table for the whole run, with the addons in name order (A to Z, ignoring case):
 
 ```
 | Addon | Version | Release Date | Downloads | Changes since <sinceLocal> |
 |---|---|---|---:|---|
-| AbsorbTracker | Total | - | 2016 | +4 |
-|  | 1.12.0 | 2026-10-09 23:00 IST | 61 | +4 |
-|  | 1.11.0 | 2026-09-27 03:47 IST | 100 | +0 |
+| AbsorbTracker | Total | - | 2025 | +9 |
+|  | 1.12.0 | 2026-10-09 23:00 IST | 72 | +11 |
 | AuraMaster | Total | - | 34 | +0 |
-|  | 1.1.0 | 2026-10-09 23:00 IST | 9 | +1 |
+|  | 1.1.0 | 2026-10-09 23:00 IST | 9 | +0 |
 ```
+
+The report file's table has the same columns and order, with every file row under each `Total`, newest
+release first.
 
 - **Version** is the file's display name without a `-release` suffix. A `-beta` or `-alpha` suffix is
   kept, because it says something.

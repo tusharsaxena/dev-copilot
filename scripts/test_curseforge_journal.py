@@ -529,6 +529,15 @@ class LocalTimeReportTest(Collection):
         self.assertIn("New this run: Alpha 1.1.0-beta; Beta 1.1.0-beta.", text)
         self.assertEqual(out["tsLocal"], "2026-10-11 05:30 IST")
         self.assertEqual(out["addons"][0]["sinceLocal"], "2026-10-10 05:30 IST")
+        # The console summary's two rows per addon, preformatted like the report's.
+        self.assertEqual(out["addons"][0]["totalChange"], "+10")
+        self.assertEqual(out["addons"][0]["latest"], {"version": "1.1.0-beta", "releaseDate": "2026-10-11 01:30 IST",
+                                                     "downloads": 1, "change": "—"})
+
+    def test_addon_with_no_files_has_no_latest(self):
+        out = self.ctx().releases(["Alpha"], self.http([]), ts="2026-10-10T00:00:00Z")
+        self.assertIsNone(out["addons"][0]["latest"])
+        self.assertEqual(out["addons"][0]["totalChange"], "—")
 
     def test_first_run_has_no_since(self):
         out = self.ctx().releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")

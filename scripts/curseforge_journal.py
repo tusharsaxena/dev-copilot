@@ -445,6 +445,11 @@ class Context:
         out["tsLocal"] = fmt_local(ts, self.tz)
         for a in out["addons"]:
             a["sinceLocal"] = fmt_local(a["previousTs"], self.tz) if a["previousTs"] else None
+            a["totalChange"] = fmt_delta(a["downloadDelta"])
+            newest = max(a["files"], key=lambda f: f["fileDate"] or "", default=None)
+            a["latest"] = None if newest is None else {
+                "version": version_label(newest["displayName"]), "releaseDate": fmt_local(newest["fileDate"], self.tz),
+                "downloads": newest["downloads"], "change": fmt_delta(newest["delta"])}
         if not dry_run:
             append_lines(os.path.join(self.journal, "runs.jsonl"), [run_line(ts, "releases", out)])
             out["report"] = self._render_releases([a["name"] for a in out["addons"]], ts)
