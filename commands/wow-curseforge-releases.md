@@ -74,14 +74,35 @@ loop: a 403 from the Core API means the key is wrong or revoked, which only the 
 
 ## Step 4 — Report
 
-Show a compact summary:
+**Every time shown is local time**, in the journal's timezone: `timezone` in
+`journal.config.json` (an IANA name such as `Asia/Kolkata`), or the machine's own when it is unset. The
+journal's data stays in UTC; only what a person reads is converted. The script's JSON already carries
+`tsLocal` and, per addon, `sinceLocal` (the previous run, or `null` on a first run), and its report file
+is named and written in local time.
 
-- one line per addon with its total downloads and the change since the last run (`—` on the first run);
-- new releases, each with its date and type;
-- the files whose downloads moved most;
-- anything skipped or failed, and why.
+Show the same table the report file holds. It has one table for the whole run, addons ordered by total
+downloads (most first), and for each addon a `Total` row followed by one row per file, newest release
+first:
 
-Link the report file. Don't paste whole changelogs; they are in `files.json`.
+```
+| Addon | Version | Release Date | Downloads | Changes since <sinceLocal> |
+|---|---|---|---:|---|
+| PrettyChat | Total | - | 2095 | +3 |
+|  | 1.7.0 | 2026-10-09 23:00 IST | 19 | +1 |
+|  | 1.6.0 | 2026-09-26 22:30 IST | 61 | +0 |
+```
+
+- **Version** is the file's display name without a `-release` suffix. A `-beta` or `-alpha` suffix is
+  kept, because it says something.
+- **Changes since** is a signed change (`+3`), or `—` for a file or project with no earlier count.
+- When the addons' previous runs differ, the header reads `Changes since last run`, and a line under the
+  table gives each addon's own previous run.
+
+Below the table, list the new releases, any files no longer listed, and anything skipped or failed, with
+the reason. Link the report file. Don't paste whole changelogs; they are in `files.json`.
+
+To rebuild a run's report from the journal, for example after the timezone changes, run
+`ka0s-curseforge report-releases <run-ts> <scope words>`. The report is derived from the journal alone.
 
 ## Step 5 — Commit
 

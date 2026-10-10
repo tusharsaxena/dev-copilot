@@ -118,7 +118,8 @@ class Collection(unittest.TestCase):
         self.journal = os.path.join(self.root, "Ka0sAddonsCommonTasks/journal/curseforge")
         write(os.path.join(self.journal, "journal.config.json"), json.dumps({
             "schemaVersion": 1, "pathsRelativeTo": "repository root",
-            "roster": "../WowAddonStandards/standards/ADDONS.md", "ownerAuthor": "TheOwner"}))
+            "roster": "../WowAddonStandards/standards/ADDONS.md", "ownerAuthor": "TheOwner",
+            "timezone": "Asia/Kolkata"}))
         write(os.path.join(self.journal, "runs.jsonl"), "")
         self.env = {cj.JOURNAL_ENV: self.journal}
 
@@ -230,7 +231,7 @@ class ReleasesTest(Collection):
         self.assertEqual(out["addons"][0]["newFiles"], ["1.0.0", "1.1.0"])
         run = read_lines(os.path.join(self.journal, "runs.jsonl"))[0]
         self.assertEqual(run["command"], "releases")
-        self.assertTrue(os.path.isfile(os.path.join(self.journal, "reports", "20261010-000000-releases.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.journal, "reports", "20261010-053000-releases.md")))
 
     def test_second_run_only_appends_counts_and_fetches_no_old_changelog(self):
         ctx = self.ctx()
@@ -394,7 +395,7 @@ class CommentsTest(Collection):
         text = read_text(out["report"])
         self.assertIn("It errors", text)
         self.assertIn("example/Alpha#4", text)
-        self.assertTrue(out["report"].endswith("20261010-000000-comments.md"))
+        self.assertTrue(out["report"].endswith("20261010-053000-comments.md"))
 
 
 PACKAGER_LOG = """tag 0123456789abcdef0123456789abcdef01234567 1.1.0-release
@@ -437,6 +438,75 @@ class ChangelogSummaryTest(unittest.TestCase):
         text, count = cj.summarize_changelog("x" * (cj.CHANGELOG_CAP + 50))
         self.assertTrue(text.endswith("[truncated]"))
         self.assertLess(len(text), cj.CHANGELOG_CAP + 20)
+
+
+class LocalTimeReportTest(Collection):
+    """Reports render every time in the journal's configured timezone; the data stays UTC."""
+
+    def http(self, files, alpha=50, beta=70):
+        return FakeHttp({"/files?": files_page(files), "/changelog": {"data": ""},
+                         "/v1/mods/100": mod(100, alpha), "/v1/mods/200": mod(200, beta)})
+
+    def test_releases_table_matches_the_owner_format(self):
+        ctx = self.ctx()
+        ctx.releases(["Alpha", "Beta"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
+        out = ctx.releases(["Alpha", "Beta"], self.http([cf_file(1, "1.0.0-release", 9),
+                                                         cf_file(2, "1.1.0-beta", 1, date="2026-10-10T20:00:00Z")],
+                                                        alpha=60, beta=71), ts="2026-10-11T00:00:00Z")
+        text = read_text(out["report"])
+        self.assertTrue(out["report"].endswith("20261011-053000-releases.md"))
+        self.assertIn("# CurseForge releases — run 2026-10-11 05:30 IST", text)
+        self.assertIn("| Addon | Version | Release Date | Downloads | Changes since 2026-10-10 05:30 IST |", text)
+        rows = [l for l in text.splitlines() if l.startswith("| ") and "Addon" not in l]
+        self.assertEqual(rows, [
+            "| Beta | Total | - | 71 | +1 |",
+            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
+            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
+            "| Alpha | Total | - | 60 | +10 |",
+            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
+            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
+        ])
+        self.assertIn("New this run: Beta 1.1.0-beta; Alpha 1.1.0-beta.", text)
+        self.assertEqual(out["tsLocal"], "2026-10-11 05:30 IST")
+        self.assertEqual(out["addons"][0]["sinceLocal"], "2026-10-10 05:30 IST")
+
+    def test_first_run_has_no_since(self):
+        out = self.ctx().releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
+        text = read_text(out["report"])
+        self.assertIn("| Changes since last run |", text)
+        self.assertIn("| Alpha | Total | - | 50 | — |", text)
+
+    def test_report_releases_regenerates_the_same_file(self):
+        ctx = self.ctx()
+        out = ctx.releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
+        before = read_text(out["report"])
+        os.remove(out["report"])
+        again = ctx.report_releases(["Alpha"], "2026-10-10T00:00:00Z")
+        self.assertEqual(again["report"], out["report"])
+        self.assertEqual(read_text(again["report"]), before)
+
+    def test_comments_report_dates_are_local(self):
+        ctx = self.ctx()
+        ctx.comments(["Alpha"], FakeHttp({"page=0&": comments_page([comment(11, "alice", "hi")], total=1),
+                                          "/v1/mods/100": mod(100, 1)}), ts="2026-10-10T00:00:00Z")
+        text = read_text(ctx.report_comments(["Alpha"], "2026-10-10T00:00:00Z")["report"])
+        self.assertIn("# CurseForge comments — run 2026-10-10 05:30 IST", text)
+        self.assertIn("alice, 2026-09-20 17:05 IST", text)
+
+    def test_unknown_timezone_stops(self):
+        path = os.path.join(self.journal, "journal.config.json")
+        cfg = read_json(path)
+        cfg["timezone"] = "Mars/Olympus"
+        write(path, json.dumps(cfg))
+        with self.assertRaises(cj.JournalError):
+            self.ctx()
+
+    def test_missing_timezone_falls_back_to_the_machine(self):
+        path = os.path.join(self.journal, "journal.config.json")
+        cfg = read_json(path)
+        del cfg["timezone"]
+        write(path, json.dumps(cfg))
+        self.assertIsNotNone(self.ctx().tz)
 
 
 class HtmlToMarkdownTest(unittest.TestCase):
