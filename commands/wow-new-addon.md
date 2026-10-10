@@ -72,7 +72,7 @@ A new addon is born having adopted `automated-tests`. Before the first commit:
    ```
 
    `test_prose` is the US-English gate. **Do not hand-write one** — `localization-§5` makes the
-   kit's copy the SHOULD precisely because eleven hand-written copies are eleven chances to carry a
+   kit's copy the SHOULD precisely because a hand-written copy in every addon is one more chance per addon to carry a
    subset, and a subset is a gate whose green means nothing. A new addon has no legacy copy to keep,
    so it takes the kit's and writes none of its own.
 
@@ -120,8 +120,8 @@ canonical topic doc behind a summary and one link.
 ## `docs/smoke-tests.md` — the non-English-client section ships with the scaffold
 
 **A new addon is born with a locale check, not with a smoke doc that is silent about locale.** Write
-`docs/smoke-tests.md` in the shape every addon in the collection uses (all eleven were rewritten to it
-on 2026-09-29):
+`docs/smoke-tests.md` in the shape every addon in the collection uses (every addon then in the roster was
+rewritten to it on 2026-09-29):
 
 - `# Smoke tests — <Addon display name>`, then one intro paragraph: what the doc is (the in-client
   checks the headless suite cannot make), how to run it (a clean `/reload`, debug on only where a check
@@ -148,8 +148,8 @@ covering one behavior, with steps that say exactly what to click or type.
 The Non-English client section is scaffolded rather than left to the first person who trips over it,
 because the headless harness structurally cannot see this class of bug. The base mock's globals are
 enUS, so a path that keys off a localized string is green in the suite whether it is right or wrong —
-the test and the bug agree. All eleven addons in this collection now carry a Non-English client
-section (each opening with `LOC-1`, re-measured 2026-09-29) — but the section being present is not its
+the test and the bug agree. Every addon then in the roster carried a Non-English client
+section when re-measured on 2026-09-29 (each opening with `LOC-1`) — but the section being present is not its
 checks being right, and the two addons whose code is most locale-sensitive are still where the worked
 examples come from.
 LootHistory `core/Compat.lua` hard-codes the English

@@ -206,8 +206,8 @@ count already: it never descends into an untracked scratch or build directory, i
 file because a glob skipped a dotted path, and it is reproducible by the next reader from a clean
 checkout of the same SHA. `libs/` and `tests/_kit/` come out because they are **vendored** — code this
 repository must not patch (library-stack-§5, testing-§1), audited where it is authored, and sitting in
-eleven near-identical copies across the collection, so counting them multiplies one upstream fact by
-eleven and reports it as eleven facts.
+one near-identical copy per addon across the collection, so counting them multiplies one upstream fact
+by the roster's size and reports it as that many facts.
 
 `tests/` stays **in**. That is the answer `layout-§1` now gives explicitly, and a census that drops it is
 quietly reporting on a smaller repository than the one being reviewed.
@@ -287,8 +287,8 @@ Runs as part of Step 0b's measurement (its row in the suites table above), from 
 
 ### The cross-addon pass — the collisions only a same-session load exposes
 
-Everything above this line reviews one addon against itself. The collection's stated deployment is **all
-eleven loaded in the same session**, and there is a whole class of defect that exists only at that
+Everything above this line reviews one addon against itself. The collection's stated deployment is **every
+addon in the roster loaded in the same session**, and there is a whole class of defect that exists only at that
 scale:
 two addons that are each correct in isolation and collide the moment the client has both. Nothing in a
 per-addon checklist can see it — the only cross-addon fault this collection has found was found by a lens
@@ -324,11 +324,12 @@ So: derive the file list from the TOC, and **report every count with the command
 it**. A count whose denominator is unstated is not a count.
 
 ```sh
-# Run from the directory holding the sibling repos. The list is the eleven rows of
-# `WowAddonStandards/standards/ADDONS.md` — not WhoGotLoots, not BuffTextNotifications,
-# neither of which is a Ka0s addon.
-set -- AbsorbTracker AuraMaster BankLedger ConsumableMaster KickCD LootHistory \
-       MultiMeters PanelMaster PartyFrameEnhanced PrettyChat WhatGroup
+# Run from the directory holding the sibling repos. The list is every row of the In-scope
+# addons table in `WowAddonStandards/standards/ADDONS.md`, derived rather than typed so it
+# cannot go stale — not WhoGotLoots, not BuffTextNotifications, neither of which is a Ka0s
+# addon. `echo $# "$@"` and check it against the roster before running anything.
+set -- $(awk '/^## In-scope addons/{f=1;next} /^## /{f=0} f' WowAddonStandards/standards/ADDONS.md \
+         | sed -nE 's/^\| [^|]+ \| `\.\.\/\.\.\/([A-Za-z0-9]+)\/` \|.*/\1/p')
 
 # The TOC-derived load list for one addon, from inside its root:
 tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g'
@@ -377,9 +378,9 @@ done                                        # any output bypasses AceConsole
 #### 2. Vendored LibKa0s minors, identical across every consumer
 
 This is the subtlest of the four and the one worth understanding before you run it. LibStub keys on the
-MAJOR string and admits a file only if its MINOR is **higher** than what is already registered. Eleven
-copies of the same library therefore resolve to exactly one — **whichever addon loaded first** — and the
-other ten silently run a payload they did not ship. That is harmless while the copies are identical
+MAJOR string and admits a file only if its MINOR is **higher** than what is already registered. The
+per-addon copies of the same library therefore resolve to exactly one — **whichever addon loaded first** — and
+every other addon silently runs a payload it did not ship. That is harmless while the copies are identical
 and it is a genuine cross-addon fault the moment they are not: same minor, different bytes, and the
 behavior an addon gets depends on alphabetical load order rather than on anything in its own repo.
 
@@ -393,7 +394,7 @@ for a in "$@"; do
 done | sort -u                              # more than one line means a split
 ```
 
-**Clean is** a single line — one minor per major, agreed by all eleven.
+**Clean is** a single line — one minor per major, agreed by every addon in `$@`.
 
 #### 3. Vendored payload byte-identity
 
@@ -435,7 +436,7 @@ next LibKa0s release, and from then on every pass would compare against a number
 legitimate reasons. So every row below is a command, not a number: **run each one at review time and
 record what it prints in the measurement block, beside the command and the tag you measured at. Never
 copy a figure into a bundle from this page or from an earlier bundle.** Run them from the directory
-holding the siblings, with the eleven names in `$@` as above.
+holding the siblings, with the roster's names in `$@` as above.
 
 Measure at the LibKa0s tag **the addons currently vendor**, which each addon's `CLAUDE.md` provenance
 line names (`Bundles [LibKa0s](…) vX.Y.Z (MIT).`), not at the library's newest tag:
@@ -451,7 +452,7 @@ More than one line means the consumers vendor different tags, normally mid-way t
 sweep. Say so, measure the library rows at each tag in use, and expect classes 2 and 3 to report the
 split. The library's own newest tag (`git -C LibKa0s describe --tags --abbrev=0`) may be ahead of what
 the addons vendor. That is the normal state between a library release and the re-vendor sweep that
-follows it, and it is not a cross-addon fault: classes 2 and 3 ask whether the eleven **agree with each
+follows it, and it is not a cross-addon fault: classes 2 and 3 ask whether the addons **agree with each
 other**, never whether they agree with the library's newest tag. A consumer behind the newest tag is a
 `/dev-copilot:wow-revendor-libka0s` question, and belongs in this bundle only as the provenance line you
 read.
@@ -481,8 +482,8 @@ read.
 - **A library row that will not measure** (the tag is missing from the `LibKa0s` checkout, or a path has
   moved) is a gap in the measurement, not a finding against any addon. Say what failed and fetch the tags
   or adjust the path; never fill the row from memory.
-- **The roster moved** (the `ADDONS.md` count is not the eleven in `$@`). Update `$@` from the roster, not
-  from this page, and re-run all four classes before reading anything; the slash-root count moves with it.
+- **The roster moved** (the `ADDONS.md` row count is not `$#`, e.g. a `$@` derived before the roster changed, or a
+  table the derivation no longer parses). Re-derive `$@` from the roster, never type it from this page, and re-run all four classes before reading anything; the slash-root count moves with it.
 
 A clean result is a **non-finding you record in the measurement block**, with the tag you measured at.
 
@@ -498,7 +499,7 @@ A clean result is a **non-finding you record in the measurement block**, with th
   The remedy is a re-vendor of the whole folder into the offending consumer, as its own commit.
 - **The in-client half belongs in `03_SMOKE_TESTS.md`,** and it is not optional just because the greps
   came back clean. Source-level token distinctness is not the same claim as the client's dispatch table:
-  write the step as *type each of the eleven roots and confirm it reaches its own addon, then open
+  write the step as *type each roster addon's root and confirm it reaches its own addon, then open
   Settings → AddOns and confirm each addon appears exactly once, and each multi-page addon's pages appear
   once each.* It is cheap to fold into any session where several are loaded anyway.
 

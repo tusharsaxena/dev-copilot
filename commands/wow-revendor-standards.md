@@ -169,7 +169,7 @@ You **may** still fix references *to* it — a `CLAUDE.md` pointer naming it is 
 
 ### 3f. Normative claims the standard has since changed
 
-3b sweeps forms the standard has **retired**. This sweep is the other half: a doc sentence that still *paraphrases correctly-named rules the standard has since rewritten*. It is scoped narrowly and deliberately — to statements about **which checkpoint gates on what** — because that is where the collection's docs are one template with eleven copies, and because the rewrite is fully determined by the fetched section rather than by judgment.
+3b sweeps forms the standard has **retired**. This sweep is the other half: a doc sentence that still *paraphrases correctly-named rules the standard has since rewritten*. It is scoped narrowly and deliberately — to statements about **which checkpoint gates on what** — because that is where the collection's docs are one template with a copy per addon, and because the rewrite is fully determined by the fetched section rather than by judgment.
 
 Read `automated-tests-§3` ("What gates, and what only records", including its release-gate subsection) from the fetched section file and hold its current wording. Then check these locations, by name:
 
