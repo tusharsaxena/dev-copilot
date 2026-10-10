@@ -223,6 +223,7 @@ class ReleasesTest(Collection):
         files = read_json(os.path.join(adir, "files.json"))
         self.assertEqual(sorted(files), ["1", "2"])
         self.assertEqual(files["1"]["changelog"], "Release **1**")
+        self.assertIsNone(files["1"]["changelogCommits"])
         self.assertEqual(files["1"]["releaseType"], "release")
         self.assertEqual(len(read_lines(os.path.join(adir, "downloads.jsonl"))), 2)
         self.assertEqual(read_lines(os.path.join(adir, "project.jsonl"))[0]["totalDownloads"], 50)
@@ -394,6 +395,48 @@ class CommentsTest(Collection):
         self.assertIn("It errors", text)
         self.assertIn("example/Alpha#4", text)
         self.assertTrue(out["report"].endswith("20261010-000000-comments.md"))
+
+
+PACKAGER_LOG = """tag 0123456789abcdef0123456789abcdef01234567 1.1.0-release
+Author: Someone <someone@example.com>
+Date:   Fri Oct 9 19:24:19 2026 +0530
+
+Release 1.1.0
+
+commit 1111111111111111111111111111111111111111
+Author: Someone <someone@example.com>
+Date:   Fri Oct 9 19:20:00 2026 +0530
+
+    Release 1.1.0: version bump
+
+    - A body line that is not kept.
+
+commit 2222222222222222222222222222222222222222
+Merge: 3333333 4444444
+Author: Someone <someone@example.com>
+Date:   Thu Oct 8 10:00:00 2026 +0530
+
+    Merge branch 'feat/x'
+"""
+
+
+class ChangelogSummaryTest(unittest.TestCase):
+    def test_packager_log_keeps_one_line_per_commit(self):
+        text, count = cj.summarize_changelog(PACKAGER_LOG)
+        self.assertEqual(text, "- Release 1.1.0: version bump (1111111)\n- Merge branch 'feat/x' (2222222)")
+        self.assertEqual(count, 2)
+
+    def test_a_commit_listed_twice_is_kept_once(self):
+        text, count = cj.summarize_changelog(PACKAGER_LOG + "\n" + PACKAGER_LOG)
+        self.assertEqual(count, 2)
+
+    def test_hand_written_changelog_is_kept_whole(self):
+        self.assertEqual(cj.summarize_changelog("Fixed the bar."), ("Fixed the bar.", None))
+
+    def test_long_hand_written_changelog_is_capped(self):
+        text, count = cj.summarize_changelog("x" * (cj.CHANGELOG_CAP + 50))
+        self.assertTrue(text.endswith("[truncated]"))
+        self.assertLess(len(text), cj.CHANGELOG_CAP + 20)
 
 
 class HtmlToMarkdownTest(unittest.TestCase):

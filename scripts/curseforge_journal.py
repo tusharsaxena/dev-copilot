@@ -44,6 +44,8 @@ ISSUE_REF = re.compile(r"^[\w.-]+/[\w.-]+#\d+$")
 PAUSE_S = 0.5
 COMMENT_PAGE = 20
 FILE_PAGE = 50
+CHANGELOG_CAP = 4000
+COMMIT_LINE = re.compile(r"^commit ([0-9a-f]{7,40})\b")
 
 
 class JournalError(Exception):
@@ -225,7 +227,30 @@ def fetch_files(http, pid):
 
 def fetch_changelog(http, pid, fid):
     payload = http.get_json("%s/v1/mods/%d/files/%d/changelog" % (CORE, pid, fid), auth=True)
-    return html_to_md(payload.get("data") if isinstance(payload, dict) else "")
+    return summarize_changelog(html_to_md(payload.get("data") if isinstance(payload, dict) else ""))
+
+
+def summarize_changelog(text):
+    """(summary, commitCount). A packager changelog is the full git log since the previous tag, bodies
+    included, and the bodies already live in the addon's public history, so only `- subject (sha7)` is
+    kept, once per commit (the packager can list one twice). A hand-written changelog has no commit lines and is kept as written, up to CHANGELOG_CAP."""
+    lines, out, seen, i = (text or "").split("\n"), [], set(), 0
+    while i < len(lines):
+        m = COMMIT_LINE.match(lines[i])
+        i += 1
+        if not m or m.group(1) in seen:
+            continue
+        seen.add(m.group(1))
+        while i < len(lines) and re.match(r"^(Author|Date|Merge|Commit|AuthorDate|CommitDate):", lines[i]):
+            i += 1
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+        subject = lines[i].strip() if i < len(lines) and not COMMIT_LINE.match(lines[i]) else ""
+        out.append("- %s (%s)" % (subject, m.group(1)[:7]))
+    if out:
+        return "\n".join(out), len(out)
+    text = (text or "").strip()
+    return (text if len(text) <= CHANGELOG_CAP else text[:CHANGELOG_CAP].rstrip() + "\n[truncated]"), None
 
 
 def fetch_comments(http, pid):
@@ -408,8 +433,9 @@ class Context:
             key = str(f["id"])
             if key not in files:
                 new.append(f.get("displayName"))
+                changelog, commits = (None, None) if dry_run else fetch_changelog(http, pid, f["id"])
                 files[key] = {"fileId": f["id"], "fileName": f.get("fileName"), "firstSeen": ts,
-                              "changelog": None if dry_run else fetch_changelog(http, pid, f["id"])}
+                              "changelog": changelog, "changelogCommits": commits}
             files[key].update({"displayName": f.get("displayName"), "fileDate": f.get("fileDate"),
                                "releaseType": RELEASE_TYPES.get(f.get("releaseType"), f.get("releaseType")),
                                "fileStatus": f.get("fileStatus"), "isAvailable": f.get("isAvailable"),
