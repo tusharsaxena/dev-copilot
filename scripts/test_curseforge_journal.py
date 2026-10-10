@@ -231,7 +231,7 @@ class ReleasesTest(Collection):
         self.assertEqual(out["addons"][0]["newFiles"], ["1.0.0", "1.1.0"])
         run = read_lines(os.path.join(self.journal, "runs.jsonl"))[0]
         self.assertEqual(run["command"], "releases")
-        self.assertTrue(os.path.isfile(os.path.join(self.journal, "reports", "20261010-053000-releases.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.journal, "reports", "releases", "20261010-053000-releases.md")))
 
     def test_second_run_only_appends_counts_and_fetches_no_old_changelog(self):
         ctx = self.ctx()
@@ -395,7 +395,7 @@ class CommentsTest(Collection):
         text = read_text(out["report"])
         self.assertIn("It errors", text)
         self.assertIn("[Alpha#4](https://github.com/example/Alpha/issues/4)", text)
-        self.assertTrue(out["report"].endswith("20261010-053000-comments.md"))
+        self.assertEqual(out["report"], os.path.join(self.journal, "reports", "comments", "20261010-053000-comments.md"))
 
 
 PACKAGER_LOG = """tag 0123456789abcdef0123456789abcdef01234567 1.1.0-release

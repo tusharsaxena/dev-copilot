@@ -652,7 +652,7 @@ class Context:
                             if r.get("removed") and int(r["fileId"]) not in counts]}
 
     def _write_report(self, ts, kind, body):
-        path = os.path.join(self.journal, "reports", "%s-%s.md" % (stamp(ts, self.tz), kind))
+        path = os.path.join(self.journal, "reports", kind, "%s-%s.md" % (stamp(ts, self.tz), kind))
         write_text(path, body.rstrip() + "\n")
         return path
 

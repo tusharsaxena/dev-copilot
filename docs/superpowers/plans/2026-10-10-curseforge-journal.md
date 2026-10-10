@@ -24,6 +24,7 @@ named in the Repo column. The journal data commits (CF-08) use the journal's own
 | CF-13 | dev-copilot | Links in the comments tree: the addon's comments page on its heading, authors to their profiles, issue tags to the GitHub issue | CF-12 |
 | CF-14 | dev-copilot | Chat shows each addon's Total and latest release only; the report keeps the full table; `latest` and `totalChange` in the releases JSON | CF-13 |
 | CF-15 | dev-copilot | A first-run addon no longer hides the shared previous-run time in the releases header; it is named in a `First run for:` line | CF-14 |
+| CF-16 | dev-copilot + Ka0sAddonsCommonTasks | Reports in `reports/releases/` and `reports/comments/`; the journal's existing reports moved there once | CF-15 |
 
 ## Execution notes
 
