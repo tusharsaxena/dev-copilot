@@ -459,14 +459,15 @@ class LocalTimeReportTest(Collection):
         self.assertIn("| Addon | Version | Release Date | Downloads | Changes since 2026-10-10 05:30 IST |", text)
         rows = [l for l in text.splitlines() if l.startswith("| ") and "Addon" not in l]
         self.assertEqual(rows, [
-            "| Beta | Total | - | 71 | +1 |",
-            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
-            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
+            # By addon name, not downloads: Beta has more (71) and still comes second.
             "| Alpha | Total | - | 60 | +10 |",
             "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
             "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
+            "| Beta | Total | - | 71 | +1 |",
+            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
+            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
         ])
-        self.assertIn("New this run: Beta 1.1.0-beta; Alpha 1.1.0-beta.", text)
+        self.assertIn("New this run: Alpha 1.1.0-beta; Beta 1.1.0-beta.", text)
         self.assertEqual(out["tsLocal"], "2026-10-11 05:30 IST")
         self.assertEqual(out["addons"][0]["sinceLocal"], "2026-10-10 05:30 IST")
 

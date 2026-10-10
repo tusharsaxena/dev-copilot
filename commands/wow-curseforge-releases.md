@@ -80,16 +80,22 @@ journal's data stays in UTC; only what a person reads is converted. The script's
 `tsLocal` and, per addon, `sinceLocal` (the previous run, or `null` on a first run), and its report file
 is named and written in local time.
 
-Show the same table the report file holds. It has one table for the whole run, addons ordered by total
-downloads (most first), and for each addon a `Total` row followed by one row per file, newest release
-first:
+**Always show the full table**, exactly as the report file holds it: every addon in scope, and every
+file row of every addon, including the rows that did not move. Never trim it to what changed, collapse an
+addon to its `Total` row, or stand in an ellipsis row for the rest. Read the table from the report file
+and reproduce it whole.
+
+It is one table for the whole run. The addons are in name order (A to Z, ignoring case), and each addon
+has a `Total` row followed by one row per file, newest release first:
 
 ```
 | Addon | Version | Release Date | Downloads | Changes since <sinceLocal> |
 |---|---|---|---:|---|
-| PrettyChat | Total | - | 2095 | +3 |
-|  | 1.7.0 | 2026-10-09 23:00 IST | 19 | +1 |
-|  | 1.6.0 | 2026-09-26 22:30 IST | 61 | +0 |
+| AbsorbTracker | Total | - | 2016 | +4 |
+|  | 1.12.0 | 2026-10-09 23:00 IST | 61 | +4 |
+|  | 1.11.0 | 2026-09-27 03:47 IST | 100 | +0 |
+| AuraMaster | Total | - | 34 | +0 |
+|  | 1.1.0 | 2026-10-09 23:00 IST | 9 | +1 |
 ```
 
 - **Version** is the file's display name without a `-release` suffix. A `-beta` or `-alpha` suffix is

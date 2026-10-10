@@ -611,7 +611,7 @@ class Context:
     def _render_releases(self, names, run_ts):
         """The releases report for one run, derived from the journal alone, so it can be regenerated."""
         addons = [a for a in (self._release_view(n, run_ts) for n in names) if a]
-        addons.sort(key=lambda a: -a["total"])
+        addons.sort(key=lambda a: a["name"].lower())
         run = next((r for r in load_lines(os.path.join(self.journal, "runs.jsonl"))
                     if r.get("ts") == run_ts and r.get("command") == "releases"), {})
         body = render_releases(addons, run, run_ts, self.tz)
