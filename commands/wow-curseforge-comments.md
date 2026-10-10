@@ -135,7 +135,7 @@ so, skip the hand-off and leave every candidate as it is.
 Skip this step on `--dry-run`.
 
 Run `ka0s-curseforge report-comments <ts> <scope words>` with the `ts` from Step 3. It writes
-`reports/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself, named and dated in the journal's local
+`reports/comments/<YYYYMMDD-HHMMSS>-comments.md` from the journal itself, named and dated in the journal's local
 timezone (`timezone` in `journal.config.json`), the same as every time you show the owner.
 
 The report shows each addon's comments as **conversation trees**: every thread on record, newest thread

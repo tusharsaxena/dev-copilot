@@ -65,7 +65,7 @@ Run `ka0s-curseforge releases <scope words>` (add `--dry-run` if given). The scr
   requests 0.5 s apart.
 - writes `<Addon>/files.json` (one record per file, written once), and appends to
   `<Addon>/downloads.jsonl`, `<Addon>/project.jsonl` and `runs.jsonl`. It also writes
-  `reports/<YYYYMMDD-HHMMSS>-releases.md`.
+  `reports/releases/<YYYYMMDD-HHMMSS>-releases.md`.
 - prints a JSON summary: per addon, `totalDownloads`, `downloadDelta`, `newFiles`, `removedFiles` and
   `files[]` with each file's `downloads` and `delta`. It also prints `skipped`, `errors` and `report`.
 
@@ -81,7 +81,7 @@ journal's data stays in UTC; only what a person reads is converted. The script's
 is named and written in local time.
 
 **The report file holds the full table; the chat summary does not.** The report
-(`reports/<YYYYMMDD-HHMMSS>-releases.md`) lists every addon and every file. In chat, show only **two rows
+(`reports/releases/<YYYYMMDD-HHMMSS>-releases.md`) lists every addon and every file. In chat, show only **two rows
 per addon**: its `Total` and its **latest release** (the newest file). Never paste the full table into
 chat; link the report file for it. Take both rows from the script's JSON, which formats them the way the
 report does: per addon, `totalDownloads` and `totalChange`, and `latest` (`version`, `releaseDate`,
