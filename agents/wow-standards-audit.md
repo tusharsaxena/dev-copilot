@@ -112,7 +112,9 @@ Fetch these **faithfully** (see the fetch rule below), in order:
 3. **Every section file the `STANDARDS.md` Sections list links.** *These are the normative rules* — the index alone is not the standard. **Discover them by following the Sections links and fetch each `$RAW/standards/standards/<file>.md`; do NOT hard-code section filenames here.** The standard is deliberately split so it can be re-organized (files renamed, split, added) without any change to this agent — the only fixed paths are `AUDIT.md` and `standards/STANDARDS.md`; everything else you reach by following links.
 4. Any further file those reference and you need to complete the audit (e.g. `standards/ADDONS.md` for the addon's prefix) — follow the links under `STANDARDS.md`'s "Related documents". Fetch on demand.
 
-**Faithful-fetch rule.** Use `curl -fsSL "<url>"` via Bash and read the saved file — this preserves the document verbatim. Do **not** rely on WebFetch as the primary path: its summarizer rewrites and truncates content, which would silently corrupt the rules you audit against. WebFetch is a last-resort fallback only if `curl` is unavailable, and then treat its output as lossy. Save fetched docs under a scratch path (e.g. `/tmp` or the session scratchpad), then `Read` them.
+**Faithful-fetch rule.** Use `curl -fsSL --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 "<url>" -o <scratch>/<name>` via Bash and read the saved file — this preserves the document verbatim. Do **not** rely on WebFetch as the primary path: its summarizer rewrites and truncates content, which would silently corrupt the rules you audit against. WebFetch is a last-resort fallback only if `curl` is unavailable, and then treat its output as lossy. Save fetched docs under a scratch path (e.g. `/tmp` or the session scratchpad), then `Read` them. The timeouts and retries keep a stalled connection from hanging the run, and `-f` turns a fetch that still fails after its retries into a visible error, never a partial file to read. The section files are independent, so fetch them in parallel once the index has named them: one URL per line into `xargs -P 8 -n 1`, each with the same bounded `curl` and its own `-o`.
+
+**Sibling checkout, only when it is provably current.** You MAY read the standard from a sibling `../WowAddonStandards` working tree instead of the network copy, but only when all three checks pass: `git -C ../WowAddonStandards status --porcelain` prints nothing; `git -C ../WowAddonStandards rev-parse HEAD` equals the hash `git -C ../WowAddonStandards ls-remote origin refs/heads/master` reports; and, when a fetched copy also exists, `diff -rq` between it and the sibling's files is empty. If any check fails, or the sibling is absent, fetch as above and note why. Either way, record in `01_CURRENT_STATE.md` which source the run used (network fetch, or sibling checkout at `<sha>`) beside the standard version, so the next auditor knows what the findings were measured against.
 
 **Hard stop.** If you cannot resolve `AUDIT.md` **and** `standards/STANDARDS.md` **and the section files it lists** (no network, repo moved, 404), do not improvise an audit from memory. Stop and tell the user exactly which fetch failed and what you tried — an audit measured against an unreadable or partial standard is worthless.
 
@@ -169,6 +171,14 @@ and **every census starts from `git ls-files`**. Not `grep -r`, not `find`, not 
 never descends into an untracked scratch directory, never misses a tracked file a glob skipped, and is
 reproducible by the next auditor from a clean checkout of the same SHA. That is the whole reason the
 number can be checked rather than re-guessed.
+
+**Shell.** The Bash tool shell may be zsh, and the snippets in this prompt are POSIX sh/bash. Run a
+multi-line snippet through `bash -s -- <args> <<'EOF' … EOF`, so `"$@"` survives; do not wrap blocks
+in `bash -c '…'`, which drops the arguments and adds a layer of quoting. In the commands you write
+yourself, quote any glob that is an argument (`--include='*.md'`, not `--include=*.md`, which zsh
+aborts on with *no matches found*), and never start a word with `=` (`echo ===`), because zsh expands
+it as a command path. The snippets here that read a TOC find it with `find . -maxdepth 1 -name '*.toc'`,
+so a repo with no root TOC (LibKa0s, WowAddonStandards) yields an empty list instead of a zsh abort.
 
 **The default denominator, and it is `layout-§1`'s** — so a count and the cap it is measured against
 cover the same files:
@@ -319,7 +329,7 @@ the `.lua` files it includes by hand.
 
 ```sh
 # The TOC-derived load list: authored .lua the client actually loads.
-loadlist() { cat *.toc | tr -d '\r' | grep -v '^#' | grep -iE '\.lua[[:space:]]*$' \
+loadlist() { find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -v '^#' | grep -iE '\.lua[[:space:]]*$' \
   | sed 's|\\|/|g; s/[[:space:]]*$//' | grep -v '^libs/' | sort -u; }
 # What the addon registers — the set that must be empty while disabled.
 loadlist | xargs grep -nE 'Register(Unit)?Event|RegisterMessage|RegisterBucketEvent'

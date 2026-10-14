@@ -191,6 +191,14 @@ different number, and had no way to tell which of the two was the answer.
 **So: every census starts from `git ls-files`, and every count is reported with the command and the
 scope beside it.**
 
+**Shell.** The Bash tool shell may be zsh, and the snippets in this prompt are POSIX sh/bash. Run a
+multi-line snippet through `bash -s -- <args> <<'EOF' … EOF`, so `"$@"` survives; do not wrap blocks
+in `bash -c '…'`, which drops the arguments and adds a layer of quoting. In the commands you write
+yourself, quote any glob that is an argument (`--include='*.md'`, not `--include=*.md`, which zsh
+aborts on with *no matches found*), and never start a word with `=` (`echo ===`), because zsh expands
+it as a command path. The snippets here that read a TOC find it with `find . -maxdepth 1 -name '*.toc'`,
+so a repo with no root TOC (LibKa0s, WowAddonStandards) yields an empty list instead of a zsh abort.
+
 #### The default scope
 
 Unless the question demands otherwise, this is the denominator — the same one `layout-§1` was amended to
@@ -335,7 +343,7 @@ set -- $(awk '/^## In-scope addons/{f=1;next} /^## /{f=0} f' WowAddonStandards/s
          | sed -nE 's/^\| [^|]+ \| `\.\.\/\.\.\/([A-Za-z0-9]+)\/` \|.*/\1/p')
 
 # The TOC-derived load list for one addon, from inside its root:
-tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g'
+find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g'
 ```
 
 #### 1. Slash-token distinctness
@@ -371,7 +379,7 @@ assigned but never registered would show up as a root, so confirm any new consta
 ```sh
 roots=$(mktemp "${TMPDIR:-/tmp}/ka0s-roots-XXXXXX")
 for a in "$@"; do
-  ( cd "$a" && files=$(tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g')
+  ( cd "$a" && files=$(find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g')
     { printf '%s\n' "$files" | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/'
       printf '%s\n' "$files" | xargs -r grep -hoE 'NS\.SLASH[A-Z_]* *= *"/[a-z]+"' | sed -E 's/.*"\/([a-z]+)"/\1/'
     } | sort -u
@@ -382,7 +390,8 @@ wc -l < "$roots"                            # the root count, for the measuremen
 rm -f "$roots"
 
 for a in "$@"; do
-  ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
+  ( cd "$a" && find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' \
+    | sed 's|\\|/|g' | sort -u \
     | xargs -r grep -nE '^[[:space:]]*SLASH_[A-Z0-9]+[0-9][[:space:]]*=' ) | sed "s|^|$a: |"
 done                                        # any output bypasses AceConsole
 ```
@@ -437,7 +446,7 @@ Already named in the TOC checklist below as a per-addon observation; run it here
 one, which is the only scope at which "inconsistent with sibling addons" actually means anything.
 
 ```sh
-for a in "$@"; do grep -h '^## Interface:' "$a"/*.toc; done | tr -d '\r' | sort -u
+for a in "$@"; do find "$a" -maxdepth 1 -name '*.toc' -exec grep -h '^## Interface:' {} +; done | tr -d '\r' | sort -u
 ```
 
 **Clean is** a single line. Note the `tr -d '\r'` — without it a CRLF repo and an LF one report two
@@ -525,7 +534,7 @@ This review is **not** a compliance audit. Measuring the addon section-by-sectio
 
 What you **must** do is keep your own output inside the standard: **no finding's fix direction and no entry in `02_PROPOSED_CHANGES.md` may recommend anything the standard forbids or that would introduce a *new* deviation.** A review that fixes a bug by steering the code into a documented anti-pattern, a banned layout, or a naming/API the standard rules out is a bad review. Load the living standard and use it as a **constraint on your recommendations**:
 
-- **Fetch it faithfully.** The standard lives at `https://github.com/tusharsaxena/WowAddonStandards`. Set `RAW=https://raw.githubusercontent.com/tusharsaxena/WowAddonStandards/master`, then with `curl -fsSL "<url>"` via Bash fetch `$RAW/standards/STANDARDS.md` (the index) and **follow its Sections list to fetch every section file it links** under `$RAW/standards/standards/`. Do **not** hard-code section filenames — discover them from the index, exactly as the audit agent does, so an upstream re-org needs no change here. Save to a scratch path and `Read` it; `curl` preserves the text verbatim. WebFetch is a lossy last-resort fallback only (its summarizer mangles the rules). Pay closest attention to the `anti-patterns` section and the `architecture`/naming/API-currency sections — that's where remediation most often trips.
+- **Fetch it faithfully.** The standard lives at `https://github.com/tusharsaxena/WowAddonStandards`. Set `RAW=https://raw.githubusercontent.com/tusharsaxena/WowAddonStandards/master`, then with `curl -fsSL --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 "<url>" -o <scratch>/<name>` via Bash fetch `$RAW/standards/STANDARDS.md` (the index) and **follow its Sections list to fetch every section file it links** under `$RAW/standards/standards/`. Do **not** hard-code section filenames — discover them from the index, exactly as the audit agent does, so an upstream re-org needs no change here. Save to a scratch path and `Read` it; `curl` preserves the text verbatim. The timeouts and retries keep a stalled connection from hanging the review, and `-f` turns a fetch that still fails after its retries into a visible error, never a partial file. The section files are independent, so fetch them in parallel once the index has named them: one URL per line into `xargs -P 8 -n 1`, each with the same bounded `curl` and its own `-o`. You MAY read a sibling `../WowAddonStandards` working tree instead, but only when all three checks pass: `git -C ../WowAddonStandards status --porcelain` prints nothing; `git -C ../WowAddonStandards rev-parse HEAD` equals the hash `git -C ../WowAddonStandards ls-remote origin refs/heads/master` reports; and, when a fetched copy also exists, `diff -rq` between it and the sibling is empty. If any check fails, or the sibling is absent, fetch and note why. Record which source you used (network fetch, or sibling checkout at `<sha>`) beside the standard version in `02_PROPOSED_CHANGES.md`. WebFetch is a lossy last-resort fallback only (its summarizer mangles the rules). Pay closest attention to the `anti-patterns` section and the `architecture`/naming/API-currency sections — that's where remediation most often trips.
 - **Degrade gracefully — do NOT hard-stop.** Unlike the audit and scaffolding agents (whose entire output is worthless without the standard), this cross-check is a guardrail layered on a review that still has value on its own. If you cannot fetch the standard (no network, repo moved, 404), **proceed with the full review anyway** and state plainly, near the top of `01_FINDINGS.md` and `02_PROPOSED_CHANGES.md`, that the standards cross-check was skipped and why — so the reader knows remediation wasn't vetted against it. Never invent the standard's rules from memory to fill the gap.
 - **Cite what shaped a fix.** When a proposed change is chosen (or a tempting one rejected) because of a standard rule, name it as `filename-§N` — a whole section is its bare filename (`anti-patterns`, `architecture`), a subsection is `filename-§N` (`architecture-§5`), the number being that section's local count. Record the standard version you resolved (from the top of `STANDARDS.md`) once in `02_PROPOSED_CHANGES.md`, so the run is reproducible.
 
