@@ -311,6 +311,9 @@ both directions have real examples here:
 
 - A `RegisterChatCommand` census that walks `libs/` reports the token `mychat`, which no addon registers.
   It is a comment inside vendored `AceConfigCmd-3.0.lua`, which every addon vendors.
+- A `RegisterChatCommand` census that matches only string literals misses `dw`, `dropwatcher`, `qc`
+  and `quickcomms`. DropWatcher and QuickComms register through `NS.SLASH` constants, so a literal-only
+  grep reports a clean result while four of the collection's roots go unchecked.
 - A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **well over a thousand hits in PrettyChat**
   and would have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC
   load list it reports **0**. Every one of those hits lives under `GlobalStrings/` — the monolithic
@@ -356,11 +359,22 @@ another reads it, so the collision check reports a false clean. That is the shar
 `commands/wow-automated-tests.md` states for run logs (*Capture the run's console output to a path no
 other run can share*), applied here.
 
+Not every addon passes a literal. DropWatcher and QuickComms register with
+`self:RegisterChatCommand(NS.SLASH:sub(2), …)` and `NS.SLASH_ALIAS:sub(2)`, and keep the constants in
+`core/Namespace.lua` (`NS.SLASH = "/dw"`, `NS.SLASH_ALIAS = "/dropwatcher"`; `slash-commands-§3`). A grep
+for `RegisterChatCommand("…"` alone drops their roots without a trace, and the collision check then
+passes over four roots it never saw. So the loop builds each addon's load list once and runs two passes
+over it: the literal arguments, and the `NS.SLASH*` constants the addon assigns. A constant that is
+assigned but never registered would show up as a root, so confirm any new constant-only root against its
+`RegisterChatCommand` call before you record it.
+
 ```sh
 roots=$(mktemp "${TMPDIR:-/tmp}/ka0s-roots-XXXXXX")
 for a in "$@"; do
-  ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
-    | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/' | sort -u \
+  ( cd "$a" && files=$(tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g')
+    { printf '%s\n' "$files" | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/'
+      printf '%s\n' "$files" | xargs -r grep -hoE 'NS\.SLASH[A-Z_]* *= *"/[a-z]+"' | sed -E 's/.*"\/([a-z]+)"/\1/'
+    } | sort -u
   ) | sed "s|\$|\t$a|"
 done | sort | tee "$roots"
 cut -f1 "$roots" | uniq -d                  # any output is a collision
