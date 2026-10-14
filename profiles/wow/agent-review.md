@@ -191,6 +191,14 @@ different number, and had no way to tell which of the two was the answer.
 **So: every census starts from `git ls-files`, and every count is reported with the command and the
 scope beside it.**
 
+**Shell.** The Bash tool shell may be zsh, and the snippets in this prompt are POSIX sh/bash. Run a
+multi-line snippet through `bash -s -- <args> <<'EOF' … EOF`, so `"$@"` survives; do not wrap blocks
+in `bash -c '…'`, which drops the arguments and adds a layer of quoting. In the commands you write
+yourself, quote any glob that is an argument (`--include='*.md'`, not `--include=*.md`, which zsh
+aborts on with *no matches found*), and never start a word with `=` (`echo ===`), because zsh expands
+it as a command path. The snippets here that read a TOC find it with `find . -maxdepth 1 -name '*.toc'`,
+so a repo with no root TOC (LibKa0s, WowAddonStandards) yields an empty list instead of a zsh abort.
+
 #### The default scope
 
 Unless the question demands otherwise, this is the denominator — the same one `layout-§1` was amended to
@@ -311,6 +319,9 @@ both directions have real examples here:
 
 - A `RegisterChatCommand` census that walks `libs/` reports the token `mychat`, which no addon registers.
   It is a comment inside vendored `AceConfigCmd-3.0.lua`, which every addon vendors.
+- A `RegisterChatCommand` census that matches only string literals misses `dw`, `dropwatcher`, `qc`
+  and `quickcomms`. DropWatcher and QuickComms register through `NS.SLASH` constants, so a literal-only
+  grep reports a clean result while four of the collection's roots go unchecked.
 - A raw-`SLASH_*` census scoped to "the repo minus `libs/`" reports **well over a thousand hits in PrettyChat**
   and would have you writing up a collection-wide violation of the AceConsole rule. Scoped to the TOC
   load list it reports **0**. Every one of those hits lives under `GlobalStrings/` — the monolithic
@@ -332,7 +343,7 @@ set -- $(awk '/^## In-scope addons/{f=1;next} /^## /{f=0} f' WowAddonStandards/s
          | sed -nE 's/^\| [^|]+ \| `\.\.\/\.\.\/([A-Za-z0-9]+)\/` \|.*/\1/p')
 
 # The TOC-derived load list for one addon, from inside its root:
-tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g'
+find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g'
 ```
 
 #### 1. Slash-token distinctness
@@ -356,11 +367,22 @@ another reads it, so the collision check reports a false clean. That is the shar
 `commands/wow-automated-tests.md` states for run logs (*Capture the run's console output to a path no
 other run can share*), applied here.
 
+Not every addon passes a literal. DropWatcher and QuickComms register with
+`self:RegisterChatCommand(NS.SLASH:sub(2), …)` and `NS.SLASH_ALIAS:sub(2)`, and keep the constants in
+`core/Namespace.lua` (`NS.SLASH = "/dw"`, `NS.SLASH_ALIAS = "/dropwatcher"`; `slash-commands-§3`). A grep
+for `RegisterChatCommand("…"` alone drops their roots without a trace, and the collision check then
+passes over four roots it never saw. So the loop builds each addon's load list once and runs two passes
+over it: the literal arguments, and the `NS.SLASH*` constants the addon assigns. A constant that is
+assigned but never registered would show up as a root, so confirm any new constant-only root against its
+`RegisterChatCommand` call before you record it.
+
 ```sh
 roots=$(mktemp "${TMPDIR:-/tmp}/ka0s-roots-XXXXXX")
 for a in "$@"; do
-  ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
-    | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/' | sort -u \
+  ( cd "$a" && files=$(find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g')
+    { printf '%s\n' "$files" | xargs -r grep -hoE 'RegisterChatCommand\("[a-z]+"' | sed -E 's/.*"([a-z]+)"/\1/'
+      printf '%s\n' "$files" | xargs -r grep -hoE 'NS\.SLASH[A-Z_]* *= *"/[a-z]+"' | sed -E 's/.*"\/([a-z]+)"/\1/'
+    } | sort -u
   ) | sed "s|\$|\t$a|"
 done | sort | tee "$roots"
 cut -f1 "$roots" | uniq -d                  # any output is a collision
@@ -368,7 +390,8 @@ wc -l < "$roots"                            # the root count, for the measuremen
 rm -f "$roots"
 
 for a in "$@"; do
-  ( cd "$a" && tr -d '\r' < *.toc | grep -iE '\.lua$' | grep -v '^#' | sed 's|\\|/|g' \
+  ( cd "$a" && find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -iE '\.lua$' | grep -v '^#' \
+    | sed 's|\\|/|g' | sort -u \
     | xargs -r grep -nE '^[[:space:]]*SLASH_[A-Z0-9]+[0-9][[:space:]]*=' ) | sed "s|^|$a: |"
 done                                        # any output bypasses AceConsole
 ```
@@ -423,7 +446,7 @@ Already named in the TOC checklist below as a per-addon observation; run it here
 one, which is the only scope at which "inconsistent with sibling addons" actually means anything.
 
 ```sh
-for a in "$@"; do grep -h '^## Interface:' "$a"/*.toc; done | tr -d '\r' | sort -u
+for a in "$@"; do find "$a" -maxdepth 1 -name '*.toc' -exec grep -h '^## Interface:' {} +; done | tr -d '\r' | sort -u
 ```
 
 **Clean is** a single line. Note the `tr -d '\r'` — without it a CRLF repo and an LF one report two
@@ -511,7 +534,7 @@ This review is **not** a compliance audit. Measuring the addon section-by-sectio
 
 What you **must** do is keep your own output inside the standard: **no finding's fix direction and no entry in `02_PROPOSED_CHANGES.md` may recommend anything the standard forbids or that would introduce a *new* deviation.** A review that fixes a bug by steering the code into a documented anti-pattern, a banned layout, or a naming/API the standard rules out is a bad review. Load the living standard and use it as a **constraint on your recommendations**:
 
-- **Fetch it faithfully.** The standard lives at `https://github.com/tusharsaxena/WowAddonStandards`. Set `RAW=https://raw.githubusercontent.com/tusharsaxena/WowAddonStandards/master`, then with `curl -fsSL "<url>"` via Bash fetch `$RAW/standards/STANDARDS.md` (the index) and **follow its Sections list to fetch every section file it links** under `$RAW/standards/standards/`. Do **not** hard-code section filenames — discover them from the index, exactly as the audit agent does, so an upstream re-org needs no change here. Save to a scratch path and `Read` it; `curl` preserves the text verbatim. WebFetch is a lossy last-resort fallback only (its summarizer mangles the rules). Pay closest attention to the `anti-patterns` section and the `architecture`/naming/API-currency sections — that's where remediation most often trips.
+- **Fetch it faithfully.** The standard lives at `https://github.com/tusharsaxena/WowAddonStandards`. Set `RAW=https://raw.githubusercontent.com/tusharsaxena/WowAddonStandards/master`, then with `curl -fsSL --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 "<url>" -o <scratch>/<name>` via Bash fetch `$RAW/standards/STANDARDS.md` (the index) and **follow its Sections list to fetch every section file it links** under `$RAW/standards/standards/`. Do **not** hard-code section filenames — discover them from the index, exactly as the audit agent does, so an upstream re-org needs no change here. Save to a scratch path and `Read` it; `curl` preserves the text verbatim. The timeouts and retries keep a stalled connection from hanging the review, and `-f` turns a fetch that still fails after its retries into a visible error, never a partial file. The section files are independent, so fetch them in parallel once the index has named them: one URL per line into `xargs -P 8 -n 1`, each with the same bounded `curl` and its own `-o`. You MAY read a sibling `../WowAddonStandards` working tree instead, but only when all three checks pass: `git -C ../WowAddonStandards status --porcelain` prints nothing; `git -C ../WowAddonStandards rev-parse HEAD` equals the hash `git -C ../WowAddonStandards ls-remote origin refs/heads/master` reports; and, when a fetched copy also exists, `diff -rq` between it and the sibling is empty. If any check fails, or the sibling is absent, fetch and note why. Record which source you used (network fetch, or sibling checkout at `<sha>`) beside the standard version in `02_PROPOSED_CHANGES.md`. WebFetch is a lossy last-resort fallback only (its summarizer mangles the rules). Pay closest attention to the `anti-patterns` section and the `architecture`/naming/API-currency sections — that's where remediation most often trips.
 - **Degrade gracefully — do NOT hard-stop.** Unlike the audit and scaffolding agents (whose entire output is worthless without the standard), this cross-check is a guardrail layered on a review that still has value on its own. If you cannot fetch the standard (no network, repo moved, 404), **proceed with the full review anyway** and state plainly, near the top of `01_FINDINGS.md` and `02_PROPOSED_CHANGES.md`, that the standards cross-check was skipped and why — so the reader knows remediation wasn't vetted against it. Never invent the standard's rules from memory to fill the gap.
 - **Cite what shaped a fix.** When a proposed change is chosen (or a tempting one rejected) because of a standard rule, name it as `filename-§N` — a whole section is its bare filename (`anti-patterns`, `architecture`), a subsection is `filename-§N` (`architecture-§5`), the number being that section's local count. Record the standard version you resolved (from the top of `STANDARDS.md`) once in `02_PROPOSED_CHANGES.md`, so the run is reproducible.
 
@@ -550,7 +573,7 @@ In a WoW repo, the general-engineering list below refines the base's *Technical 
 - **Where the real bugs are, and they are ordinary findings you can write up today.** Anything a still-registered handler does while disabled is reachable: a combat-entry handler that writes `locked = true` and prints to chat with the addon off, a coalescing repaint timer that keeps re-arming several times a second in combat, a minimap-button click that writes SavedVariables with no disabled gate. Those are correctness findings with a real `Reachability:` line (*"any player who turns the addon off and enters combat"*), not standards pedantry — grade them on what they do to the user's stored data and session, and cite the handler and the write site.
 - **Don't propose a second teardown path.** Every addon already ships suspend/resume machinery for `performance`'s second arm — the code that calls `UnregisterAllEvents` on the per-unit frames during a perf run is the same teardown disable needs, and it is already tested. The compliant fix **moves** that into one latch with two named holds (`disabled`, `perf`), stood down while either is taken and stood up only when the last is released; a parallel `StandDown` written beside the perf one is the same anti-pattern's other face, and the bug it produces — releasing one hold and resurrecting an addon the other still holds down — is invisible from inside either path. Standing back up rebuilds from the **current** settings, never from a snapshot taken on the way down (`performance-§6`).
 - **The two surfaces, and the one verb people get wrong.** The stand-down does **not** narrow the slash surface: the dispatcher is setup, and `slash-commands-§2` keeps every reserved verb (`diagnostics` included), `config`, the bare `/<slash>` and the schema CLI answering normally while disabled (the standard tried a two-verb `enable`/`help` surface in v2.56.0 and reversed it in v2.57.0 — don't propose it). A disabled addon that refuses `config` or the bare command has hidden the panel the player would switch it back on from, and that is a finding; LibKa0s v1.40.0's Slash minor 12 does exactly this, so the fix is re-vendoring to v1.42.0 or later, not a host-side patch. Refusing a **feature** verb is only a SHOULD — declining it is not a finding. `disable` while already disabled echoes `<enablePath> = false`, since it is an alias onto a schema write; a refusal there would tell the player typing `disable` to type `enable`. Where a feature verb or the launcher's rung (a)/(b) left-click is refused, it prints one tagged refusal line naming `/<slash> enable` and writes nothing, while right-click still opens the panel (`launcher-§2`). Host-side refusal wording is a finding in its own right: the line comes from the dispatcher, so every addon's refusal is one string.
-- **Read `tests/test_disabled.lua` before believing it.** Presence is not a pass. Its central assertion must be on the **mock's registration set** — empty, by count and by name — not on a handler's return value, and the kit's mocks must actually record (a no-op `RegisterUnitEvent` makes the whole suite unfalsifiable). A suite that goes green against a draw gate is a second draw gate, and this is the `testing-§12` class you are already hunting above: negative assertions with no evidence they can go red.
+- **Read `tests/test_disabled.lua` before believing it.** Presence is not a pass. Its central assertion must be on the **mock's registration set** — empty, by count and by name — not on a handler's return value, and the kit's mocks must actually record (a no-op `RegisterUnitEvent` makes the whole suite unfalsifiable). A suite that goes green against a draw gate is a second draw gate, and this is the `testing-§12` class you are already hunting above: negative assertions with no evidence they can go red. Then walk `slash-commands-§7`'s ten steps (*The conformance test every addon ships*) against the file and cite the line for each, or its absence; at least: step 3 as above; step 6 fires every `R_on` event, the combat-entry event by name, asserts zero SV writes, prints and shows, **and proves each fire reached a handler** (the kit's `__fireUnconditional` count asserted at least 1 per event, or the registered handler called directly), since zero writes after zero dispatches proves nothing; step 8 drives the launcher's `"LeftButton"` (panel opener, zero writes and shows) and `"RightButton"` (kit menu mock, *Enabled* live, the rest grayed); step 10 tests the `perf`/disabled latch with the holds in both orders; and steps 3, 6 and 10 carry `-- red under:` comments. A missing step, or one whose assertion cannot go red, is a finding.
 - **What is *not* a finding.** `/<slash> lock` and `/<slash> unlock` are a **MAY** (`slash-commands-§8`) — an addon with the *Lock frame* checkbox and no verbs is complete, and proposing the verbs as a fix is scope, not a defect. If you do touch that area, the only rule with teeth is that the verbs and the checkbox write the **same stored path through the same single write seam**: a second key, a session flag or an `NS.locked` local is two answers to one question, and where unlocking *is* the preview, the verbs drive that switch rather than a copy of it.
 
 **Frame leaks and pooling**

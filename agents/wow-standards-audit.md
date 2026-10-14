@@ -112,7 +112,9 @@ Fetch these **faithfully** (see the fetch rule below), in order:
 3. **Every section file the `STANDARDS.md` Sections list links.** *These are the normative rules* — the index alone is not the standard. **Discover them by following the Sections links and fetch each `$RAW/standards/standards/<file>.md`; do NOT hard-code section filenames here.** The standard is deliberately split so it can be re-organized (files renamed, split, added) without any change to this agent — the only fixed paths are `AUDIT.md` and `standards/STANDARDS.md`; everything else you reach by following links.
 4. Any further file those reference and you need to complete the audit (e.g. `standards/ADDONS.md` for the addon's prefix) — follow the links under `STANDARDS.md`'s "Related documents". Fetch on demand.
 
-**Faithful-fetch rule.** Use `curl -fsSL "<url>"` via Bash and read the saved file — this preserves the document verbatim. Do **not** rely on WebFetch as the primary path: its summarizer rewrites and truncates content, which would silently corrupt the rules you audit against. WebFetch is a last-resort fallback only if `curl` is unavailable, and then treat its output as lossy. Save fetched docs under a scratch path (e.g. `/tmp` or the session scratchpad), then `Read` them.
+**Faithful-fetch rule.** Use `curl -fsSL --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 "<url>" -o <scratch>/<name>` via Bash and read the saved file — this preserves the document verbatim. Do **not** rely on WebFetch as the primary path: its summarizer rewrites and truncates content, which would silently corrupt the rules you audit against. WebFetch is a last-resort fallback only if `curl` is unavailable, and then treat its output as lossy. Save fetched docs under a scratch path (e.g. `/tmp` or the session scratchpad), then `Read` them. The timeouts and retries keep a stalled connection from hanging the run, and `-f` turns a fetch that still fails after its retries into a visible error, never a partial file to read. The section files are independent, so fetch them in parallel once the index has named them: one URL per line into `xargs -P 8 -n 1`, each with the same bounded `curl` and its own `-o`.
+
+**Sibling checkout, only when it is provably current.** You MAY read the standard from a sibling `../WowAddonStandards` working tree instead of the network copy, but only when all three checks pass: `git -C ../WowAddonStandards status --porcelain` prints nothing; `git -C ../WowAddonStandards rev-parse HEAD` equals the hash `git -C ../WowAddonStandards ls-remote origin refs/heads/master` reports; and, when a fetched copy also exists, `diff -rq` between it and the sibling's files is empty. If any check fails, or the sibling is absent, fetch as above and note why. Either way, record in `01_CURRENT_STATE.md` which source the run used (network fetch, or sibling checkout at `<sha>`) beside the standard version, so the next auditor knows what the findings were measured against.
 
 **Hard stop.** If you cannot resolve `AUDIT.md` **and** `standards/STANDARDS.md` **and the section files it lists** (no network, repo moved, 404), do not improvise an audit from memory. Stop and tell the user exactly which fetch failed and what you tried — an audit measured against an unreadable or partial standard is worthless.
 
@@ -169,6 +171,14 @@ and **every census starts from `git ls-files`**. Not `grep -r`, not `find`, not 
 never descends into an untracked scratch directory, never misses a tracked file a glob skipped, and is
 reproducible by the next auditor from a clean checkout of the same SHA. That is the whole reason the
 number can be checked rather than re-guessed.
+
+**Shell.** The Bash tool shell may be zsh, and the snippets in this prompt are POSIX sh/bash. Run a
+multi-line snippet through `bash -s -- <args> <<'EOF' … EOF`, so `"$@"` survives; do not wrap blocks
+in `bash -c '…'`, which drops the arguments and adds a layer of quoting. In the commands you write
+yourself, quote any glob that is an argument (`--include='*.md'`, not `--include=*.md`, which zsh
+aborts on with *no matches found*), and never start a word with `=` (`echo ===`), because zsh expands
+it as a command path. The snippets here that read a TOC find it with `find . -maxdepth 1 -name '*.toc'`,
+so a repo with no root TOC (LibKa0s, WowAddonStandards) yields an empty list instead of a zsh abort.
 
 **The default denominator, and it is `layout-§1`'s** — so a count and the cap it is measured against
 cover the same files:
@@ -280,26 +290,53 @@ So measure it the way the rule is written — five parts, each backed by `file:l
   panel in either state, and right-click opens the options menu in either state, where *Enabled* stays
   clickable while every other entry is grayed, calls no handler and **writes nothing**.
 - **The conformance suite.** `tests/test_disabled.lua`, listed in `tests/run.lua` and inside the green
-  gate. Its absence is a MUST failure. Its **presence is not a pass**: read it for whether step 3 asserts
-  on the **mock's registration set** or on a handler's return value, and whether the mocks record at all
-  — a no-op `RegisterUnitEvent` in the kit makes the whole suite unfalsifiable, and a suite that goes
-  green against a draw gate is a second draw gate, not a conformance test (`testing-§12`). Its step 7
-  asserts the `slash-commands-§2` live list answers normally and pins whichever way the addon answered the feature-verb
-  SHOULD; a step 7 still asserting v2.56.0's refusals is a finding.
+  gate. Its absence is a MUST failure. Its **presence is not a pass**: walk `slash-commands-§7`'s ten
+  steps (*The conformance test every addon ships*) against the file, one at a time, and for each step cite
+  the line in `tests/test_disabled.lua` that asserts it, or its absence. The step text lives in the
+  standard; the paraphrase below names what to read, not a second copy of the rule.
+  1. A baseline `R_on`, `T_on` and `F_on` taken from the mocks, with `R_on` asserted **non-empty**.
+  2. The disable goes through the addon's **single write seam**, not a direct call to a teardown function.
+  3. The registration set is empty **by count and by name, read from the mock's registry**, never from a
+     handler's return value; and the mocks record at all — a no-op `RegisterUnitEvent` in the kit makes
+     the whole suite unfalsifiable, and a suite that goes green against a draw gate is a second draw gate,
+     not a conformance test (`testing-§12`).
+  4. No timer, ticker or `OnUpdate` stays armed.
+  5. Every frame in `F_on` is hidden.
+  6. Every event in `R_on` is fired anyway, the **combat-entry event by name** among them, with **zero**
+     SavedVariables writes, **zero** printer calls and **zero** frame shows asserted. Check the **reach**
+     too: each fire must be shown to have reached at least one handler, per event (the kit's
+     `__fireUnconditional` count asserted at least 1, or the registered handler called directly). A loop
+     that discards the count passes against a harness that dispatched nothing — zero writes after zero
+     dispatches proves nothing (`testing-§12`).
+  7. The `slash-commands-§2` live list answers normally, and the suite pins whichever way the addon
+     answered the feature-verb SHOULD; a step 7 still asserting v2.56.0's refusals is a finding.
+  8. The launcher: `OnClick` with `"LeftButton"` asserts the panel opener was called with zero writes and
+     zero shows; `"RightButton"` goes through the kit's menu mock with *Enabled* live and every other entry
+     grayed, writing nothing and showing nothing (`launcher-§2`).
+  9. Re-enable restores `R_on`, and a setting changed while disabled is reflected in the rebuilt set
+     (`performance-§6`).
+  10. The `perf`/disabled latch, tested with the holds in **both** orders.
 
-Three cheap greps orient the census; none of them is the finding on its own, and all three start from
-`git ls-files` with the vendored payloads excluded, per the census rule above — never `grep -r`, which
-reports the library's own registrations as if the addon had written them:
+  Check too that steps 3, 6 and 10 each carry the `testing-§12` falsification comment
+  (`-- red under: …`). A missing step, or a step whose assertion cannot go red, is a finding citing the
+  line, or its absence, in `tests/test_disabled.lua`.
+
+Three cheap greps orient the census; none of them is the finding on its own. All three start from the
+**TOC-derived load list**, the runtime scope of the census rule above: a file the TOC never loads,
+`tests/` included, registers nothing in the client. Never use `grep -r`, which reports the library's own
+registrations as if the addon had written them. If the TOC loads an authored (non-`libs/`) `.xml`, add
+the `.lua` files it includes by hand.
 
 ```sh
+# The TOC-derived load list: authored .lua the client actually loads.
+loadlist() { find . -maxdepth 1 -name '*.toc' -exec cat {} + | tr -d '\r' | grep -v '^#' | grep -iE '\.lua[[:space:]]*$' \
+  | sed 's|\\|/|g; s/[[:space:]]*$//' | grep -v '^libs/' | sort -u; }
 # What the addon registers — the set that must be empty while disabled.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' \
-  | xargs grep -nE 'Register(Unit)?Event|RegisterMessage|RegisterBucketEvent'
+loadlist | xargs grep -nE 'Register(Unit)?Event|RegisterMessage|RegisterBucketEvent'
 # What it ever un-registers — usually the perf seam, and usually nothing else.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' \
-  | xargs grep -nE 'Unregister(All)?Events?|UnregisterMessage|UnregisterBucket|CancelTimer|CancelAllTimers|:Cancel\(|SetScript\("OnUpdate", *nil\)'
+loadlist | xargs grep -nE 'Unregister(All)?Events?|UnregisterMessage|UnregisterBucket|CancelTimer|CancelAllTimers|:Cancel\(|SetScript\("OnUpdate", *nil\)'
 # The enable flag's consumers — a show ladder full of them and no teardown is #85.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' | xargs grep -n '\benabled\b'
+loadlist | xargs grep -n '\benabled\b'
 ```
 
 **Grade it by impact like everything else, and the parts do not all grade alike.** A SavedVariables write
