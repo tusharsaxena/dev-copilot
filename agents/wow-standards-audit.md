@@ -280,26 +280,53 @@ So measure it the way the rule is written — five parts, each backed by `file:l
   panel in either state, and right-click opens the options menu in either state, where *Enabled* stays
   clickable while every other entry is grayed, calls no handler and **writes nothing**.
 - **The conformance suite.** `tests/test_disabled.lua`, listed in `tests/run.lua` and inside the green
-  gate. Its absence is a MUST failure. Its **presence is not a pass**: read it for whether step 3 asserts
-  on the **mock's registration set** or on a handler's return value, and whether the mocks record at all
-  — a no-op `RegisterUnitEvent` in the kit makes the whole suite unfalsifiable, and a suite that goes
-  green against a draw gate is a second draw gate, not a conformance test (`testing-§12`). Its step 7
-  asserts the `slash-commands-§2` live list answers normally and pins whichever way the addon answered the feature-verb
-  SHOULD; a step 7 still asserting v2.56.0's refusals is a finding.
+  gate. Its absence is a MUST failure. Its **presence is not a pass**: walk `slash-commands-§7`'s ten
+  steps (*The conformance test every addon ships*) against the file, one at a time, and for each step cite
+  the line in `tests/test_disabled.lua` that asserts it, or its absence. The step text lives in the
+  standard; the paraphrase below names what to read, not a second copy of the rule.
+  1. A baseline `R_on`, `T_on` and `F_on` taken from the mocks, with `R_on` asserted **non-empty**.
+  2. The disable goes through the addon's **single write seam**, not a direct call to a teardown function.
+  3. The registration set is empty **by count and by name, read from the mock's registry**, never from a
+     handler's return value; and the mocks record at all — a no-op `RegisterUnitEvent` in the kit makes
+     the whole suite unfalsifiable, and a suite that goes green against a draw gate is a second draw gate,
+     not a conformance test (`testing-§12`).
+  4. No timer, ticker or `OnUpdate` stays armed.
+  5. Every frame in `F_on` is hidden.
+  6. Every event in `R_on` is fired anyway, the **combat-entry event by name** among them, with **zero**
+     SavedVariables writes, **zero** printer calls and **zero** frame shows asserted. Check the **reach**
+     too: each fire must be shown to have reached at least one handler, per event (the kit's
+     `__fireUnconditional` count asserted at least 1, or the registered handler called directly). A loop
+     that discards the count passes against a harness that dispatched nothing — zero writes after zero
+     dispatches proves nothing (`testing-§12`).
+  7. The `slash-commands-§2` live list answers normally, and the suite pins whichever way the addon
+     answered the feature-verb SHOULD; a step 7 still asserting v2.56.0's refusals is a finding.
+  8. The launcher: `OnClick` with `"LeftButton"` asserts the panel opener was called with zero writes and
+     zero shows; `"RightButton"` goes through the kit's menu mock with *Enabled* live and every other entry
+     grayed, writing nothing and showing nothing (`launcher-§2`).
+  9. Re-enable restores `R_on`, and a setting changed while disabled is reflected in the rebuilt set
+     (`performance-§6`).
+  10. The `perf`/disabled latch, tested with the holds in **both** orders.
 
-Three cheap greps orient the census; none of them is the finding on its own, and all three start from
-`git ls-files` with the vendored payloads excluded, per the census rule above — never `grep -r`, which
-reports the library's own registrations as if the addon had written them:
+  Check too that steps 3, 6 and 10 each carry the `testing-§12` falsification comment
+  (`-- red under: …`). A missing step, or a step whose assertion cannot go red, is a finding citing the
+  line, or its absence, in `tests/test_disabled.lua`.
+
+Three cheap greps orient the census; none of them is the finding on its own. All three start from the
+**TOC-derived load list**, the runtime scope of the census rule above: a file the TOC never loads,
+`tests/` included, registers nothing in the client. Never use `grep -r`, which reports the library's own
+registrations as if the addon had written them. If the TOC loads an authored (non-`libs/`) `.xml`, add
+the `.lua` files it includes by hand.
 
 ```sh
+# The TOC-derived load list: authored .lua the client actually loads.
+loadlist() { cat *.toc | tr -d '\r' | grep -v '^#' | grep -iE '\.lua[[:space:]]*$' \
+  | sed 's|\\|/|g; s/[[:space:]]*$//' | grep -v '^libs/' | sort -u; }
 # What the addon registers — the set that must be empty while disabled.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' \
-  | xargs grep -nE 'Register(Unit)?Event|RegisterMessage|RegisterBucketEvent'
+loadlist | xargs grep -nE 'Register(Unit)?Event|RegisterMessage|RegisterBucketEvent'
 # What it ever un-registers — usually the perf seam, and usually nothing else.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' \
-  | xargs grep -nE 'Unregister(All)?Events?|UnregisterMessage|UnregisterBucket|CancelTimer|CancelAllTimers|:Cancel\(|SetScript\("OnUpdate", *nil\)'
+loadlist | xargs grep -nE 'Unregister(All)?Events?|UnregisterMessage|UnregisterBucket|CancelTimer|CancelAllTimers|:Cancel\(|SetScript\("OnUpdate", *nil\)'
 # The enable flag's consumers — a show ladder full of them and no teardown is #85.
-git ls-files '*.lua' ':!libs' ':!tests/_kit' | xargs grep -n '\benabled\b'
+loadlist | xargs grep -n '\benabled\b'
 ```
 
 **Grade it by impact like everything else, and the parts do not all grade alike.** A SavedVariables write
