@@ -1,5 +1,5 @@
 ---
-description: Re-vendor LibKa0s into an addon from the library's newest tag, then decide what to do with what arrived. Copies both payloads whole (libs/LibKa0s/ and tests/_kit/), rolls the CLAUDE.md provenance line in the same commit, and reports the delta — per-file LibStub minors, both diffs, the kit-revision pairing rule, which majors this addon actually consumes, and contract changes under surfaces whose signature did not move, which are adoption blockers rather than candidates. Then works out which new surfaces are candidates for adoption, recommends per candidate with file:line evidence out of the library's own docs/api/, interviews you one at a time most-valuable-first, and implements what you accept — characterization test first, luacheck and the headless harness green, one commit per candidate. Declines are filed as GitHub issues. Takes the delta base from the addon's own CLAUDE.md provenance line, never the library's previous tag. Writes a frozen bundle to docs/revendor/<date>-v<tag>/, plus one consolidated span bundle (docs/revendor/<date>-v<first>-v<last>/) when tags the addon vendored went unrecorded. Read-only on libs/ and tests/_kit/ apart from the copy itself; never pushes.
+description: Re-vendor LibKa0s into an addon from the library's newest tag, then decide what to do with what arrived. Copies both payloads whole (libs/LibKa0s/ and tests/_kit/), rolls the CLAUDE.md provenance line in the same commit, writes or keeps the `LibKa0s icons:` declaration directly under it, prunes `media/icons/` to it with the tag's own `tools/prune-icons.lua`, and keeps the README's icon-set credits in step, and reports the delta — per-file LibStub minors, both diffs, the kit-revision pairing rule, which majors this addon actually consumes, and contract changes under surfaces whose signature did not move, which are adoption blockers rather than candidates. Then works out which new surfaces are candidates for adoption, recommends per candidate with file:line evidence out of the library's own docs/api/, interviews you one at a time most-valuable-first, and implements what you accept — characterization test first, luacheck and the headless harness green, one commit per candidate. Declines are filed as GitHub issues. Takes the delta base from the addon's own CLAUDE.md provenance line, never the library's previous tag. Writes a frozen bundle to docs/revendor/<date>-v<tag>/, plus one consolidated span bundle (docs/revendor/<date>-v<first>-v<last>/) when tags the addon vendored went unrecorded. Read-only on libs/ and tests/_kit/ apart from the copy itself; never pushes.
 argument-hint: [path | repo names | all] [--tag vX.Y.Z]
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion]
 ---
@@ -100,8 +100,10 @@ git -C ../LibKa0s tag --sort=-v:refname | head -1
 Then extract **from that tag**, not from the working tree:
 
 ```sh
-git -C ../LibKa0s archive <tag> LibKa0s testkit | tar -x -C <scratch>/
+git -C ../LibKa0s archive <tag> LibKa0s testkit tools | tar -x -C <scratch>/
 ```
+
+`tools/` is extracted only for `prune-icons.lua`, which `dofile`s `../testkit/vendor_sync.lua` beside it (LibKa0s `tools/prune-icons.lua`, its `VendorSync` load), so the prune and the consumer's gate share one declaration parser at one tag. It is never copied into the addon. The pathspec is the folder, not the file: `tools/` exists at every tag back to at least v1.71.0, while naming `tools/prune-icons.lua` makes `git archive` exit 128 at any tag before v1.75.0. If `<scratch>/tools/prune-icons.lua` is absent, the tag predates v1.75.0: it has no prune and no declaration-aware kit (kit revision below 40), so skip 3i, 3j, the prune and the credits, and say so in the report.
 
 **This distinction is load-bearing and is not a stylistic preference.** The consumer's own `tests/test_vendor_sync.lua` reads the provenance line, resolves the tag it names, and asserts both vendored payloads match the library **at that tag**, file by file. A copy taken from a dirty checkout passes `diff -r` against the sibling and then fails the consumer's gate — which is exactly how the untagged kit revision was caught upstream. Re-vendor from a tag, and move the line in the same commit.
 
@@ -109,7 +111,7 @@ If `git archive` fails, or the working tree is dirty in a way that suggests the 
 
 ## Step 3 — Establish the delta → `01_DELTA.md`
 
-Seven reads and one record (3h). **Each one is recorded with the command that produced it — a claim without its command is not a finding.**
+Seven reads, one record (3h) and two pre-copy checks (3i, 3j). **Each one is recorded with the command that produced it — a claim without its command is not a finding.**
 
 ### 3a. Claimed version
 
@@ -184,11 +186,12 @@ diff -r --strip-trailing-cr <scratch>/testkit <Addon>/tests/_kit
 diff -r                     <scratch>/testkit <Addon>/tests/_kit
 ```
 
-Three readings, and only one of them is a fork:
+Four readings, and only one of them is a fork:
 
 - **Content dirty** → a copy has genuinely forked. Re-vendoring is the fix.
 - **Content clean, bytes dirty** → **nothing has forked.** The two checkouts merely disagree about line endings, which `git status` will never show you because the blobs are LF on both sides either way. The fix is to renormalize whichever side drifted (`git add --renormalize .`; if the working tree does not flip, delete the affected paths and `git checkout -- .` to pull them back through the filter). It is **never** an edit to `libs/` — editing the vendored copy to settle a line-ending disagreement creates a fork to fix a fork that was not there.
 - **`Only in <Addon>/libs/LibKa0s`** → a file removed upstream that survives here. See Step 4.
+- **`Only in <scratch>/LibKa0s/media/icons…`** → in a consumer whose `CLAUDE.md` carries a `LibKa0s icons:` line, these are the icons it did not declare. That is the declaration working: not a fork, and not anti-pattern #45/#48. A declared icon that is missing, a `differ` line under `media/icons`, or an `Only in <Addon>/…/media/icons` line is drift.
 
 ### 3e. Consumption map
 
@@ -282,6 +285,40 @@ This walk adds to the audit's two paths the `CLAUDE.md` commits that **roll** th
 
 Library tags the addon never vendored do not belong on the span line; the addon did not carry them, so there is nothing to record. The span bundle is written in the same run as this re-vendor's bundle and is frozen from then on like every other.
 
+### 3i. The icon declaration → `01_DELTA.md`
+
+From v1.75.0 `media/icons/` is the one carve-out from whole-folder vendoring: the consumer ships exactly the icons its `LibKa0s icons:` line declares, and `tests/test_vendor_sync.lua` gates declared == shipped (`library-stack-§7`, *The icon subset*).
+
+**(a) Read it.**
+
+```sh
+grep -n 'LibKa0s icons:' <Addon>/CLAUDE.md
+```
+
+It must be the **next non-blank line** after the provenance line. The kit's parser (`testkit/vendor_sync.lua`, `VendorSync.iconDeclaration`) refuses a line anywhere else, and refuses a second one.
+
+**(b) A provenance line that runs on into prose is a blocker.** So is prose as the next non-blank line under it. Either way there is nowhere for the declaration to sit, so split the sentence in Step 4's commit: the provenance sentence ends its line, the declaration follows, and the prose resumes below. Measured examples on 2026-10-22: LootHistory `CLAUDE.md:56` (`… v1.71.0 (MIT) — the Ka0s-owned shared …`) and PanelMaster `CLAUDE.md:50` (`… v1.71.0 (MIT). That line is the …`). They are examples, not a list; read the target's own line.
+
+**(c) No line yet → derive one.** Never from `Media.Icon(` greps alone, which find nothing in a roster addon, because every addon resolves art through its own seam. Read:
+
+- every call of the addon's media seam (`NS.Icon(`, `KCM.Icon(`, `NS.IconMarkup(`, and the like);
+- the data tables and constants that feed it (`icon =`, `art =`, `HANDLE_ICON`, …);
+- the **library-drawn** names for the surfaces the addon wires, taken from the **tag's** `docs/releasing.md` table under *Library-drawn icons are the host's to declare* and the tag's `CHANGELOG.md` *What a consumer owes* list, never from this spec. At v1.75.0 that set is closed at `close` (`Core.MakeCloseButton` given an addon name: the debug console, `PerfPanel` without `decorate`, the Widgets copy window), `copy` and `clear` (the debug console's title-bar buttons), and `info` (an Options id list whose spec passes no `helpIcon`).
+
+Art a widget takes from its host, such as `W.TestStrip`'s mark or the Sim step panel's done tick, is a host call, so the seam read above finds it. It is not library-drawn and does not join the closed set.
+
+**(d) `all (<chooser>).`** is allowed only when the addon's UI lets the player choose among the catalog, and the kit requires the parenthesised reason. QuickComms is `all (icon browser).`, or whatever chooser wording its line already carries.
+
+**(e) Show the proposed line with `file:line` evidence for every name, and confirm it with the user before the copy.** In a cross-repo run whose bundle pre-decides the line (its `items.tsv` or the item spec), record it in `01_DELTA.md` as decided and do not re-ask. Either way, say that hand lists have drifted before (KickCD `tests/test_mediasetup.lua:28`, WhatGroup `tests/test_mediasetup.lua:19`), and that the owner's in-client smoke is the backstop: a pruned icon still resolves to a path and draws blank, and the gate cannot see a name the host forgot to declare.
+
+### 3j. Tests that assume the whole icon folder (a blocker class)
+
+```sh
+grep -rn "media/icons\|lib.ICONS\|\.ICONS)" <Addon>/tests --include='*.lua' | grep -v '/_kit/'
+```
+
+A suite that opens a file for every catalog name goes red after the prune (AbsorbTracker `tests/test_mediasetup.lua:111-121`). So does one that asserts a file the addon no longer declares (AbsorbTracker `tests/test_optionssetup.lua:538-546`). Both are blockers in 3g's sense, and both are fixed in Step 4's commit: delete the whole-catalog loop, because the kit gate already enforces declared == shipped, and narrow a file assertion to declared names. **Never write a second declaration parser in the addon**; the kit's is the one.
+
 Write all of this to `docs/revendor/<YYYY-MM-DD>-v<new>/01_DELTA.md` **before copying anything.** 3g is why that ordering is a rule rather than a habit: a blocker found after the copy is a blocker found in a repo that is already carrying it. If the delta is empty — same tag, both diffs clean, kit revision matching, nothing in 3g — say so, write the bundle, and stop. There is nothing to adopt from a release the addon already has.
 
 ## Step 4 — The copy
@@ -291,7 +328,14 @@ Both payloads, **whole folders, always. Never one module.**
 ```sh
 cp -r <scratch>/LibKa0s/.  <Addon>/libs/LibKa0s/
 cp -r <scratch>/testkit/.  <Addon>/tests/_kit/
+# both diffs, both directions (3d): content MUST be empty against the WHOLE copy, before the prune
+# roll the provenance line AND write or keep the `LibKa0s icons:` line under it (below)
+lua <scratch>/tools/prune-icons.lua <Addon>
 ```
+
+The order is the point. The diffs prove the whole tag landed; only then does the prune cut `media/icons/` down to the declaration. The tool reads the line from `<Addon>/CLAUDE.md`, prints every path it removes and ends with a `kept N, removed M` line. It refuses an unknown name and then removes nothing.
+
+**A refusal from the prune stops the run.** Its causes are a typo, a name the tag does not carry, or an earlier prune that already removed the name. Re-copy `media/icons` from the extract (`cp -r <scratch>/LibKa0s/media/icons/. <Addon>/libs/LibKa0s/media/icons/`), correct the line, and run it again. **Never hand-delete icons.**
 
 Per-module re-vendoring is exactly how cross-major skew gets manufactured: an addon ends up carrying a new `Perf.lua` over an old `Core.lua`, or a `Core.lua` that never arrived at all. The only negotiation between majors is a **floor** — a dependent file names the minimum `NEEDS_CORE` it needs and returns before `NewLibrary` if the dependency is missing or older, so the module is **absent** rather than half-wired. That is the honest failure. Nothing negotiates the other direction.
 
@@ -299,17 +343,38 @@ Per-module re-vendoring is exactly how cross-major skew gets manufactured: an ad
 
 `tests/_kit/` is a sibling of the library's ship folder and never goes under `libs/` — `libs/` is the ship payload and the kit must never be zipped. Under `tests/` it is already covered by the `- tests` entry every addon's `.pkgmeta` carries, so this needs no packaging change.
 
-Then re-run both diffs in both directions. **Content MUST now be empty.** If it is not, stop and report — do not proceed to adoption on a payload that did not land.
+Then re-run both diffs in both directions. **Before the prune, content MUST be empty.** If it is not, stop and report — do not proceed to adoption on a payload that did not land. After the prune, the only allowed difference is the `Only in <scratch>/LibKa0s/media/icons…` lines for the icons the addon did not declare (3d), and `tests/test_vendor_sync.lua` is the check that the rest still matches.
 
-### The provenance line
+### The provenance line, and the declaration under it
 
-Roll the line in `<Addon>/CLAUDE.md` to the resolved tag:
+Roll the line in `<Addon>/CLAUDE.md` to the resolved tag, and write or keep the declaration as the next non-blank line under it:
 
 > Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v*X.Y.Z* (MIT).
+> LibKa0s icons: *name, name, …* (or `none.`, or `all (<chooser>).`)
 
-Preserve the repo's existing phrasing and position if it already has a line; only the version moves. `CLAUDE.md`, **never** `README.md` — the line answers "which LibKa0s does this build carry?", which is a maintainer's question on a page written for players, and the addon README carries no bundled-library inventory at all (`documentation-§1`, anti-patterns #58/#59). There is **no fallback**: `vendor_sync.lua` reads `CLAUDE.md`, and a line left in the README reads to it as no line at all.
+Preserve the repo's existing phrasing and position if it already has a line; only the version moves. A provenance sentence that runs on into prose is split here (3i b), so the declaration has a line of its own. From v1.75.0 every consumer declares: the no-line state, gated as a whole-folder copy, is a transition that ends at the addon's re-vendor (`library-stack-§7`). `CLAUDE.md`, **never** `README.md` — the line answers "which LibKa0s does this build carry?", which is a maintainer's question on a page written for players, and the addon README carries no bundled-library inventory at all (`documentation-§1`, anti-patterns #58/#59). There is **no fallback**: `vendor_sync.lua` reads `CLAUDE.md`, and a line left in the README reads to it as no line at all.
 
-**A leftover README line is removed here.** If the target still carries a provenance line in `README.md`, delete it while writing the correct one into `CLAUDE.md`, and **announce the removal**. `/dev-copilot:sync-docs` nominally owns that migration, but leaving both produces the half-migrated two-lines-that-can-disagree state, and this command is the one holding the correct version at that moment. Remove **only** the line just superseded; touch nothing else in the README.
+**A leftover README line is removed here.** If the target still carries a provenance line in `README.md`, delete it while writing the correct one into `CLAUDE.md`, and **announce the removal**. `/dev-copilot:sync-docs` nominally owns that migration, but leaving both produces the half-migrated two-lines-that-can-disagree state, and this command is the one holding the correct version at that moment. Remove **only** the line just superseded; touch nothing else in the README apart from the credits below.
+
+### Credits
+
+Read which icon sets ship after the prune: unprefixed names are Open Iconic, `ph:` is Phosphor, `gi:` is Game-icons, and `all` ships all three. Then make the README's `## Credits` agree with `documentation-§1` item 12:
+
+- **Game-icons, wherever any `gi:` icon ships: MUST.** The set's name, CC BY 3.0, the link to <https://game-icons.net>, the authors of the marks that ship (`Media.IconAuthor(name)` per icon, or `game-icons/AUTHORS.txt` in full for `all`), and the note that the marks were modified (rasterized, background removed, recolored).
+- **Each MIT set that ships (Open Iconic, Phosphor): SHOULD**, with its author, license and link.
+- **A set the prune removed loses its credit line** in this commit.
+- Credit goes to **sets**, never to `LibKa0s` as a library (anti-pattern #58).
+- `## Credits` stays the **last** section, after `## Version History`.
+
+Announce the edit, and run the de-AI pass over the README lines it touched (`documentation-§1`). This is the one README edit this command makes beyond removing a superseded provenance line.
+
+**Dead stub mirrors.** A library-absent stub in the addon that mirrors a `__` member the tag removed is dead code (`library-stack-§7`, the narrowed `__` clause). At v1.75.0 that member is `__releaseChrome`, which the addons mirror in `settings/OptionsSetup.lua`:
+
+```sh
+grep -rn '__releaseChrome' <Addon> --include='*.lua' --exclude-dir=libs --exclude-dir=_kit
+```
+
+Remove the mirror, and any test asserting it, in Step 4's commit (the KickCD M4-09 precedent). A comment that only lists the member's name among removed ones is history, not a mirror; leave it.
 
 ### Gate, then commit
 
@@ -321,13 +386,27 @@ Both green — including `tests/test_vendor_sync.lua`, which is the case this wh
 
 Note that `luacheck`'s figure is scoped by `.luacheckrc`'s `exclude_files`, which in a consumer usually excludes `libs/` and `tests/_kit/`. A clean run only means something if the files carrying the seam are inside the checked set — confirm that before reading 0/0 as a clean adoption.
 
-Then **one commit**, carrying both payloads *and* the provenance line together. The atomicity is required upstream and the consumer's own gate fails a split. Commit style per this collection: terse capitalized imperative subject, no Conventional-Commits prefix, `Co-Authored-By: Claude …` trailer.
+Then **one commit**, carrying together: both payloads as they stand after the prune, both `CLAUDE.md` lines (provenance and declaration), any provenance split (3i b), the 3g and 3j blockers' fixes, the dead stub mirrors and the credits. The atomicity is required upstream and the consumer's own gate fails a split. Commit style per this collection: terse capitalized imperative subject, no Conventional-Commits prefix, `Co-Authored-By: Claude …` trailer.
 
 **Never push.** Push is `/dev-copilot:finalize`'s job, and `commit.md`'s hard rule stands.
 
+### A tag that moved before it was pushed (a refresh)
+
+The case: the provenance tag already equals the newest tag, yet the payload diffs are not clean, and
+
+```sh
+git -C ../LibKa0s ls-remote --tags origin <tag>
+```
+
+prints nothing. That is a local-only tag that was moved on a run branch before its release was pushed (a cross-repo run's `RV2` refresh items). It is a **refresh**, not a 3a disagreement.
+
+- Re-copy, re-prune and re-gate exactly as above.
+- Write **no** new bundle folder. Add `06_REFRESH_<n>.md` to that tag's existing bundle, holding the old and new `git -C ../LibKa0s rev-parse <tag>^{commit}`, the per-file minor delta between the two commits (3c's loop, run against each commit), and the gate's figures. Leave line 1 of `01_DELTA.md` alone, so Step 0 and the audit's re-vendor check stay correct.
+- A pushed tag is never moved. A new tag is a new re-vendor, with a new bundle.
+
 ## Step 5 — Work out the candidates → `02_CANDIDATES.md`
 
-Three sources, in this order. **Never from memory, and never from an API document's summary paragraph.**
+Three sources, in this order. **Never from memory, and never from an API document's summary paragraph.** When a cross-repo run's bundle pre-decides the adoptions (its `items.tsv`), record each one as decided in `03_DECISIONS.md`, with the bundle as its source, and do not re-interview.
 
 ```sh
 git -C ../LibKa0s log --oneline <base>..<new>   # <base> from 3a, never the library's previous tag
@@ -403,6 +482,7 @@ Fences, all four of which hold on every candidate:
 - **Setup files hold a descriptor plus a degradation stub, and nothing else.** The shared subsystems — chat printer, debug console, options toolkit, slash dispatcher, perf harness, test framework, media library — are **consumed, not written**. Anything genuinely missing goes upstream as an **additive** field, not worked around in the host. The rule of thumb that has held: one host's misfit is a setup-file concern; two is a library gap.
 - **No behavior change inside a mechanical diff**, no body dumped into a nameless helper (anti-pattern #52), no dispatch table built inside the function it serves.
 - **Every close control goes through the one wrapper that supplies the addon's folder name.** A bare two-argument `Core.MakeCloseButton(frame, Hide)` is a defect on sight (`standalone-windows`, `debug-logging-§12`, anti-pattern #65) — it produces a perfectly good button, no layer errors, no suite goes red, and the only witness is somebody looking at two windows side by side. That defect has shipped twice upstream; do not let an adoption reintroduce it.
+- **A candidate that draws a new catalog name declares it in its own commit.** Add the name to the `LibKa0s icons:` line, re-copy `<scratch>/LibKa0s/media/icons/.` into the addon and re-run the prune. A name the folder no longer holds is refused by the prune, and the gate fails a declared-but-missing icon, so neither half can be skipped.
 
 **Never push.**
 
@@ -414,6 +494,9 @@ Both carry the same facts:
 - any consolidated span bundle 3h wrote, by folder and tag count, and any base correction 3a recorded;
 - what reached the addon **for free** (class A) — this is the part that is invisible otherwise;
 - any **contract blocker** 3g found, both documents' lines, and how it was resolved — or that the run stopped before the copy because it was not;
+- the `LibKa0s icons:` line written or kept, the prune's removed count by set, and any provenance split;
+- the README credit lines added or removed, and the dead stub mirrors removed;
+- any refresh file (`06_REFRESH_<n>.md`) written into an existing bundle;
 - what was **adopted**, with each commit;
 - what was **declined**, why, and its issue number;
 - what was **skipped or unreached**, and why;
