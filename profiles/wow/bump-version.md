@@ -3,8 +3,9 @@
 Applies when `dev-copilot-profile` prints `profile=wow`. A Ka0s release bumps the TOC and the
 addon's constants, rolls the release history into the README's `## Version History` table for an
 addon (or `CHANGELOG.md` in a Ka0s-owned library repo, the only place `documentation-§1` permits
-one), and is gated on the full four-suite battery with zero functions above CCN 15 and no file
-`lizard` was blind in (`blindFiles` 0). Each section below attaches to the `<!-- overlay: <id> -->`
+one), and is gated on the full four-suite battery with zero functions above CCN 15, no file
+`lizard` was blind in (`blindFiles` 0) and no file `lizard` raised on (`crashedFiles` 0, kit 41+).
+Each section below attaches to the `<!-- overlay: <id> -->`
 marker of the same id in `commands/bump-version.md`.
 
 **Repo kind** comes from the detector's `kind`: `addon` (a root `.toc` with `## Interface:`) or
@@ -29,7 +30,8 @@ Replaces only item 1 (where to find the current version); items 2–4 stand as w
 ### Step 2 — The release gate (all four suites; STOP on any failure)
 
 A release is gated on **all four** suites plus **zero functions above CCN 15**, measured sighted
-(`blindFiles` at 0) (`automated-tests-§3`, *The release gate*). This runs **before any file is
+(`blindFiles` at 0) and no file `lizard` raised on (`crashedFiles` 0, kit 41+) (`automated-tests-§3`,
+*The release gate*). This runs **before any file is
 edited**, so a failed gate leaves the repo exactly as it was found.
 
 This is **not** the commit gate and **MUST NOT** become one. Commits stay gated on lint + the harness
@@ -61,7 +63,7 @@ and corrosive at the other one.
    | Perf | `suites.perf.status == "pass"` |
    | Complexity | `suites.complexity.status == "pass"` |
    | CCN | `suites.complexity.warnings == 0` — no function above CCN 15 (from kit revision 35 the runner passes `lizard` `-L 1500`, so a warning is a CCN finding and never a length one: `automated-tests-§3`, *What a complexity warning means*) |
-   | Sighted | `suites.complexity.blindFiles == 0` — `lizard` saw every function (`automated-tests-§3`, *The complexity gate is sighted*) |
+   | Sighted | `suites.complexity.blindFiles == 0` and, where present, `suites.complexity.crashedFiles == 0` — `lizard` saw every function and did not raise (`automated-tests-§3`, *The complexity gate is sighted*) |
 
    **Print `blindFiles` whatever it is**, in the gate table's Detail column, on a pass as well as a
    refusal: it is the one figure that says the CCN row measured every function. On kit revision 35 or
@@ -71,6 +73,18 @@ and corrosive at the other one.
    count. A manifest with **no** `blindFiles` field was written by a kit older than revision 35: its
    complexity figures are **unsighted** and undercount whatever `lizard` dropped, so the Sighted row is
    **NOT EVALUATED** and the remedy is `/dev-copilot:wow-revendor-libka0s`, never a local scanner.
+
+   **A crashed run** (kit revision 41+: `lizard` raised, or was bounded) already fails the Complexity
+   row on `suites.complexity.status`. On that run the **CCN** row and the **Sighted** row both read
+   **NOT EVALUATED**, never PASS: the runner zeroes every CCN figure and skips the parity check, so
+   `warnings` 0 and `blindFiles` 0 are zeroed or skipped, not measured. Print `crashedFiles N` with
+   the file names from the console line `lizard raised on N file(s): …` and from the
+   `Not measured — lizard raised` line that leads `RESULTS.md`'s watch list. A whole-tree crash no
+   single file reproduces leaves `crashedFiles` 0 with the status still `fail`; it is equally NOT
+   EVALUATED. A manifest without the `crashedFiles` field predates kit 41: print `crashedFiles —`,
+   and the remedy for a stale kit is `/dev-copilot:wow-revendor-libka0s`. The usual fix for a crash is
+   to hoist a keyed function literal out of a multi-line `for`/`while` header table into a local
+   first (the `automated-tests-§3` hazard row), never a local scanner.
 
 3. **A `skip` is not a pass.** A suite that did not run cannot satisfy its gate: a release claiming
    zero CCN > 15 on a run where `lizard` never executed is an unmeasured claim. Report it as
@@ -101,7 +115,7 @@ and corrosive at the other one.
    | Perf       | PASS         | 6 scenarios                                      |
    | Complexity | PASS         | ran; lizard 1.17.31                              |
    | CCN <= 15  | FAIL         | 14 functions over 15, max CCN 33                 |
-   | Sighted    | PASS         | blindFiles 0                                     |
+   | Sighted    | PASS         | blindFiles 0, crashedFiles 0                     |
 
    Failing tests:
      - <case name>  (tests/test_ledger.lua:212)
@@ -344,7 +358,7 @@ bundles for one version is a trend line with a fork in it.
 ## report — replaces
 
 Print:
-- **`RELEASE GATE PASSED`** with the Step 2 table — lint, tests, perf, complexity, CCN ≤ 15, sighted (`blindFiles`) — and, where the perf gate passed because the addon ships no `tests/perf.lua`, say so plainly rather than letting it read as measured
+- **`RELEASE GATE PASSED`** with the Step 2 table — lint, tests, perf, complexity, CCN ≤ 15, sighted (`blindFiles`, `crashedFiles`) — and, where the perf gate passed because the addon ships no `tests/perf.lua`, say so plainly rather than letting it read as measured
 - Old version → New version
 - The `<since>` reference used and the commit count it spanned
 - Every file changed (path + the line that was updated)
