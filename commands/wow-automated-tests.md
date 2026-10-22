@@ -129,6 +129,12 @@ they are the ones under pressure:
   A manifest with no `blindFiles` came from a kit older than revision 35, so its complexity figures
   are **unsighted**, and the analysis says so. Functions the first sighted run reports above CCN 15
   are **newly measured**, not regressions.
+- **A `crashedFiles` above 0 is complexity not passing** (kit revision 41+): name every file and the
+  `lizard` 1.24.0 trigger with its hoist (a keyed function literal in a multi-line `for`/`while`
+  header table, hoisted into a local first). The CCN figures are zeroed in the manifest and `n/a` in
+  `RESULTS.md`, whose watch list opens with `Not measured — lizard raised`, and any `@` rows before
+  the traceback in `complexity.txt` are partial, never a measurement. `ANALYSIS.md` must not compare
+  them with earlier runs. An absent field means kit < 41, where a crash read as blind in every file.
 - **Never soften a skip into a pass.** "luacheck unavailable" is not "lint clean". If a suite was
   skipped, the analysis says what was not measured and why.
 
@@ -186,6 +192,8 @@ Print:
 - Anything that newly crossed a threshold, with its disposition.
 - `blindFiles`, and every blind file the run named, when it is above 0: complexity did not pass. On a
   kit older than revision 35, say the complexity figures are unsighted.
+- `crashedFiles`, and every file `lizard` raised on with its hoist, when it is above 0: complexity
+  did not pass and its figures were not measured. On a kit older than revision 41 the field is absent.
 - Every **skipped** suite, with what is missing and its install hint (`sudo luarocks install luacheck`,
   `pipx install lizard`, a Lua 5.1 interpreter). Never let a skip pass silently — recording skips is
   the whole reason a green run can be trusted.
