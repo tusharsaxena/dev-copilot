@@ -5,7 +5,9 @@ addon's constants, rolls the release history into the README's `## Version Histo
 addon (or `CHANGELOG.md` in a Ka0s-owned library repo, the only place `documentation-§1` permits
 one), and is gated on the full four-suite battery with zero functions above CCN 15, no file
 `lizard` was blind in (`blindFiles` 0) and no file `lizard` raised on (`crashedFiles` 0, kit 41+).
-Each section below attaches to the `<!-- overlay: <id> -->`
+Before that gate it also asks whether the addon's test-mode data and simulator scenarios are still
+current (`preview-mode`, *Kept current at every release*) and records the answer (Step 1b, under
+`extra`). Each section below attaches to the `<!-- overlay: <id> -->`
 marker of the same id in `commands/bump-version.md`.
 
 **Repo kind** comes from the detector's `kind`: `addon` (a root `.toc` with `## Interface:`) or
@@ -275,9 +277,83 @@ with today's date, followed by the Step 3b **full list** grouped by category. If
 bullets in — see Step 3b). Follow the file's established formatting (Keep a Changelog style, link
 refs at the bottom, etc.) rather than imposing a new one; if the file maintains comparison links, add
 one for the new version. It stays at **root**, where the versioning suite reads it. Do NOT rewrite
-past entries.
+past entries. The entry ends with the Step 1b answer, directly after the release-gate line (LibKa0s
+`docs/releasing.md` step 7):
+
+```text
+Preview and simulation re-look: <answer> — <files, commits or reason>.
+```
+
+In an addon, nothing about Step 1b goes into the README Version History row; its answer lives in the
+release bundle's `ANALYSIS.md`.
 
 ## extra — adds
+
+### The preview and simulation re-look (Step 1b)
+
+*Runs after Step 1, before the Step 2 gate.*
+
+`preview-mode`, *Kept current at every release*, wants a release to look again at the data an addon
+draws when nothing real is happening: its test-mode placeholders and its simulator scenarios. This
+step asks the owner that question and records the answer.
+
+**Why before the gate.** A "stop" answer must leave the repo untouched, and the Step 2 battery writes
+a release bundle whatever its verdict. A release bundle frozen without `ANALYSIS.md` breaches
+`automated-tests-§5`, so the question comes first, while nothing has been written yet.
+
+**In an addon (`kind=addon`), discover first.** Work over tracked files (`git ls-files`) outside
+`libs/`, `Libs/`, `tests/_kit/` and `docs/`, and list the paths found in three groups:
+
+- **Test-mode data:** files whose names match `(?i)(preview|testmode|test_mode|sample|placeholder|demo)`,
+  plus files outside `tests/` that hold a placeholder table
+  (`grep -lE '^\s*(local\s+)?[A-Z_]*(SAMPLE|PLACEHOLDER|PREVIEW|FAKE|DEMO)[A-Z_]*\s*='`).
+- **Simulator:** files whose names match `(?i)sim`, and any file containing
+  `LibStub("LibKa0s-Sim-1.0"`.
+- **Suites:** `tests/test_*preview*.lua`, `tests/test_*testmode*.lua`, `tests/test_*sim*.lua` and
+  `tests/sim_support.lua`.
+
+For context, take `<since>` from `git describe --tags --abbrev=0`, or, with no tag, the date of the top
+row of the README's `## Version History`. Then give two counts: commits since `<since>` that touched
+`core/`, `modules/` or `settings/`, and commits since `<since>` that touched the listed files. A wide
+gap between them is the thing the owner is being asked to judge.
+
+**Ask the owner** with `AskUserQuestion`. Name `preview-mode`, *Kept current at every release*, and
+its three checks, one line each:
+
+- **coverage:** every display element the release adds or changes is in the placeholder data, and
+  every new event-driven feature is in a scenario step (or the scenario list says why not);
+- **currency:** data naming game content (ids, names, the season's dungeons, level and item-level
+  ranges) matches the season and patch the TOC `## Interface:` targets;
+- **fidelity:** the data and scenarios still drive the current render path, verbs and UI, with no
+  dead field, removed option or vanished control.
+
+Show the discovery list with it. The options:
+
+- **Current:** proceed.
+- **Refreshed:** proceed. The owner confirms or names the commits that refreshed the data; offer the
+  ones since `<since>` that touched the listed files.
+- **Stale, stop now:** stop here and modify nothing. Print the files to refresh, then
+  `Nothing was modified; refresh, then re-run /dev-copilot:bump-version`.
+- **Release anyway (Deferred):** proceed. Ask for the reason and an optional issue number.
+- **Not applicable:** offered only when discovery found nothing, and taken only after the owner
+  confirms the addon has no positionable display and no simulator. If the owner does not confirm, they
+  name the files the heuristic missed, those join the list, and the question is asked again.
+
+An empty list is never silently Not applicable: the question is always asked. The owner may also
+correct the list (add a missed file, drop a false match), and the corrected list is the one recorded.
+
+**In a library (`kind=library`)**, ask only when `git diff --name-only <last tag>..HEAD` touches
+`LibKa0s/Sim*.lua` or a file defining `TestStrip` (`grep -l TestStrip LibKa0s/*.lua`). Then list those
+files plus the fixtures, suites and `docs/api/` folders LibKa0s `docs/releasing.md` step 5 names, and
+ask with the same options minus Not applicable. Otherwise record *Not applicable — this release did
+not change Sim or the strip* without asking, and say so in the Step 5 report.
+
+**When the run cannot ask** (non-interactive, no `AskUserQuestion`), stop before Step 2 and say why.
+Never assume an answer.
+
+Where the answer goes: an addon's goes into the release bundle's `ANALYSIS.md` (*Write up the release
+run*, item 1); a library's goes into this release's `CHANGELOG.md` entry (`history`). Nothing goes
+into an addon's README Version History row.
 
 ### The perf-skip exception goes into the release notes, not just the chat
 
@@ -324,6 +400,15 @@ bundles for one version is a trend line with a fork in it.
    the bundle's **`ANALYSIS.md`** to the uniform prompt in the standards repo's `AUTOMATED_TESTS.md`.
    A release run **MUST** carry one (`automated-tests-§5`).
 
+   In an addon, that `ANALYSIS.md` carries the template's `## Preview and simulation data` section,
+   written from the Step 1b answer:
+   - **Answer:** Current, Refreshed, Deferred or Not applicable;
+   - **Asked:** today's date, by `/dev-copilot:bump-version`;
+   - **Files reviewed:** the recorded list (the owner's correction, if any);
+   - **Commits since `<since>` touching them:** the count;
+   - **Note:** the commits for Refreshed, the reason and issue for Deferred, the owner's confirmation
+     for Not applicable.
+
 2. **Refresh the `RESULTS.md` watch list**: every function `lizard` warned on and every file in the
    1000–1500 LOC on-notice band, each with a one-line disposition, and anything that **newly** crossed
    marked as such. A regeneration that yields no disposition for what newly crossed has performed the
@@ -359,6 +444,7 @@ bundles for one version is a trend line with a fork in it.
 
 Print:
 - **`RELEASE GATE PASSED`** with the Step 2 table — lint, tests, perf, complexity, CCN ≤ 15, sighted (`blindFiles`, `crashedFiles`) — and, where the perf gate passed because the addon ships no `tests/perf.lua`, say so plainly rather than letting it read as measured
+- The Step 1b answer (preview and simulation re-look), the files reviewed (count and paths), and where it was written: the `## Preview and simulation data` section of `docs/automated-tests/<stamp>/ANALYSIS.md` in an addon, or the `Preview and simulation re-look:` line of the `CHANGELOG.md` entry in a library (including an unasked *Not applicable* there). On a Stale stop this report is the only output: the answer, the files to refresh, and that nothing was modified
 - Old version → New version
 - The `<since>` reference used and the commit count it spanned
 - Every file changed (path + the line that was updated)
@@ -384,6 +470,7 @@ tag** — tagging is a deliberate user action. Don't push. If `$ARGUMENTS` carri
 - **Don't let the generated text outrun the commits.** Every bullet in the CHANGELOG entry and the Version History row must trace to a real change between `<since>` and HEAD. No aspirational or filler entries; if there's nothing since the last tag, say so and bump the version only.
 - **Don't let the release notes omit a skipped suite.** When the gate passed because the addon ships no `tests/perf.lua`, Step 4 writes the one-sentence note into this repo kind's release-notes body — the new README `## Version History` row in an addon, the CHANGELOG entry in a library. Printing it in the Step 5 chat report is not enough — the chat is gone by the time anyone reads the release, and notes that say only "verified" over a three-suite gate read as four. This is the mirror of the rule above: that one stops the notes claiming changes that did not happen, this one stops them claiming verification that did not happen.
 - **Don't commit a README edit without the de-AI pass.** `documentation-§1` MUSTs it on every `README.md` change (anti-pattern #77), and this command changes one on every run. The release-notes cell it writes is the part to audit; the badges are mechanical.
+- **Don't skip or pre-answer the preview and simulation re-look (Step 1b)**, and never write Not applicable for an addon whose discovery list was empty without the owner's confirmation. A Stale answer stops before Step 2, with nothing modified.
 - **Don't bump the Interface version.** That's `/dev-copilot:wow-bump-interface`.
 - **Don't hand-edit an automated-test record.** Produce it with the vendored runner. Never write a number into a bundle and never edit a bundle once written — the bundle is the evidence the gate was decided on, including when it refused.
 - **Don't bump anything when the Step 2 gate fails.** No version string, no README, no CHANGELOG, no tag, no commit, no push. Report every failed gate with its detail and stop. Never "bump anyway and note it" — a release the gate refused is not a release with a caveat.
