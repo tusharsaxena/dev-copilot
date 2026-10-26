@@ -105,7 +105,8 @@ which are **addressed by name or path** and therefore breaking to rename.
   prefixed with the runner, not bounded by hand (a numeric `ulimit -v <kB>` **and** `timeout`;
   `ulimit -v unlimited` is no bound), not opted out (`KA0S_BOUNDED_HOOK=off`), and, for Lua runners
   only, not in a repo whose `tests/_kit` is kit revision **23+** (that kit self-bounds with the same
-  `KA0S_KIT_*` variables). It **fails open**: any error exits 0 silently. The matcher looks only at
+  `KA0S_KIT_*` variables). The refusal prints each blocked run with the runner in front, its
+  redirections dropped (they stay where the caller wrote them), so the retry is a copy. It **fails open**: any error exits 0 silently. The matcher looks only at
   **command position**: a word inside quotes or a heredoc body is prose, while `$(…)`, backticks,
   subshells, a heredoc fed to a bare shell (`bash <<EOF`) and a shell's `-c` script string (two levels
   deep) are scanned as commands. A probe such as `command -v luacheck` is not a run. The runner caps

@@ -6,7 +6,7 @@ A heavy run is `lua tests/run.lua`, `lua tests/perf.lua`, `run-automated-tests.s
 down (a runner that re-launched itself without end). The fix lives in two places: LibKa0s' test kit
 (revision 23) bounds its own Lua runs, and `scripts/ka0s-bounded` bounds anything. This hook is the
 backstop that works even when no memory rule or skill text reached the session: it denies the
-command and names the wrapper to prefix.
+command and hands back each blocked run already prefixed with the wrapper, ready to copy.
 
 A segment passes when:
   * its command is `ka0s-bounded` (by any path), or
@@ -33,6 +33,7 @@ positives on ordinary commands are not.
 import json
 import os
 import re
+import shlex
 import sys
 
 WRAPPER = "ka0s-bounded"
@@ -46,6 +47,8 @@ MAX_SHELL_DEPTH = 2  # how many nested `sh -c '…'` levels are scanned
 # A memory bound set by hand needs a numeric limit: `ulimit -v unlimited` lifts the cap instead.
 ULIMIT_V = re.compile(r"\bulimit\s+(-[A-Za-z]*v|-v)\s+\d+")
 
+# A redirection word: `2>&1`, `&>log`, `>`, `>>out`, `<in`. A bare operator takes the next word.
+REDIRECTION = re.compile(r"^(\d*|&)(>>|>&|<&|>|<)")
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 # Words that open a command position without being the command: `{ …; }`, `! cmd`, `if cmd; then cmd`.
 RESERVED = {"{", "}", "!", "if", "then", "elif", "else", "while", "until", "do"}
@@ -329,11 +332,13 @@ def shell_script(words):
     return None
 
 
-def check(command, cwd, depth=0, outer_bounds=False, outer_timed=False):
-    """The heavy runs in `command` that are not bounded, as a list of kinds.
+def offenders(command, cwd, depth=0, outer_bounds=False, outer_timed=False):
+    """The heavy runs in `command` that are not bounded, as (kind, words) pairs.
 
-    A `sh -c '…'` script is scanned the same way, up to MAX_SHELL_DEPTH levels deep; a `ulimit -v`
-    or `timeout` outside it still bounds what runs inside it.
+    `words` is the run itself, without the assignments and wrappers in front of it, so the refusal
+    can print that run with the bounded runner in front. A `sh -c '…'` script is scanned the same
+    way, up to MAX_SHELL_DEPTH levels deep; a `ulimit -v` or `timeout` outside it still bounds what
+    runs inside it.
     """
     bounded_by_hand = outer_bounds or ULIMIT_V.search(command) is not None
     found = []
@@ -352,15 +357,38 @@ def check(command, cwd, depth=0, outer_bounds=False, outer_timed=False):
         script = shell_script(rest)
         if script is not None:
             if depth < MAX_SHELL_DEPTH:
-                found.extend(check(script, here, depth + 1, bounded_by_hand, timed))
+                found.extend(offenders(script, here, depth + 1, bounded_by_hand, timed))
             continue
         kind = heavy(rest, here)
         if kind is None:
             continue
         if timed and bounded_by_hand:
             continue
-        found.append(kind)
+        found.append((kind, rest))
     return found
+
+
+def check(command, cwd):
+    """The heavy runs in `command` that are not bounded, as a list of kinds."""
+    return [kind for kind, _ in offenders(command, cwd)]
+
+
+def bounded_form(wrapper, words):
+    """`words` as one copyable command run through `wrapper`, its redirections left to the caller.
+
+    The scanner keeps a redirection as a word (`2>&1`, `>`, `out.txt`); it stays where the caller
+    wrote it in the original command, so it is dropped here rather than quoted into an argument.
+    """
+    kept = []
+    target = False
+    for w in words:
+        if target:
+            target = False
+        elif REDIRECTION.match(w):
+            target = REDIRECTION.match(w).group(0) == w and not w.endswith("&")
+        else:
+            kept.append(shlex.quote(w))
+    return " ".join([wrapper] + kept)
 
 
 def main():
@@ -372,19 +400,26 @@ def main():
         return 0
     command = (data.get("tool_input") or {}).get("command") or ""
     cwd = data.get("cwd") or os.getcwd()
-    found = check(command, cwd)
+    found = offenders(command, cwd)
     if not found:
         return 0
 
     wrapper = os.path.expanduser("~/.claude/dev-copilot/bin/" + WRAPPER)
-    kinds = ", ".join(sorted(set(found)))
+    kinds = ", ".join(sorted({kind for kind, _ in found}))
+    runs = []
+    for _, words in found:
+        run = bounded_form(wrapper, words)
+        if run not in runs:
+            runs.append(run)
     reason = (
-        f"Unbounded heavy run ({kinds}). Prefix it with the bounded runner: `{wrapper} <command>` "
-        f"-- e.g. `{wrapper} lua tests/run.lua`. It caps process memory, the process tree's memory "
-        "and wall-clock time, and queues on a machine-wide slot pool, so running several repos' "
-        "suites in parallel is fine. An unbounded runaway suite once OOM-killed the whole WSL VM "
-        "and this session with it. A repo whose tests/_kit is revision 23+ self-bounds its Lua runs "
-        "and is not stopped here. Deliberate opt-out: an inline KA0S_BOUNDED_HOOK=off assignment."
+        f"Unbounded heavy run ({kinds}). Run it through the bounded runner instead: "
+        + "; ".join(f"`{run}`" for run in runs)
+        + " -- keep the rest of the command as it was. The runner caps process memory, the process "
+        "tree's memory and wall-clock time, and queues on a machine-wide slot pool, so running "
+        "several repos' suites in parallel is fine. An unbounded runaway suite once OOM-killed the "
+        "whole WSL VM and this session with it. A repo whose tests/_kit is revision 23+ self-bounds "
+        "its Lua runs and is not stopped here; luacheck and lizard load no kit and always need the "
+        "runner. Deliberate opt-out: an inline KA0S_BOUNDED_HOOK=off assignment."
     )
     json.dump({
         "hookSpecificOutput": {

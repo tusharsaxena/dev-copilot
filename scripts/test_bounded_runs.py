@@ -234,6 +234,18 @@ class HookScript(unittest.TestCase):
         # The retired wow-addon plugin's state dir is never recreated.
         self.assertFalse(os.path.exists(os.path.join(home, ".claude", "wow-addon")))
 
+    def test_refusal_names_the_bounded_form_of_each_run(self):
+        # The green-gate chain every addon's CLAUDE.md used to spell: the self-guarding kit's suite
+        # passes, and the refusal hands back the luacheck segment ready to run.
+        addon = repo(self, 23)
+        p, home = self.run_hook("cd %s; lua tests/run.lua 2>&1 | tail -3; luacheck . 2>&1 | tail -1"
+                                % os.path.basename(addon), os.path.dirname(addon))
+        reason = json.loads(p.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        wrapper = os.path.join(home, ".claude", "dev-copilot", "bin", "ka0s-bounded")
+        self.assertIn("Unbounded heavy run (luacheck)", reason)
+        self.assertIn("`%s luacheck .`" % wrapper, reason)
+        self.assertNotIn("lua tests/run.lua`", reason)
+
     def test_silent_on_ordinary_commands(self):
         p, _ = self.run_hook("git status", repo(self))
         self.assertEqual((p.returncode, p.stdout), (0, ""))
