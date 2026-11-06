@@ -38,6 +38,7 @@ python3 scripts/test_check_overlays.py    # the overlay checker
 python3 scripts/test_bounded_runs.py      # the bounded-runs matcher and hook
 python3 scripts/test_normalize_eol.py     # the line-ending hook
 python3 scripts/test_curseforge_journal.py  # the CurseForge journal fetcher
+python3 scripts/test_command_specs.py     # no positionals in commands/*.md; the roster patterns
 python3 scripts/check_overlays.py         # the live overlays against their bases
 ```
 
@@ -74,7 +75,7 @@ are listed because losing one silently weakens the guard the bounded-runs hook e
 
 | Software | Package manager | Why this repo needs it | Evidence | Install (WSL2 / Ubuntu) | Verify |
 |---|---|---|---|---|---|
-| **python3** (with `unittest`) | `apt` (`python3`) | The `test_*.py` files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/test_normalize_eol.py:1`; `scripts/test_curseforge_journal.py:1-20`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:78-83` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
+| **python3** (with `unittest`) | `apt` (`python3`) | The `test_*.py` files, and the overlay checker that guards every edit to `commands/`, `agents/` or `profiles/`. | `scripts/test_detect_profile.py:1-14`; `scripts/test_check_overlays.py:1-12`; `scripts/test_bounded_runs.py:1-13`; `scripts/test_normalize_eol.py:1`; `scripts/test_curseforge_journal.py:1-20`; `scripts/test_command_specs.py:1-30`; `scripts/check_overlays.py:1-20`; `CLAUDE.md:78-84` | `sudo apt install -y python3` | `python3 scripts/check_overlays.py` |
 | **git** | `apt` (`git`) | The detector's tests build fixture repos with `git init` and `git remote add`, and the line-ending hook's tests build one per case with `git init` and a `.gitattributes`. `.gitattributes` pins this repo to **LF**, and `git check-attr` is the only correct reader of that pin. | `scripts/test_detect_profile.py:25`, `:27`; `scripts/test_normalize_eol.py:40`; `.gitattributes`; `scripts/normalize-eol.sh:57` | `sudo apt install -y git` | `git check-attr text eol -- CLAUDE.md` |
 | **Claude Code** | its own installer | The specs in `commands/`, `agents/` and `profiles/wow/` are only executable as plugin slash commands and subagents; `/reload-plugins` is the load check. | `.claude-plugin/plugin.json`; `CLAUDE.md:86` | see the Claude Code docs | `/reload-plugins` in a session |
 

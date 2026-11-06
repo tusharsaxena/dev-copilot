@@ -39,24 +39,27 @@ This is, with `wow-new-addon`, one of only two specs in this plugin that writes 
 Report only; it writes nothing and fixes nothing. For every addon in the standards roster (`../WowAddonStandards/standards/ADDONS.md`, *In-scope addons*), compare the base on line 1 of its newest `docs/revendor/` bundle with the provenance tag the addon carried just before the commit that vendored that bundle's tag. Run it from the target addon's root:
 
 ```sh
-tag_at() {  # the provenance tag in <repo>'s CLAUDE.md at <rev>
-  git -C "$1" show "$2:CLAUDE.md" 2>/dev/null |
+# Named variables only: Claude Code substitutes a dollar-digit positional anywhere in a command spec
+# with the user's argument words, so neither this block nor its function may take one.
+tag_at() {  # the provenance tag in "$repo"'s CLAUDE.md at revision "$rev"
+  git -C "$repo" show "$rev:CLAUDE.md" 2>/dev/null |
     grep -oE 'Bundles \[LibKa0s\]\([^)]*\) v[0-9]+\.[0-9]+\.[0-9]+' |
     grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1
 }
-sed -n '/^## In-scope addons/,/^## Ka0s-owned/p' ../WowAddonStandards/standards/ADDONS.md |
-  grep -oE '\]\(\.\./\.\./[A-Za-z]+/\)' | cut -d/ -f3 | while read -r a; do
-  r=../$a
-  b=$(ls -1d "$r"/docs/revendor/*/ 2>/dev/null | while read -r d; do   # single-tag bundles only
+roster=../WowAddonStandards/standards/ADDONS.md
+sed -n '/^## In-scope addons/,/^## Ka0s-owned/p' "$roster" |
+  sed -nE 's/^\| [^|]+ \| `\.\.\/\.\.\/([A-Za-z0-9]+)\/` \|.*/\1/p' | while read -r a; do
+  repo=../$a
+  b=$(find "$repo/docs/revendor" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while read -r d; do
         [ "$(basename "$d" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | wc -l)" -lt 2 ] && echo "$d"
-      done | sort -V | tail -1)
+      done | sort -V | tail -1)                                       # single-tag bundles only
   [ -n "$b" ] || { echo "$a: no store"; continue; }
   tags=$(head -1 "$b/01_DELTA.md" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
   said=$(echo "$tags" | head -1); new=$(echo "$tags" | tail -1)
-  c=$(git -C "$r" log --format=%H -- libs/LibKa0s tests/_kit CLAUDE.md | while read -r h; do
-        [ "$(tag_at "$r" "$h")" = "$new" ] && [ "$(tag_at "$r" "$h^")" != "$new" ] && { echo "$h"; break; }
+  c=$(git -C "$repo" log --format=%H -- libs/LibKa0s tests/_kit CLAUDE.md | while read -r h; do
+        [ "$(rev=$h; tag_at)" = "$new" ] && [ "$(rev="$h^"; tag_at)" != "$new" ] && { echo "$h"; break; }
       done)
-  was=$(tag_at "$r" "$c^"); s=$(git -C "$r" rev-parse --short "$c")
+  was=$(rev="$c^"; tag_at); s=$(git -C "$repo" rev-parse --short "$c")
   if [ "$said" = "$was" ]; then v=ok; else v="MISMATCH: bundle base $said, provenance before $s was $was"; fi
   echo "$a  $(basename "$b")  base $said  vendored-before $was@$s  $v"
 done
@@ -249,16 +252,16 @@ If the fix needs a decision rather than an edit — the host's shape is delibera
 cd <Addon>
 horizon=$(ls -1 docs/revendor | sort | head -1 | cut -c1-10)   # the store's first bundle
 
-tag_at() {  # the provenance tag in CLAUDE.md at <rev>
-  git show "$1:CLAUDE.md" 2>/dev/null |
+tag_at() {  # the provenance tag in CLAUDE.md at revision "$rev" (named: no positionals in a spec)
+  git show "$rev:CLAUDE.md" 2>/dev/null |
     grep -oE 'Bundles \[LibKa0s\]\([^)]*\) v[0-9]+\.[0-9]+\.[0-9]+' |
     grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1
 }
 { git log --since="$horizon 00:00" --format=%H -- libs/LibKa0s tests/_kit     # the audit's walk
   git log --since="$horizon 00:00" --format=%H -- CLAUDE.md | while read -r c; do
-    [ "$(tag_at "$c")" != "$(tag_at "$c^")" ] && echo "$c"                    # rolled here
+    [ "$(rev=$c; tag_at)" != "$(rev="$c^"; tag_at)" ] && echo "$c"          # rolled here
   done
-} | while read -r c; do tag_at "$c"; done | sed '/^$/d' | sort -uV > <scratch>/vendored.txt
+} | while read -r rev; do tag_at; done | sed '/^$/d' | sort -uV > <scratch>/vendored.txt
 
 for b in docs/revendor/*/; do
   n=$(basename "$b" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | wc -l)
