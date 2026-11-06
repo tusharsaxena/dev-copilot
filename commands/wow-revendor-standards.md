@@ -203,15 +203,16 @@ Read the fetched `line-endings` section and hold its two canonical bodies. Then,
 
   ```sh
   # named variables only: a dollar-digit positional in a command spec is replaced by the user's
-  # argument words before the shell sees it; the path stays a variable, never spliced into code
-  git -c core.quotePath=false ls-files | while IFS= read -r p; do
+  # argument words before the shell sees it. Paths travel NUL-separated and stay a variable (for p do
+  # walks the arguments xargs hands the inner shell), never spliced into code, so any filename counts
+  git ls-files -z | xargs -0 sh -c 'for p do
     attrs=$(git check-attr text eol -- "$p" | sed "s/.*: //" | tr "\n" " ")
     text=${attrs%% *}; eol=${attrs#* }; eol=${eol%% *}
     [ "$text" = unset ] && continue               # binary: git converts nothing here
     cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
     case "$eol" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
                    lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac
-  done 2>/dev/null | wc -l
+  done' sh 2>/dev/null | wc -l
   ```
 
   Paste it as written. It asks git for `text` as well as `eol` and counts bytes rather than asking
@@ -262,7 +263,7 @@ docs/testing.md
 .gitattributes
   MISSING: no pin — file carries only "*.sh text eol=lf" (line-endings-§1, line-endings-§2)
   STRAYS:  9 tracked files disagree with the declared pin, from
-    git -c core.quotePath=false ls-files | while IFS= read -r p; do attrs=$(git check-attr text eol -- "$p" …); …; done | wc -l
+    git ls-files -z | xargs -0 sh -c 'for p do attrs=$(git check-attr text eol -- "$p" …); …; done' sh | wc -l
     (reported only — renormalization is the user's own commit, line-endings-§6)
 
 CODE / CONFIG — comment-only, needs your confirmation before anything is written
