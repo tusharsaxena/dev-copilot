@@ -64,6 +64,12 @@ which are **addressed by name or path** and therefore breaking to rename.
   guard, the Core API and site-endpoint fetches, and the journal merges. It writes only to
   `Ka0sAddonsCommonTasks/journal/curseforge/` (or `$KA0S_CF_JOURNAL`). `scripts/test_curseforge_journal.py` — its unit test,
   over synthetic payloads only.
+- `scripts/test_command_specs.py` — the command specs' own regression test: no positional parameter
+  (`$1`, `${2}`, …) in any `commands/*.md`, since Claude Code substitutes them with the user's
+  arguments (`$ARGUMENTS` is allowed), and the `ADDONS.md` roster patterns of `wow-revendor-libka0s`
+  Step 0 and `profiles/wow/agent-review.md` run against a fixture copy of the roster's table rows,
+  and the line-ending stray count (`wow-revendor-standards`, and the identical copy in
+  `agents/wow-standards-audit.md`) counts each stray once under sh, bash and zsh, whatever its name.
 - `commands/*.md` — **24** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
   of the same name:
   - **14 shared**: `diff`, `commit`, `sync-docs`, `review`, `run-tests`, `bump-version`, `finalize`,
