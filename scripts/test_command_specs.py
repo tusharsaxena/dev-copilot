@@ -133,6 +133,64 @@ class RosterPatternTest(unittest.TestCase):
         got = run_sh(cmd + '\nprintf "%s\\n" "$@"')
         self.assertEqual(got, EXPECTED)
 
+def stray_snippet(rel):
+    """The working-tree stray count, cut from the spec exactly as a reader would paste it."""
+    lines = read(rel).splitlines()
+    start = next(i for i, l in enumerate(lines) if "# named variables only: a dollar-digit positional" in l)
+    end = next(i for i in range(start, len(lines)) if lines[i].rstrip().endswith("| wc -c"))
+    return "\n".join(l[2:] if l.startswith("  ") else l for l in lines[start:end + 1])
+
+
+class StrayCountTest(unittest.TestCase):
+    """Both copies of the line-ending stray count must count every stray once, whatever its name."""
+
+    STRAYS = ["lf bad.lua", "tab\tname.lua", "na\u00efve.lua", "back\\slash.lua", 'dq"uote.lua',
+              "new\nline.lua", "colon: name.lua", "mixed.bat"]
+
+    def setUp(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is not installed")
+        self._tmp = tempfile.TemporaryDirectory()
+        d = self.repo = self._tmp.name
+        def git(*args):
+            subprocess.run(["git", "-C", d, "-c", "core.autocrlf=false"] + list(args), check=True,
+                           capture_output=True)
+        git("init", "-q")
+        with open(os.path.join(d, ".gitattributes"), "w", newline="") as f:
+            f.write("* text=auto eol=lf\n*.bat text eol=crlf\n*.png binary\n")
+        names = self.STRAYS + ["clean.lua", "good.bat", "art.png"]
+        for n in names:
+            with open(os.path.join(d, n), "wb") as f:
+                f.write(b"ok\n" if n.endswith(".lua") else b"ok\r\n" if n.endswith(".bat") else b"\x89\r\n")
+        git("add", "-A")
+        git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture")
+        for n in self.STRAYS:                      # now make each stray disagree with its pin
+            with open(os.path.join(d, n), "wb") as f:
+                f.write(b"a\r\nb\n" if n.endswith(".bat") else b"a\r\n")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def count(self, rel, shell):
+        if shutil.which(shell) is None:
+            self.skipTest(shell + " is not installed")
+        out = subprocess.run([shell, "-c", stray_snippet(rel)], cwd=self.repo, capture_output=True,
+                             text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return int(out.stdout.strip())
+
+    def test_revendor_standards_counts_each_stray_once(self):
+        for shell in ("sh", "bash", "zsh"):
+            with self.subTest(shell=shell):
+                self.assertEqual(self.count("commands/wow-revendor-standards.md", shell), len(self.STRAYS))
+
+    def test_audit_agent_counts_each_stray_once(self):
+        self.assertEqual(self.count("agents/wow-standards-audit.md", "sh"), len(self.STRAYS))
+
+    def test_both_copies_are_the_same_text(self):
+        self.assertEqual(stray_snippet("commands/wow-revendor-standards.md"),
+                         stray_snippet("agents/wow-standards-audit.md"))
+
 
 if __name__ == "__main__":
     if not shutil.which("sh"):

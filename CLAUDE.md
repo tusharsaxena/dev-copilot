@@ -80,7 +80,7 @@ No build. Run all of these after touching `scripts/`, `bin/`, `commands/`, `agen
 - `python3 scripts/test_bounded_runs.py` — the bounded-runs matcher and hook script, including the runner symlink, the runner's timeout and the refusal's copyable bounded form (27 cases).
 - `python3 scripts/test_normalize_eol.py` — the line-ending hook (13 cases).
 - `python3 scripts/test_curseforge_journal.py` — the CurseForge journal fetcher over synthetic payloads (48 cases).
-- `python3 scripts/test_command_specs.py` — the command specs' shell: no positional parameter in any `commands/*.md`, and the ADDONS.md roster patterns (`wow-revendor-libka0s` Step 0, `profiles/wow/agent-review.md`) run against a fixture copy of the roster's table rows (4 cases).
+- `python3 scripts/test_command_specs.py` — the command specs' shell: no positional parameter in any `commands/*.md`, and the ADDONS.md roster patterns (`wow-revendor-libka0s` Step 0, `profiles/wow/agent-review.md`) run against a fixture copy of the roster's table rows, and the line-ending stray count (`wow-revendor-standards`, and the audit agent's identical copy) counts each stray once under sh, bash and zsh, whatever its name: a tab, a quote, a backslash, non-ASCII, a newline (7 cases).
 - `python3 scripts/check_overlays.py` — the live tree; prints `OK: 13 overlays`.
 - `python3 -c "import json; [json.load(open(f)) for f in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')]"` — both manifests parse.
 - `dev-copilot-profile <path>` against a real addon, `LibKa0s`, `WowAddonStandards`, `Ka0sAddonsCommonTasks`, this repo (`wow/tooling`, `reason=override`) and a generic repo.

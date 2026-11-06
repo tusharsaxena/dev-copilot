@@ -204,18 +204,19 @@ Read the fetched `line-endings` section and hold its two canonical bodies. Then,
   ```sh
   # named variables only: a dollar-digit positional in a command spec is replaced by the user's
   # argument words before the shell sees it. Paths travel NUL-separated and stay a variable (for p do
-  # walks the arguments xargs hands the inner shell), never spliced into code, so any filename counts
+  # walks the arguments xargs hands the inner shell), never spliced into code, and each stray is one
+  # NUL counted as a byte, so a name holding a tab, a quote or even a newline counts once
   git ls-files -z | xargs -0 sh -c 'for p do
     attrs=$(git check-attr text eol -- "$p" | sed "s/.*: //" | tr "\n" " ")
     text=${attrs%% *}; eol=${attrs#* }; eol=${eol%% *}
     [ "$text" = unset ] && continue               # binary: git converts nothing here
     cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
-    case "$eol" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
-                   lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac
-  done' sh 2>/dev/null | wc -l
+    case "$eol" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\0" "$p";;
+                   lf)   [ "$cr" -gt 0 ] && printf "%s\0" "$p";; esac
+  done' sh 2>/dev/null | tr -cd "\0" | wc -c
   ```
 
-  Paste it as written. It asks git for `text` as well as `eol` and counts bytes rather than asking
+  Paste it as written (`| tr '\0' '\n'` in place of the count lists the names). It asks git for `text` as well as `eol` and counts bytes rather than asking
   `file(1)`, and both halves are corrections to an earlier form of this check that over-reported by
   roughly a factor of three (`line-endings-§7`): `binary` expands to `-text` and says nothing about
   `eol`, so a marked PNG still answers `crlf` from the pin; and `file(1)` sniffs types, reporting
@@ -263,7 +264,7 @@ docs/testing.md
 .gitattributes
   MISSING: no pin — file carries only "*.sh text eol=lf" (line-endings-§1, line-endings-§2)
   STRAYS:  9 tracked files disagree with the declared pin, from
-    git ls-files -z | xargs -0 sh -c 'for p do attrs=$(git check-attr text eol -- "$p" …); …; done' sh | wc -l
+    git ls-files -z | xargs -0 sh -c 'for p do attrs=$(git check-attr text eol -- "$p" …); …; done' sh | tr -cd "\0" | wc -c
     (reported only — renormalization is the user's own commit, line-endings-§6)
 
 CODE / CONFIG — comment-only, needs your confirmation before anything is written

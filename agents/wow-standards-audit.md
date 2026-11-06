@@ -384,13 +384,18 @@ The playbook's evidence step calls for checks whose whole value is that they are
   `binary`; and (e) the **working tree actually agrees with the declared pin**:
 
   ```sh
-  # the path arrives as "$1" (positional), never spliced into the script text
-  git ls-files -z | xargs -0 -n1 sh -c '
-    p=$1; set -- $(git check-attr text eol -- "$p" | sed "s/.*: //")
-    [ "$1" = unset ] && exit                      # binary: git converts nothing here
+  # named variables only: a dollar-digit positional in a command spec is replaced by the user's
+  # argument words before the shell sees it. Paths travel NUL-separated and stay a variable (for p do
+  # walks the arguments xargs hands the inner shell), never spliced into code, and each stray is one
+  # NUL counted as a byte, so a name holding a tab, a quote or even a newline counts once
+  git ls-files -z | xargs -0 sh -c 'for p do
+    attrs=$(git check-attr text eol -- "$p" | sed "s/.*: //" | tr "\n" " ")
+    text=${attrs%% *}; eol=${attrs#* }; eol=${eol%% *}
+    [ "$text" = unset ] && continue               # binary: git converts nothing here
     cr=$(tr -dc "\r" < "$p" | wc -c); lf=$(tr -dc "\n" < "$p" | wc -c)
-    case "$2" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\n" "$p";;
-                 lf)   [ "$cr" -gt 0 ] && printf "%s\n" "$p";; esac' _ 2>/dev/null | wc -l
+    case "$eol" in crlf) [ "$lf" -gt 0 ] && [ "$cr" -ne "$lf" ] && printf "%s\0" "$p";;
+                   lf)   [ "$cr" -gt 0 ] && printf "%s\0" "$p";; esac
+  done' sh 2>/dev/null | tr -cd "\0" | wc -c
   ```
 
   **Run it as written, and do not "simplify" it back toward `file(1)`.** It asks git for `text` as
