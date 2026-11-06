@@ -1,0 +1,1 @@
+FU review: PASS at 748a793 - stray count is 8/8 (newline counted once) under sh/zsh/bash in both identical copies, AbsorbTracker 0, all 6 test files + check_overlays green, DEPENDENCIES citations correct, no positionals in commands/*.md
