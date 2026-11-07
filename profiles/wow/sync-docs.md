@@ -68,7 +68,7 @@ This command is the one that can write it, because it is the one that reads the 
 
 ### Step 2 — Discover the addon
 
-1. Locate the `.toc` file(s) in cwd. Read every one. Extract: addon name, title, version, interface versions, saved variables, library deps, full file load order.
+1. Locate the `.toc` file(s) in cwd. Read every one. Extract: addon name, title, version, interface versions (a two-number line is Retail first, then Forever), saved variables, library deps, full file load order.
 2. List every `.lua` and `.xml` file the TOC loads. Build a mental map of: core entry point, modules, settings UI, locales, libs (skip `libs/`/`Libs/` content).
 3. Read every loaded file (skip libs). Identify:
    - The addon-init pattern (Ace3 `NewAddon`, vanilla frame, etc.)
@@ -94,7 +94,7 @@ Find every documentation file: `README.md`, `README.*`, `CLAUDE.md`, `CLAUDE.*.m
 
 **Stale facts** — claims in docs that contradict code:
 - Numeric counts in prose or headings ("8 macros", "tracks 12 spells", "5 modules") vs. the actual count from Step 2. Flag any mismatch.
-- Wrong slash commands, wrong file paths, wrong saved-variable name, wrong Interface number
+- Wrong slash commands, wrong file paths, wrong saved-variable name, wrong Interface number (either slot of a two-number line), a supported-clients claim that disagrees with the roster's Clients value
 - Wrong/missing dependencies, removed-but-still-listed modules
 - **`DEPENDENCIES.md` vs. what the repo actually needs** — a tool the tests or a script now require but the file does not name; a tool named there that nothing in the repo uses any more; an install command that never worked or no longer does (`pip install <tool>` on Ubuntu 24.04; a Lua rock like `luacheck` handed to `pipx`); a stated Lua version that disagrees with what the harness requires. Cite the evidence for each direction.
 - Outdated version number anywhere docs mention it
