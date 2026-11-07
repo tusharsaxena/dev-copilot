@@ -25,7 +25,7 @@ Add these WoW checks to the base list:
 - New events registered but never unregistered (the WoW form of the base's resource-lifecycle check — `RegisterEvent`/`RegisterMessage`/`RegisterCallback`/hooks without a matching unregister/unhook).
 - New library/dependency requirements not yet in the TOC (the TOC is the addon's manifest: a new `LibStub("…")` consumer, an embedded lib under `libs/` not listed in the TOC or its aggregate `.xml`, or a missing `## Dependencies`/`## OptionalDeps` entry).
 - Version field changed but no other release-coordination changes (CHANGELOG, etc.) — for an addon the version lives in the TOC `## Version:` and in code constants.
-- `## Interface:` not bumped if needed.
+- `## Interface:` not bumped if needed. Read it per client slot: a `retail+forever` addon's two-number line (`<retail>, <forever>`) is correct, and either slot can be stale on its own.
 
 ## untracked — adds
 

@@ -94,6 +94,19 @@ From the repo root:
 
 **Every run goes through the bounded runner.** Prefix each command with `~/.claude/dev-copilot/bin/ka0s-bounded` (e.g. `~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
 
+**A `retail+forever` addon is tested under both client profiles** (`clients-§6`). Resolve the Clients
+value with `python3 "<plugin root>/scripts/roster_clients.py" <AddonFolder>` (the plugin root is the
+detector's `root=`). When it prints `retail+forever`, the runs above are the Retail profile (the kit's
+default, `KA0S_KIT_CLIENT=retail`), and the headless suite is then run once more under Forever, bounded:
+
+```sh
+KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua
+```
+
+Both must show 0 failed. The second run writes no bundle, so the `RESULTS.md` trend line gets one row per
+run. Record the Forever result (the pass count and failed count) in the `ANALYSIS.md` write-up. For
+`retail` and `retail-pending` addons nothing changes.
+
 The runner writes the bundle and prepends the `RESULTS.md` row. It does **not** write `ANALYSIS.md`
 or the `RESULTS.md` watch list — those need a reader, and they are Steps 3 and 4.
 

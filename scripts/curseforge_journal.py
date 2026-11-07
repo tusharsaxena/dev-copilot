@@ -480,7 +480,8 @@ class Context:
             rows.append({"ts": ts, "fileId": f["id"], "downloadCount": count})
             prev = last.get(key)
             summary.append({"fileId": f["id"], "displayName": f.get("displayName"), "fileDate": f.get("fileDate"),
-                            "downloads": count, "delta": None if prev is None else count - prev})
+                            "downloads": count, "delta": None if prev is None else count - prev,
+                            "gameVersions": f.get("gameVersions") or []})
         present = {str(f["id"]) for f in api_files}
         removed = [rec.get("displayName") for k, rec in files.items() if k not in present and not rec.get("removed")]
         for k, rec in files.items():

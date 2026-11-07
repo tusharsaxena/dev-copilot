@@ -233,6 +233,17 @@ class ReleasesTest(Collection):
         self.assertEqual(run["command"], "releases")
         self.assertTrue(os.path.isfile(os.path.join(self.journal, "reports", "releases", "20261010-053000-releases.md")))
 
+    def test_journal_records_forever_version(self):
+        # A dual-client release lists both clients' game versions (Retail 12.1.5, WoW Forever 1.60.1).
+        f = cf_file(1, "1.0.0", 5)
+        f["gameVersions"] = ["12.1.5", "1.60.1"]
+        ctx = self.ctx()
+        out = ctx.releases(["Alpha"], self.http([f]), ts="2026-10-10T00:00:00Z")
+        files = read_json(os.path.join(self.journal, "Alpha", "files.json"))
+        self.assertEqual(files["1"]["gameVersions"], ["12.1.5", "1.60.1"])
+        # The summary the command prints carries both too.
+        self.assertEqual(out["addons"][0]["files"][0]["gameVersions"], ["12.1.5", "1.60.1"])
+
     def test_second_run_only_appends_counts_and_fetches_no_old_changelog(self):
         ctx = self.ctx()
         ctx.releases(["Alpha"], self.http([cf_file(1, "1.0.0", 5)]), ts="2026-10-10T00:00:00Z")

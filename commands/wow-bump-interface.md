@@ -1,10 +1,10 @@
 ---
-description: Bump the ## Interface line in the current addon's TOC(s) to the current Retail (Live Servers) interface number. Operates on this repo only (not recursive). Pass the number explicitly, or the command determines the current Live value and asks you to confirm if unsure.
-argument-hint: [interface-number] (optional, e.g. 120000 — omit to use the current Live Servers value)
+description: Bump the ## Interface line in the current addon's TOC(s) per client slot, the Retail number and, for a ported addon, the WoW Forever number. Operates on this repo only (not recursive). Pass the numbers explicitly, or the command determines the current Live values and asks you to confirm if unsure.
+argument-hint: [retail-number] [forever-number] (optional, e.g. 120107 16002 — omit to use the current Live values)
 allowed-tools: [Read, Glob, Grep, Edit, Bash]
 ---
 
-Bump the `## Interface:` line in the **current addon repo's** TOC file(s) to the current **Retail / Live Servers** interface number. Scope is this one addon — do **not** walk into subdirectories hunting for other addons.
+Bump the `## Interface:` line in the **current addon repo's** TOC file(s) per client slot: the current **Retail / Live Servers** number and, for an addon ported to WoW Forever, the current **Forever** number. Scope is this one addon — do **not** walk into subdirectories hunting for other addons.
 
 ## Before anything — confirm this is a WoW repo
 
@@ -13,30 +13,35 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 - **`profile=generic`** — print exactly this and stop: "`/dev-copilot:wow-bump-interface` is for WoW addon repos; this repo is detected as generic (<reason>). Add a `.dev-copilot` file with `profile=wow` to override." Do nothing else.
 - **`profile=wow`** — Continue. A `kind` other than `addon` has no player-facing TOC to bump: say so and stop.
 
-## Resolve the target interface number
+## Resolve the client set
 
-1. If `$ARGUMENTS` is non-empty, use it as the target. Validate it looks like a 6-digit build number (e.g. `120000`); if it's a comma-separated list, accept it verbatim (some TOCs carry multiple). If the format looks wrong, stop and ask the user to confirm.
-2. If `$ARGUMENTS` is empty, determine the **current Live Servers (Retail) interface number** — the value currently live on the retail realms, which is `(major * 10000) + (minor * 100) + patch` for the current retail patch (e.g. patch 11.1.5 → `110105`).
-   - **If you are not certain** what the current Live interface number is (it changes every patch and your knowledge may be stale), **do not guess** — ask the user: *"What's the current Live Servers interface number? (e.g. 110105 for patch 11.1.5)"* and use their answer. Getting this wrong makes the addon show as out-of-date in-game, so confirming beats guessing.
+Resolve the addon's Clients value from the roster with the helper, run from the plugin root (`root=` above): `python3 "<root>/scripts/roster_clients.py" <AddonFolder>`, where `<AddonFolder>` is the basename of the repo. It prints one of `retail+forever`, `retail` or `retail-pending`. Exit 2 means the addon is not in the roster and exit 3 means the roster has no Clients column or an unknown value: stop and say so, never guess the value.
+
+- **`retail+forever`**: the TOC line carries two numbers, Retail first: `## Interface: <retail>, <forever>`. Both slots are bumped.
+- **`retail`** and **`retail-pending`**: the TOC line carries one number and only the Retail slot is bumped. Never add a Forever number.
+
+## Resolve the target interface numbers
+
+Interface numbers are `(major * 10000) + (minor * 100) + patch`, so Retail patch 12.1.5 is `120105`. The WoW Forever slot is the 5-digit `16xxx` form: client 1.60.1 is `16001`. As of 2026-11-07 Live Retail is `120105` and Live Forever is `16001`.
+
+1. If `$ARGUMENTS` is non-empty, take the first number as the Retail target and, for a `retail+forever` addon, the second as the Forever target. Validate: Retail is 6 digits and Forever is 5 digits starting `16`. Accept a lone Retail number for a `retail+forever` addon and keep the Forever slot as it stands. If a format looks wrong, stop and ask.
+2. If `$ARGUMENTS` is empty, determine the current Live value of each slot the addon carries. **If you are not certain** of one (it changes every patch and your knowledge may be stale), **do not guess**. Ask: *"What are the current Live interface numbers? (Retail, e.g. 120105, and for a ported addon WoW Forever, e.g. 16001)"* and use the answer. A wrong number makes the addon show as out-of-date in-game, so confirming beats guessing.
 
 ## Find the TOC(s)
 
-Look for `*.toc` files at the **top level of the current repo only** (the addon root). Include the main TOC and any per-flavor Retail TOCs beside it (`Foo.toc`, `Foo_Mainline.toc`). Do **not** recurse into subfolders, and skip `libs/`, `Libs/`, `.git/`.
+Look for `*.toc` files at the **top level of the current repo only** (the addon root). The standard shape is one unsuffixed TOC (`clients-§2`). Do **not** recurse into subfolders, and skip `libs/`, `Libs/`, `.git/`.
 
 - If there are zero top-level `.toc` files, stop and tell the user this doesn't look like an addon repo root (suggest they `cd` into the addon).
-- If a TOC targets a non-Retail flavor (e.g. `_Vanilla`, `_Cata`, `_Wrath`), leave it alone and report it as skipped — the Live Servers value is Retail-only.
+- A per-client TOC (`_Mainline`, `_Forever`, `_Camelot`) is a **forbidden shape** under `clients-§2`: leave it alone and report it as skipped, naming the file, so the audit can flag it. A TOC for any other flavor (`_Vanilla`, `_Cata`, `_Wrath`, `_Mists`) is likewise left alone and reported as skipped.
 
 ## Apply
 
-For each Retail TOC:
-- Read the file.
-- Replace the line starting with `## Interface:` (case-insensitive on the key) with `## Interface: <target>`.
-- If no `## Interface:` line exists, leave the file alone and report it as skipped.
+For each remaining TOC run `python3 "<root>/scripts/bump_interface.py" <toc> --retail <N> [--forever <M>]`. It rewrites only the `## Interface:` line, writes Retail first, keeps a single-number line single, and preserves the file's line endings byte for byte (the `line-endings-§2` rule: a `.toc` sitting LF inside a CRLF-pinned repo is a straggler, and an interface bump must not re-bless it). Exit 4 means there is no `## Interface:` line: leave the file alone and report it as skipped. A two-number line in a `retail` or `retail-pending` addon is reported as a finding and not rewritten silently: say so and ask.
 
-Use `Edit` for a surgical single-line change, and write the ending the repo **declares** (`git check-attr eol -- <path>`) rather than the one the file happens to carry — a `.toc` sitting LF inside a CRLF-pinned repo is a straggler, and an interface bump should not re-bless it (`line-endings-§2`).
+If the standard requires the README to carry a supported-clients line for this Clients value, update it to match the new numbers and leave any other README text alone. Check `clients.md` in the standard's section files before editing, and do nothing when it names no such line.
 
 ## Report
 
-Print a summary table: `TOC | Old value | New value | Status (updated / unchanged / skipped)`. State which interface number was used and how it was resolved (passed as argument / determined as current Live / confirmed by user).
+Print a summary table: `TOC | Old value | New value | Status (updated / unchanged / skipped)`, plus the addon's Clients value. State which numbers were used and how each was resolved (passed as argument / determined as current Live / confirmed by user).
 
 Do **not** commit or stage anything — the user reviews the diff themselves.
