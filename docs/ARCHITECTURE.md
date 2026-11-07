@@ -64,6 +64,10 @@ which are **addressed by name or path** and therefore breaking to rename.
   guard, the Core API and site-endpoint fetches, and the journal merges. It writes only to
   `Ka0sAddonsCommonTasks/journal/curseforge/` (or `$KA0S_CF_JOURNAL`). `scripts/test_curseforge_journal.py` — its unit test,
   over synthetic payloads only.
+- `scripts/roster_clients.py` — prints an addon's Clients value from the roster (`retail+forever`,
+  `retail`, `retail-pending`); `scripts/test_roster_clients.py` — its unit test.
+  `scripts/bump_interface.py` — rewrites a TOC's `## Interface:` per client slot, Retail first, keeping
+  the file's line endings; `scripts/test_bump_interface.py` — its unit test. Both back `wow-bump-interface`.
 - `scripts/test_command_specs.py` — the command specs' own regression test: no positional parameter
   (`$1`, `${2}`, …) in any `commands/*.md`, since Claude Code substitutes them with the user's
   arguments (`$ARGUMENTS` is allowed), and the `ADDONS.md` roster patterns of `wow-revendor-libka0s`
