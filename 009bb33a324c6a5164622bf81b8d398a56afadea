@@ -1,0 +1,1 @@
+WFP M3 review (2026-11-07): spec ✅, quality approved (minors only). pytest scripts 143 passed. Deferred minors: bump_interface.py has no Clients awareness (doc says ask); bump-version.md hardcodes 120105/16001; releases report has no game-versions column.
