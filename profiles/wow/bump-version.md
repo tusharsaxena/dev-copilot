@@ -55,6 +55,28 @@ and corrosive at the other one.
    and tell the user adoption is its own change. Do not improvise a gate from loose tool invocations
    (and do not fall back to the generic `/dev-copilot:run-tests` battery).
 
+   **A `retail+forever` addon runs the battery under both client profiles** (`clients-§6`). Resolve the
+   addon's Clients value first with `python3 "<root>/scripts/roster_clients.py" <AddonFolder>` (`<root>` is
+   the detector's `root=`). On `retail+forever`, the run above is the **Retail** profile (the kit's default,
+   `KA0S_KIT_CLIENT=retail`) and is the one release bundle. Then run the headless suite again under the
+   other profile, bounded:
+
+   ```sh
+   KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua
+   ```
+
+   Both profiles must be green (0 failed) or the release stops. This second run writes no bundle, so the
+   trend line is not forked. The gate table below is read from the Retail run's manifest, plus a
+   **Forever tests** row (`0 failed` from the second run). For `retail` and `retail-pending` addons, and
+   when the roster resolve exits non-zero, behaviour is unchanged: one run, no Forever row (say which
+   when the resolve failed).
+
+   **Check the Interface line against the Live numbers** for a `retail+forever` addon: the TOC must read
+   `## Interface: <retail>, <forever>`, Retail first, and each slot must equal the current Live value
+   (Retail `120105` and Forever `16001` as of 2026-11-07; ask the owner when not certain, never guess). A
+   one-number line is a finding for a `retail+forever` addon, and a stale slot is reported but is not
+   this command's to fix: it is `/dev-copilot:wow-bump-interface`'s.
+
 2. **Evaluate the gate from `docs/automated-tests/<stamp>/manifest.json`** — read the file, do not
    infer from console text. All six conditions must hold:
 
