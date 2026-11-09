@@ -38,7 +38,7 @@ Paths below are relative to this file (`standards/`).
 |---|---|---|---|---|---|
 | Ka0s Absorb Tracker | `../../AbsorbTracker/` | https://github.com/tusharsaxena/AbsorbTracker | Enabled · Locked · Sim mode | unlock | next to Lock frame |
 | Ka0s Skin Tester | `../../LibKa0sSkinTester/` | https://github.com/tusharsaxena/LibKa0sSkinTester | Enabled · Show window (the skin showroom) | window (the skin showroom) | none |
-| Ka0s Outfitter Reborn | `../../OutfitterReborn/` | https://github.com/tusharsaxena/Outfitter | Enabled · Locked (the outfit bar) · Test mode · Show window (the outfit window) | test | none |
+| Ka0s Outfitter Reborn | `../../OutfitterReborn/` | https://github.com/tusharsaxena/OutfitterReborn | Enabled · Locked (the outfit bar) · Test mode · Show window (the outfit window) | test | none |
 | Ka0s Premade Groups Filter Extension | `../../PremadeGroupsFilterExtension/` | https://github.com/tusharsaxena/PremadeGroupsFilterExtension | Enabled · Test mode (the attached panel shown on its own) | test | none |
 
 **The launcher column is normative input to an audit, not decoration.** See `../../NotAnAddon/`.
