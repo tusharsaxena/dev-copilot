@@ -19,7 +19,7 @@ Resolve the addon's Clients value from the roster with the helper, run from the 
 
 - **`retail+forever`**: the TOC line carries two numbers, Retail first: `## Interface: <retail>, <forever>`. Both slots are bumped.
 - **`retail`** and **`retail-pending`**: the TOC line carries one number and only the Retail slot is bumped. Never add a Forever number.
-- **`forever`**: the TOC line carries one number, the Forever one, and only the Forever slot is bumped. Never add a Retail number, and leave the Forever load-gating line the roster names for this value untouched.
+- **`forever`**: the TOC line carries one number, the Forever one, and only the Forever slot is bumped. Never add a Retail number, and leave the Forever load-gating lines the roster names for this value untouched.
 
 ## Resolve the target interface numbers
 

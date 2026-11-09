@@ -77,7 +77,7 @@ and corrosive at the other one.
    (Retail `120105` and Forever `16001` as of 2026-11-07; ask the owner when not certain, never guess). A
    one-number line is a finding for a `retail+forever` addon, and a stale slot is reported but is not
    this command's to fix: it is `/dev-copilot:wow-bump-interface`'s. A `forever` addon's TOC reads one
-   number, the Forever one, equal to the current Live Forever value, with the Forever load-gating line
+   number, the Forever one, equal to the current Live Forever value, with the Forever load-gating lines
    the roster names; a Retail number there is a finding.
 
 2. **Evaluate the gate from `docs/automated-tests/<stamp>/manifest.json`** — read the file, do not
