@@ -17,6 +17,8 @@ ROSTER = """# Roster
 | Ka0s Ported | `../../Ported/` | https://x/Ported | Retail · Forever | Enabled |
 | Ka0s WhatGroup | `../../WhatGroup/` | https://x/WhatGroup | Retail | Enabled |
 | Ka0s Pending | `../../Pending/` | https://x/Pending | Retail (port pending) | Enabled |
+| Ka0s Skill Master | `../../SkillMaster/` | https://x/SkillMaster | Forever | Enabled |
+| Ka0s Odd | `../../Odd/` | https://x/Odd | Classic | Enabled |
 
 ## Libraries
 
@@ -52,6 +54,15 @@ class RosterClientsTest(unittest.TestCase):
     def test_retail_pending(self):
         r = run("Pending", ROSTER)
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "retail-pending"))
+
+    def test_forever(self):
+        r = run("SkillMaster", ROSTER)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "forever"))
+
+    def test_unknown_value(self):
+        r = run("Odd", ROSTER)
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("unrecognized Clients value: Classic", r.stderr)
 
     def test_missing_addon(self):
         self.assertEqual(run("Nope", ROSTER).returncode, 2)

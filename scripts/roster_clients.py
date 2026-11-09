@@ -2,7 +2,7 @@
 """Print an addon's Clients value from the standard's roster (ADDONS.md).
 
 Usage: roster_clients.py <AddonFolder> [--roster <path>]
-Prints retail+forever | retail | retail-pending and exits 0; exits 2 when the
+Prints retail+forever | retail | retail-pending | forever and exits 0; exits 2 when the
 addon is not in the roster, 3 when the roster table has no Clients column.
 Default roster: $KA0S_GIT/WowAddonStandards/standards/ADDONS.md, else
 ../WowAddonStandards/standards/ADDONS.md from the repo root.
@@ -20,6 +20,7 @@ VALUES = {
     "retail · forever": "retail+forever",
     "retail": "retail",
     "retail (port pending)": "retail-pending",
+    "forever": "forever",
 }
 
 

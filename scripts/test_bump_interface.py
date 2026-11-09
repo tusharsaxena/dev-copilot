@@ -61,6 +61,39 @@ class BumpInterfaceTest(unittest.TestCase):
         r, _ = bump(b"## Interface: 120105, 16001\n", "--retail", "120107", "--forever", "120107")
         self.assertEqual(r.returncode, 2)
 
+    def test_bump_interface_forever_only(self):
+        r, out = bump(b"## Interface: 16001\n## AllowLoadGameType: camelot\n", "--forever", "16002")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(out, b"## Interface: 16002\n## AllowLoadGameType: camelot\n")
+
+    def test_bump_interface_forever_only_ignores_retail(self):
+        # A Forever-only line stays single: no Retail slot is invented.
+        r, out = bump(b"## Interface: 16001\r\n", "--retail", "120107", "--forever", "16002")
+        self.assertEqual(out, b"## Interface: 16002\r\n")
+
+    def test_forever_only_line_needs_forever(self):
+        r, out = bump(b"## Interface: 16001\n", "--retail", "120107")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(out, b"## Interface: 16001\n")
+
+    def test_retail_line_needs_retail(self):
+        r, out = bump(b"## Interface: 120105\n", "--forever", "16002")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(out, b"## Interface: 120105\n")
+
+    def test_dual_forever_slot_alone(self):
+        r, out = bump(b"## Interface: 120105, 16001\n", "--forever", "16002")
+        self.assertEqual(out, b"## Interface: 120105, 16002\n")
+
+    def test_needs_a_number(self):
+        r, _ = bump(b"## Interface: 120105\n")
+        self.assertEqual(r.returncode, 2)
+
+    def test_unrecognized_single_number(self):
+        r, out = bump(b"## Interface: 11507\n", "--retail", "120107")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(out, b"## Interface: 11507\n")
+
     def test_prints_old_and_new(self):
         r, _ = bump(b"## Interface: 120105, 16001\n", "--retail", "120107")
         self.assertEqual(r.stdout.strip(), "120105, 16001 -> 120107, 16001")

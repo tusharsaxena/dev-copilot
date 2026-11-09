@@ -68,7 +68,7 @@ This command is the one that can write it, because it is the one that reads the 
 
 ### Step 2 — Discover the addon
 
-1. Locate the `.toc` file(s) in cwd. Read every one. Extract: addon name, title, version, interface versions (a two-number line is Retail first, then Forever), saved variables, library deps, full file load order.
+1. Locate the `.toc` file(s) in cwd. Read every one. Extract: addon name, title, version, interface versions (a two-number line is Retail first, then Forever; a lone `16xxx` number is a Forever-only addon's), saved variables, library deps, full file load order.
 2. List every `.lua` and `.xml` file the TOC loads. Build a mental map of: core entry point, modules, settings UI, locales, libs (skip `libs/`/`Libs/` content).
 3. Read every loaded file (skip libs). Identify:
    - The addon-init pattern (Ace3 `NewAddon`, vanilla frame, etc.)

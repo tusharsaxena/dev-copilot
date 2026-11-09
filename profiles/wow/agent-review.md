@@ -107,6 +107,8 @@ Three notes on the last three rows. **`make test` is usually a wrapper** — if 
 
 **Every run goes through the bounded runner.** Prefix each command with `~/.claude/dev-copilot/bin/ka0s-bounded` (e.g. `~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
 
+**A `forever` addon's Lua runs use the Forever profile.** When `python3 "<root>/scripts/roster_clients.py" <Folder>` prints `forever`, prefix `KA0S_KIT_CLIENT=forever` to the headless suite, the test-case inventory, the offline perf runner and the complexity run (`KA0S_KIT_CLIENT=forever ka0s-bounded lua5.1 tests/run.lua`); the kit's default profile is Retail, which such an addon load-gates out.
+
 ## measure-rules — replaces
 
 Four rules govern all of it:
@@ -452,11 +454,13 @@ for a in "$@"; do find "$a" -maxdepth 1 -name '*.toc' -exec grep -h '^## Interfa
 **Uniformity is per client slot** (`clients-§2`). A two-number line is `<retail>, <forever>`, Retail
 first, so compare slot by slot: split each line on the comma, then the Retail slots (the 6-digit
 numbers) must agree across siblings, and so must the Forever slots (the `16xxx` numbers). **Clean is**
-one distinct Retail value across every addon, and one distinct Forever value across the addons that carry
-one. A two-number line is clean for a `retail+forever` addon and a one-number line is clean for a `retail`
-or `retail-pending` one, with the Clients value read from `ADDONS.md` (or
-`python3 "<root>/scripts/roster_clients.py" <Folder>`). Two cases are findings: a one-number line on a
-`retail+forever` addon, and a two-number line on a `retail-pending` addon **that also gates features**
+one distinct Retail value across the addons that carry one, and one distinct Forever value across the
+addons that carry one (a `forever` addon's lone `16xxx` number is a Forever slot, never a Retail one). A
+two-number line is clean for a `retail+forever` addon, a one-number Retail line for a `retail` or
+`retail-pending` one, and a one-number Forever line for a `forever` one, with the Clients value read from
+`ADDONS.md` (or `python3 "<root>/scripts/roster_clients.py" <Folder>`). Three cases are findings: a
+one-number line on a `retail+forever` addon, any Retail number on a `forever` addon, and a two-number
+line on a `retail-pending` addon **that also gates features**
 (`clients = …` descriptors, `Compat.ForClient`/`IsForever` branches), which is a half-ported addon whose
 roster row or TOC is wrong. Note the `tr -d '\r'` — without it a CRLF repo and an LF one report two
 distinct values for the same number, which is a line-ending finding wearing an interface finding's coat.
@@ -615,11 +619,11 @@ In a WoW repo, the general-engineering list below refines the base's *Technical 
 
 **Client detection and per-client gating** (`clients-§3`..§5, standard v2.103.0). Scope is the census file list, minus `libs/` and `tests/_kit/`. Resolve the addon's Clients value first (`python3 "<root>/scripts/roster_clients.py" <Folder>`; `ADDONS.md`'s Clients column is the source) and apply each check to the values it names.
 - **Interface-number detection.** Code that decides the client from an interface number (`select(4, GetBuildInfo())`, `GetBuildInfo()` compared to `120000`, `16001` or any other literal). Detection goes through `LibKa0s-Compat-1.0` (`IsForever`, `IsRetail`, `ClientKey`, `ForClient`) only. Any addon with a hit.
-- **`WOW_PROJECT_*` read outside Compat.** `WOW_PROJECT_ID`, `WOW_PROJECT_MAINLINE`, `WOW_PROJECT_CAMELOT` or `WOW_PROJECT_CLASSIC` anywhere but `LibKa0s-Compat-1.0`. In a `retail` addon a `WOW_PROJECT_CAMELOT` read or a Forever branch is also dead code.
+- **`WOW_PROJECT_*` read outside Compat.** `WOW_PROJECT_ID`, `WOW_PROJECT_MAINLINE`, `WOW_PROJECT_CAMELOT` or `WOW_PROJECT_CLASSIC` anywhere but `LibKa0s-Compat-1.0`. In a `retail` addon a `WOW_PROJECT_CAMELOT` read or a Forever branch is also dead code, and in a `forever` addon so is an `IsRetail()` branch, a Retail seed list or a `clients = { "retail" }` declaration.
 - **`== WOW_PROJECT_MAINLINE` used to mean "modern client".** Forever's `WOW_PROJECT_ID` is not Mainline but it is not a legacy client either, so this test mis-reads Forever as old. Ask `Compat.IsRetail()` or gate on the capability.
 - **A Retail-only API reached from an ungated feature in a `retail+forever` addon.** A call that exists on Retail alone (a `C_*` namespace or widget method missing on Forever, `SetDesaturation`-class gaps from the quirks catalog) reachable from a settings tab, slash verb, launcher entry, keybind row or module that does not declare `clients = { "retail" }`. Trace the caller to the declaration. An entry that is gated off must not be built at all (not hidden, not listed in help, not counted).
 - **A filtered seed list** (`clients-§5`). A seed or catalog table pruned by client at load time (a `for` loop that drops rows, or an `if IsForever` around part of the list). The list is declared whole and the per-row `clients` field gates it.
-- **Missing load-gating lines on a `retail` addon** (`clients-§7`). The one TOC must carry both `## AllowLoadGameType: standard` and `## ExcludeLoadGameType: camelot`. A missing or misspelled line is a finding. A `retail-pending` addon carries neither, and a gate there is the finding (`clients-§8`).
+- **Missing load-gating lines on a `retail` addon** (`clients-§7`). The one TOC must carry both `## AllowLoadGameType: standard` and `## ExcludeLoadGameType: camelot`. A missing or misspelled line is a finding. A `retail-pending` addon carries neither, and a gate there is the finding (`clients-§8`). A `forever` addon's one TOC carries the Forever load-gating line the roster's Clients value table names for `Forever` (read it from the fetched `ADDONS.md`, never from memory); a missing or misspelled line, or a Retail gating line, is a finding.
 - A `retail-pending` addon adding a new Retail-only feature with no declaration is a finding too (`clients-§4`), but its missing dual-client shapes are not.
 
 **Deprecated / removed APIs**
@@ -670,7 +674,7 @@ In a WoW repo, the general-engineering list below refines the base's *Technical 
 - **History.** QuickComms retired an in-panel key box in `b902e35` (2026-10-21). The 2026-10-24 Keybindings tab supersedes that decision (`options-ui-§20`, *Why*), so the tab is not a regression of it.
 
 **XML / TOC**
-- `## Interface:` value inconsistent with sibling addons in the same project root, read **per client slot** (the Retail slots agree, the Forever slots agree). The TOC shape must match the Clients value: `retail+forever` carries `<retail>, <forever>` with Retail first and no load-gating line, `retail` one number plus the two load-gating lines, `retail-pending` one number and no gating line. A per-client TOC (`_Mainline`, `_Forever`, `_Camelot`) is a forbidden shape.
+- `## Interface:` value inconsistent with sibling addons in the same project root, read **per client slot** (the Retail slots agree, the Forever slots agree). The TOC shape must match the Clients value: `retail+forever` carries `<retail>, <forever>` with Retail first and no load-gating line, `retail` one number plus the two load-gating lines, `retail-pending` one number and no gating line, `forever` the one Forever number plus the Forever load-gating line. A per-client TOC (`_Mainline`, `_Forever`, `_Camelot`) is a forbidden shape.
 - Files missing from the TOC load order, or in the wrong order (settings before core, locales after core that uses them).
 - Library files outside `#@no-lib-strip@` blocks (will not be stripped from nolib zips).
 - Saved-variable global name not following an `<AddonName>DB`-style convention.

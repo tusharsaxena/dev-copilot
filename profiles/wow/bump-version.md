@@ -69,13 +69,16 @@ and corrosive at the other one.
    trend line is not forked. The gate table below is read from the Retail run's manifest, plus a
    **Forever tests** row (`0 failed` from the second run). For `retail` and `retail-pending` addons, and
    when the roster resolve exits non-zero, behaviour is unchanged: one run, no Forever row (say which
-   when the resolve failed).
+   when the resolve failed). On `forever` the one run above carries `KA0S_KIT_CLIENT=forever` and is
+   the release bundle; no Retail run is made and the gate table has no separate Forever row.
 
    **Check the Interface line against the Live numbers** for a `retail+forever` addon: the TOC must read
    `## Interface: <retail>, <forever>`, Retail first, and each slot must equal the current Live value
    (Retail `120105` and Forever `16001` as of 2026-11-07; ask the owner when not certain, never guess). A
    one-number line is a finding for a `retail+forever` addon, and a stale slot is reported but is not
-   this command's to fix: it is `/dev-copilot:wow-bump-interface`'s.
+   this command's to fix: it is `/dev-copilot:wow-bump-interface`'s. A `forever` addon's TOC reads one
+   number, the Forever one, equal to the current Live Forever value, with the Forever load-gating line
+   the roster names; a Retail number there is a finding.
 
 2. **Evaluate the gate from `docs/automated-tests/<stamp>/manifest.json`** — read the file, do not
    infer from console text. All six conditions must hold:

@@ -107,6 +107,12 @@ Both must show 0 failed. The second run writes no bundle, so the `RESULTS.md` tr
 run. Record the Forever result (the pass count and failed count) in the `ANALYSIS.md` write-up. For
 `retail` and `retail-pending` addons nothing changes.
 
+**A `forever` addon is tested under the Forever profile only.** When the resolve prints `forever`,
+every run above carries `KA0S_KIT_CLIENT=forever` (for example
+`KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded tests/_kit/run-automated-tests.sh`), so
+the one bundle is the Forever run, and no Retail run is made: the addon load-gates Retail out and has
+no Retail path to test. Say in `ANALYSIS.md` that the bundle ran under `forever`.
+
 The runner writes the bundle and prepends the `RESULTS.md` row. It does **not** write `ANALYSIS.md`
 or the `RESULTS.md` watch list — those need a reader, and they are Steps 3 and 4.
 

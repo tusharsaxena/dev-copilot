@@ -37,6 +37,13 @@ revision 23+ self-bounds its Lua runs and is let through). A run that exits **12
 limit and **137** was killed, most likely by the memory limit — report either as exactly that, never
 as a test failure or a pass.
 
+**A `forever` addon runs its Lua suites under the Forever profile.** Resolve the Clients value with
+`python3 "<root>/scripts/roster_clients.py" <AddonFolder>` (`<root>` is the detector's `root=`). When it
+prints `forever`, prefix `KA0S_KIT_CLIENT=forever` to every `tests/run.lua`, `tests/perf.lua` and
+`run-automated-tests.sh` run (`KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`):
+the kit's default profile is Retail, which such an addon load-gates out. Any other value, or a failed
+resolve, keeps the default.
+
 ## suites — replaces
 
 Discover what's present and run each applicable suite **in this order**, capturing output. Report

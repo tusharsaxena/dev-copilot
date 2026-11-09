@@ -35,6 +35,8 @@ Print the chain in the collection's terms — e.g. `LibKa0s → (AbsorbTracker |
 
 **Every run goes through the bounded runner.** Prefix each command with `~/.claude/dev-copilot/bin/ka0s-bounded` (e.g. `~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`). It caps process memory, process-tree memory and wall-clock time, and queues on a machine-wide slot pool, so running several repos' suites **in parallel** is fine — the pool, not you, decides how many run at once. The plugin's `PreToolUse` hook refuses an unbounded `lua tests/run.lua` / `tests/perf.lua`, `run-automated-tests.sh`, `luacheck` or `lizard` (a repo whose `tests/_kit` is kit revision 23+ self-bounds its Lua runs and is let through). A run that exits **124** hit the time limit and **137** was killed, most likely by the memory limit — report either as exactly that, never as a test failure or a pass.
 
+**A `forever` addon's gate runs under the Forever profile.** When `python3 "<root>/scripts/roster_clients.py" <AddonFolder>` (`<root>` is the detector's `root=`) prints `forever`, run the suite as `KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`, the same profile `/dev-copilot:run-tests` uses for it.
+
 ## vendor-drift — replaces
 
 In any repo that vendors a shared library, the vendor-drift gate — both readings:
