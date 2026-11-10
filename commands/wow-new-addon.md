@@ -124,7 +124,8 @@ Then evaluate each remaining **Tier 2** trigger against the code you just genera
 `NS.COMMANDS`, count distinct messages, read `core/Compat.lua` — and either ship the doc or record a
 *Not applicable* row carrying the trigger. Beyond the quirks files and `docs/debug.md`, whose
 trigger has fired in every addon, a fresh addon normally ships none of Tier 2 and records the rest
-as *Not applicable* rows; that is the compliant state, not an omission.
+as *Not applicable* rows, among them the quirks file its Clients value does not call for (its reason
+names the Clients value); that is the compliant state, not an omission.
 
 Finally write `docs/ARCHITECTURE.md`'s **`## Documentation map`** — the tenth mandated section —
 listing every `.md` under `docs/` in exactly one of its four tables — Required, Conditional, **Verification and record** (the six record docs, which sit outside the tier model) and Addon-specific. Write it now, while you still
