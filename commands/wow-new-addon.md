@@ -106,10 +106,25 @@ has the same filename in every repo, and a slot left "for when there's more to s
 next agent fills with a name of its own. That is precisely how the collection ended up with five
 filenames for the core pipeline and three for the SavedVariables shape.
 
-Then evaluate each **Tier 2** trigger against the code you just generated — count `NS.COMMANDS`,
-count distinct messages, read `core/Compat.lua` — and either ship the doc or record a *Not
-applicable* row carrying the trigger. A fresh addon normally ships none of Tier 2 and records six
-rows; that is the compliant state, not an omission.
+**The quirks files are born with the addon, one per client its Clients value names**
+(documentation-§3 Tier 2; client-quirks and the Forever catalog section, standard v2.107.0). The
+Clients value is the one step 10 writes into the roster: dual-client (`Retail · Forever`, the
+default) ships `docs/midnight-quirks.md` **and** `docs/forever-quirks.md`, Retail-only ships
+`docs/midnight-quirks.md`, and Forever-only ships `docs/forever-quirks.md` and no
+`midnight-quirks.md`. Each file is the shape `/dev-copilot:wow-revendor-standards` Step 3d writes:
+its own client's catalog, fetched through the `STANDARDS.md` Sections list, copied whole between
+that command's `BEGIN VENDORED` and `END VENDORED` markers and stamped with the fetched standard's
+version (the Retail catalog under the `quirks catalog` marker, the Forever catalog under the
+`forever quirks catalog` marker), then an empty `## <AddonName>-specific quirks` section. Read the
+marker spelling from that spec rather than from memory. A fetched standard with no Forever catalog
+(older than v2.107.0) means the addon is born with `docs/midnight-quirks.md` alone and the
+Forever file is owed at its first revendor; say so in the closing summary.
+
+Then evaluate each remaining **Tier 2** trigger against the code you just generated — count
+`NS.COMMANDS`, count distinct messages, read `core/Compat.lua` — and either ship the doc or record a
+*Not applicable* row carrying the trigger. Beyond the quirks files and `docs/debug.md`, whose
+trigger has fired in every addon, a fresh addon normally ships none of Tier 2 and records the rest
+as *Not applicable* rows; that is the compliant state, not an omission.
 
 Finally write `docs/ARCHITECTURE.md`'s **`## Documentation map`** — the tenth mandated section —
 listing every `.md` under `docs/` in exactly one of its four tables — Required, Conditional, **Verification and record** (the six record docs, which sit outside the tier model) and Addon-specific. Write it now, while you still
@@ -259,7 +274,7 @@ If this list and the fetched `NEW_ADDON.md` ever disagree, **the fetched playboo
 
 ## After scaffolding, print
 
-- The created file tree (just the paths), including the **root** doc set — `README.md`, the `CLAUDE.md` stub and `DEPENDENCIES.md`, plus `LICENSE`, and nothing else at root — `docs/` (the trio — ARCHITECTURE.md, testing.md, smoke-tests.md — the five verification-and-record docs: test-cases.md, performance.md, perf-analysis/README.md, automated-tests/README.md, automated-tests/RESULTS.md — and the six Tier 1 topic-detail docs: scope.md, module-map.md, schema.md, settings-panel.md, data-flow.md, common-tasks.md; **no** complexity.md, **no** agent-context.md, **no** file-index.md, **no** conventions.md), the vendored `libs/LibKa0s/`, and `tests/_kit/`.
+- The created file tree (just the paths), including the **root** doc set — `README.md`, the `CLAUDE.md` stub and `DEPENDENCIES.md`, plus `LICENSE`, and nothing else at root — `docs/` (the trio — ARCHITECTURE.md, testing.md, smoke-tests.md — the five verification-and-record docs: test-cases.md, performance.md, perf-analysis/README.md, automated-tests/README.md, automated-tests/RESULTS.md — and the six Tier 1 topic-detail docs: scope.md, module-map.md, schema.md, settings-panel.md, data-flow.md, common-tasks.md; the quirks file(s) the Clients value calls for: midnight-quirks.md and forever-quirks.md for dual-client, midnight-quirks.md alone for Retail-only, forever-quirks.md alone for Forever-only; **no** complexity.md, **no** agent-context.md, **no** file-index.md, **no** conventions.md), the vendored `libs/LibKa0s/`, and `tests/_kit/`.
 - **Whether the first automated-test bundle was actually produced**, by which invocation, and which suites ran versus skipped with their reasons — or, if the runner could not run, that the bundle is still owed and the addon must not be tagged until it exists.
 - **Which `LibKa0s` modules the scaffold wired** (one setup file each) versus which were vendored but not yet wired — adoption is per module and on the addon's own schedule, so "vendored, not wired" is a normal state, not an omission. Say where each payload was copied **from** (the `LibKa0s` repo, not a sibling addon) and **at which tag**, and confirm that tag is what the root `CLAUDE.md` provenance line names — that line, not the README's, is what the vendored-payload gate reads.
 - The exact `## Interface:` line used (both numbers for a dual-client addon, the Forever number alone for a Forever-only one) and where each came from, the **Clients** value written to the roster row, and whether the first bundle and the gate ran under both `KA0S_KIT_CLIENT` profiles (under `forever` alone for a Forever-only addon).
