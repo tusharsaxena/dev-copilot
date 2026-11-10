@@ -141,7 +141,7 @@ This is a deliberate, narrow relaxation of this command's blanket "never edit co
 
 ### 3d. The vendored quirks catalogs, one file per client
 
-The standard carries **two quirks catalogs**, one per client: client behaviors the collection discovered the hard way, promoted upstream by `/dev-copilot:wow-harvest-standards` so no addon pays the discovery cost twice. The **Retail catalog** (today the section `client-quirks`) is vendored into `docs/midnight-quirks.md`. The **Forever catalog** (today the section `forever-quirks`, standard v2.107.0 and later) is vendored into `docs/forever-quirks.md`. Find both sections through the fetched Sections list, by what each blurb says it catalogs, and **never hard-code either filename**; the two names above say what to look for, not where. If the standard has no catalog at all, skip this step and say so: inventing a catalog from this repo's own notes is the harvest command's job, in the other direction. If it has the Retail catalog but no Forever catalog yet (a standard older than v2.107.0), run the Retail half only and say that the Forever half was skipped and why.
+The standard carries **two quirks catalogs**, one per client: client behaviors the collection discovered the hard way, promoted upstream by `/dev-copilot:wow-harvest-standards` so no addon pays the discovery cost twice. The **Retail catalog** (today the section `client-quirks`) is vendored into `docs/midnight-quirks.md`. The **Forever catalog** (today the section `forever-quirks`, standard v2.108.0 and later) is vendored into `docs/forever-quirks.md`. Find both sections through the fetched Sections list, by what each blurb says it catalogs, and **never hard-code either filename**; the two names above say what to look for, not where. If the standard has no catalog at all, skip this step and say so: inventing a catalog from this repo's own notes is the harvest command's job, in the other direction. If it has the Retail catalog but no Forever catalog yet (a standard older than v2.108.0), run the Retail half only and say that the Forever half was skipped and why.
 
 **Which files the addon carries is decided by its roster Clients value, never by what is on disk.** Resolve it with the helper, run from the plugin root (`root=` above): `python3 "<root>/scripts/roster_clients.py" <AddonFolder>`, where `<AddonFolder>` is the repo's basename. Exit 2 (not in the roster) or 3 (no Clients column, or an unknown value) means stop this step and say so; never guess the value. Then:
 
@@ -154,7 +154,7 @@ The standard carries **two quirks catalogs**, one per client: client behaviors t
 Each file is **two parts**, and the split is the whole design:
 
 ```markdown
-<!-- BEGIN VENDORED: quirks catalog v2.107.0 (source: WowAddonStandards) -->
+<!-- BEGIN VENDORED: quirks catalog v2.108.0 (source: WowAddonStandards) -->
 … the upstream Retail catalog, whole …
 <!-- END VENDORED -->
 
@@ -163,7 +163,7 @@ Each file is **two parts**, and the split is the whole design:
 … findings not yet promoted upstream, plus genuine one-repo residue …
 ```
 
-`docs/forever-quirks.md` has the same shape. Its opening marker names the other catalog, `<!-- BEGIN VENDORED: forever quirks catalog v2.107.0 (source: WowAddonStandards) -->`, and the end marker is the same `<!-- END VENDORED -->`. Spell both markers exactly as shown: the standard describes them rather than printing them and defers the spelling to this command, so this spec is where the spelling lives. The Retail marker keeps its pre-split wording so that no existing file churns on its first revendor after the split.
+`docs/forever-quirks.md` has the same shape. Its opening marker names the other catalog, `<!-- BEGIN VENDORED: forever quirks catalog v2.108.0 (source: WowAddonStandards) -->`, and the end marker is the same `<!-- END VENDORED -->`. Spell both markers exactly as shown: the standard describes them rather than printing them and defers the spelling to this command, so this spec is where the spelling lives. The Retail marker keeps its pre-split wording so that no existing file churns on its first revendor after the split.
 
 - **Replace each vendored block wholesale, from its own catalog.** Same rule as `libs/LibKa0s/`: whole payload, never a subset, never a local patch, and never the other client's catalog. A local edit inside the markers is reverted silently by the next revendor, and the behavior it fixed comes back as a regression with **no cause in this repo's history**, which is the exact failure the vendoring discipline exists to prevent. If a repo has edited inside the markers, do not merge it. Report the edit verbatim, tell the user it belongs in that file's own section (where `wow-harvest-standards` will find it and promote it), and overwrite only once they have somewhere to put it.
 - **Stamp each block with the version it came from.** This is the one place a standard version *does* belong in the repo. A vendored payload with no source version cannot be told stale from current, which is why LibStub minors exist. It does not contradict the no-version-stamp rule in Step 5: that rule governs the **reference**, which points at a live document and is dated by its own staleness; this is a **copy**, which is not. Both blocks of a dual-client addon carry the same version after a run, because both come from the one fetched standard.
@@ -271,10 +271,10 @@ docs/ARCHITECTURE.md
   RETIRED: "the canonical quartet" → name the members inline (line 88)
 
 docs/forever-quirks.md (Clients: retail+forever)
-  MISSING: Forever catalog file absent; create with the Forever block (v2.107.0) and an empty own section
+  MISSING: Forever catalog file absent; create with the Forever block (v2.108.0) and an empty own section
 
 docs/midnight-quirks.md
-  STALE:   vendored Retail block stamped v2.103.1, standard is v2.107.0 (replace wholesale)
+  STALE:   vendored Retail block stamped v2.103.1, standard is v2.108.0 (replace wholesale)
   MISFILED: own-section entry with Client: Forever (line 248), move verbatim to forever-quirks.md? (needs your confirmation)
 
 docs/testing.md

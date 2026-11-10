@@ -107,7 +107,7 @@ next agent fills with a name of its own. That is precisely how the collection en
 filenames for the core pipeline and three for the SavedVariables shape.
 
 **The quirks files are born with the addon, one per client its Clients value names**
-(documentation-§3 Tier 2; client-quirks and the Forever catalog section, standard v2.107.0). The
+(documentation-§3 Tier 2; client-quirks and the Forever catalog section, standard v2.108.0). The
 Clients value is the one step 10 writes into the roster: dual-client (`Retail · Forever`, the
 default) ships `docs/midnight-quirks.md` **and** `docs/forever-quirks.md`, Retail-only ships
 `docs/midnight-quirks.md`, and Forever-only ships `docs/forever-quirks.md` and no
@@ -117,7 +117,7 @@ that command's `BEGIN VENDORED` and `END VENDORED` markers and stamped with the 
 version (the Retail catalog under the `quirks catalog` marker, the Forever catalog under the
 `forever quirks catalog` marker), then an empty `## <AddonName>-specific quirks` section. Read the
 marker spelling from that spec rather than from memory. A fetched standard with no Forever catalog
-(older than v2.107.0) means the addon is born with `docs/midnight-quirks.md` alone and the
+(older than v2.108.0) means the addon is born with `docs/midnight-quirks.md` alone and the
 Forever file is owed at its first revendor; say so in the closing summary.
 
 Then evaluate each remaining **Tier 2** trigger against the code you just generated — count

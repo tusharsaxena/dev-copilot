@@ -193,7 +193,7 @@ class StrayCountTest(unittest.TestCase):
 
 
 class QuirksFilesPerClient(unittest.TestCase):
-    """The quirks catalog is split per client (standard v2.107.0, dev-copilot 2.10.0): Retail in
+    """The quirks catalog is split per client (standard v2.108.0, dev-copilot 2.10.0): Retail in
     docs/midnight-quirks.md, Forever in docs/forever-quirks.md. A spec that names only the Retail
     file is teaching the retired one-file model, and a Forever addon built from it ships the wrong
     catalog or none."""
