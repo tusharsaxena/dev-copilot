@@ -1,5 +1,5 @@
 ---
-description: Harvest learnings from the whole Ka0s collection — every addon repo plus LibKa0s — and promote what has earned it into the Ka0s WoW Addon Standard. Reads code, audit and review bundles, each repo's issue-audit issue store, Compat modules and per-addon quirk files; dedups against the standard's own open-evolutions list; writes a frozen harvests/<date>/ bundle, interviews you per proposal, and applies the accepted ones with the full ripple (section, index blurb, anti-pattern range, changelog, version bump, context pack, playbooks). Runs in the WowAddonStandards repo; read-only on every addon repo.
+description: Harvest learnings from the whole Ka0s collection — every addon repo plus LibKa0s — and promote what has earned it into the Ka0s WoW Addon Standard. Reads code, audit and review bundles, each repo's issue-audit issue store, Compat modules and both per-client quirk files (docs/midnight-quirks.md for Retail, docs/forever-quirks.md for Forever), routing each quirk to its client's catalog; dedups against the standard's own open-evolutions list; writes a frozen harvests/<date>/ bundle, interviews you per proposal, and applies the accepted ones with the full ripple (section, index blurb, anti-pattern range, changelog, version bump, context pack, playbooks). Runs in the WowAddonStandards repo; read-only on every addon repo.
 argument-hint: [repo names | quirks | deviations | decisions | patterns | all]
 allowed-tools: [Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion]
 ---
@@ -24,7 +24,7 @@ The reason the pair exists is that knowledge in this collection is discovered **
 
 ## Absolute rule — read-only on every addon repo
 
-**Never write to an addon repo. Not one byte.** Not a fix, not a doc, not a `midnight-quirks.md` entry, not a tidy-up of a file you are reading. Your only writes are inside the `WowAddonStandards` repo.
+**Never write to an addon repo. Not one byte.** Not a fix, not a doc, not a `midnight-quirks.md` or `forever-quirks.md` entry, not a tidy-up of a file you are reading. Your only writes are inside the `WowAddonStandards` repo.
 
 This is not a safety nicety, it is what makes the harvest trustworthy. You are about to read N repos' worth of evidence and argue from it; if you also edit as you go, the evidence stops being independent of the argument, and the next run reads your own edits back as if they were N repos agreeing. Downstream adoption is a **separate, per-repo, user-initiated** act (`/dev-copilot:wow-standards-audit`, then `/dev-copilot:wow-revendor-standards`) — you name the debt at the end and stop there.
 
@@ -60,11 +60,26 @@ Three or more repos solving the same problem the same way, with the standard **s
 
 The higher-value half of the same sweep. When repos solve one problem several ways, one of two things is true, and they lead to different places: either the standard should **pick** one (a rule), or the thing is substantial enough that every repo writing its own is the waste, and it belongs in **`LibKa0s`** as a module (an extraction candidate). The five-major LibKa0s extraction came from exactly this observation, so it is a proven shape — but note that an extraction proposal is a **library** change with a standard change trailing it, and it must be labeled that way rather than filed as a rule.
 
-### 3. Midnight quirks — client behavior discovered the hard way
+### 3. Client quirks, per client: behavior discovered the hard way
 
-Read every addon's own quirks file and its `Compat` module, plus CHANGELOG entries and code comments describing a client behavior worked around. Look for the **same quirk written up more than once**: independent discoveries of one behavior are the clearest possible evidence that the finding belongs upstream, and the versions will differ in depth — one repo will have probed further than the others. **Promote the deepest version, and say which repo it came from**; a merge that averages three write-ups down to their common denominator throws away precisely the part that cost someone an afternoon.
+The standard keeps **two quirks catalogs**, one per client (standard v2.107.0). The **Retail catalog** (today the section `client-quirks`) is vendored into every Retail addon's `docs/midnight-quirks.md`. The **Forever catalog** (today the section `forever-quirks`) is vendored into every Forever addon's `docs/forever-quirks.md`. Find both through the Sections list, by what each blurb says it catalogs, and never by a hard-coded filename. A dual-client addon carries both files.
 
-Quirks land upstream in the standard's **quirks catalog section** and are then vendored back into every addon by `/dev-copilot:wow-revendor-standards`. Find that section through the Sections list. If no such section exists yet, **proposing it is itself a valid harvest proposal** — go through the normal interview and the normal ripple, do not create a section unasked.
+**Read both files in every addon**, whichever exist, plus its `Compat` module and the CHANGELOG entries and code comments that describe a client behavior worked around. Read the own section below each file's `END VENDORED` marker. The vendored block above it is the catalog's own text coming back, and counting it would make every addon a second witness to every entry. Check what each repo should carry against its roster Clients value: `retail+forever` carries both files, `retail` and `retail-pending` carry `midnight-quirks.md`, `forever` carries `forever-quirks.md`, and a Forever-only addon's `midnight-quirks.md` is a retired name. A file missing or out of place is rollout debt for `/dev-copilot:wow-revendor-standards`. Name it in Step 7; it is not a harvest finding, and its entries are read all the same.
+
+**Route each finding to the catalog of the client it was measured on.** The client is the entry's *Client* field when it has one. Otherwise it is the file the entry sits in: `forever-quirks.md` means Forever, and `midnight-quirks.md` means Retail, which is also how every entry written before the split reads. A code comment or CHANGELOG line counts for the client its code path runs on, so a branch behind `Compat.IsForever()` counts for Forever. An entry measured on both clients is one finding per client, routed to both catalogs. Never promote a Retail measurement into the Forever catalog, or a Forever one into the Retail catalog, on the strength of the two clients sharing an engine. The split exists because an assumed shared behavior is how a Forever addon ships a Retail bug.
+
+**Look for the same quirk written up more than once.** Independent discoveries of one behavior are the clearest possible evidence that the finding belongs upstream, and the versions will differ in depth, because one repo will have probed further than the others. **Promote the deepest version, and say which repo it came from.** A merge that averages three write-ups down to their common denominator throws away precisely the part that cost someone an afternoon.
+
+**The promotion bar is per catalog:**
+
+- **Retail catalog.** Two repos that met the behavior independently on Retail, as before.
+- **Forever catalog, for an engine behavior the Retail catalog already holds.** One repo's Forever measurement is enough. The behavior has already cleared the two-repo bar once, and the measurement answers the only open question, which is whether it holds on Forever, at which build. The Forever entry carries its own *Measured* build and cites the Retail entry it mirrors. Secret values are the standing example.
+- **Forever catalog, for a behavior new to Forever.** Two repos, the same bar the Retail catalog holds.
+- **Below the bar.** A one-repo finding stays in that addon's own section of its client's file and goes on the watch list (Step 3), where a second repo's evidence promotes it next run. Say which catalog it is waiting on.
+
+**Ripple both catalogs.** When an accepted proposal changes an engine behavior that both catalogs hold (a correction, a new *Measured* stamp, an expiry), touch both entries in the same release, or say in the proposal why only one client moved. Two catalogs that disagree about one engine are the per-client version of the self-contradiction Step 6 exists to prevent. Each catalog is then vendored back by `/dev-copilot:wow-revendor-standards`, into the file of each addon whose Clients value includes that client.
+
+If either catalog section does not exist yet, **proposing it is itself a valid harvest proposal**. Go through the normal interview and the normal ripple, and do not create a section unasked.
 
 ### 4. The audit and review corpus
 
@@ -121,14 +136,14 @@ Three filters, in order. Each one exists because skipping it produces a specific
 
 1. **Date filter.** Every audit bundle records the standard version it was measured against. Resolve each finding against **today's** standard before believing it: a deviation against a rule that has since changed, or a place in a rule that has since been deleted, is settled history. Without this filter the harvest confidently re-proposes what the standard already fixed, and the evidence looks strong precisely because the old rule was failed by everyone before it was fixed.
 2. **`open-evolutions.md` dedup.** A finding already recorded there is **not a new item — it is a vote**. Record it as increased evidence for that existing entry (with the new citations) and carry it into the interview as a strengthened case. Opening a duplicate loses the fact that this was already considered, and loses whatever reasoning deferred it.
-3. **Evidence bar.** No proposal without `repo:file:line` from **at least two repos**, or **one repo plus an explicit stated cost** — a real consequence, measured or observed, not "this seems better". Everything below the bar goes to a **watch list** in the bundle, where the next run will find it and where a second repo's evidence promotes it. One repo's habit is not the collection's convention, and the standard is not the place to record a preference.
+3. **Evidence bar.** No proposal without `repo:file:line` from **at least two repos**, or **one repo plus an explicit stated cost** — a real consequence, measured or observed, not "this seems better". The quirks category has its own per-catalog bar (category 3): a Forever measurement of an engine behavior already in the Retail catalog clears it from one repo. Everything below the bar goes to a **watch list** in the bundle, where the next run will find it and where a second repo's evidence promotes it. One repo's habit is not the collection's convention, and the standard is not the place to record a preference.
 
 ## Step 4 — The bundle
 
 Write a **frozen dated bundle** to `harvests/<YYYY-MM-DD>/` in the standards repo (get the date with `date +%Y-%m-%d`; create the folder if absent; never edit a prior harvest):
 
 - `01_COLLECTION_STATE.md` — repos read, roster drift both ways, each repo's last audit/review dates and the standard version each was measured against, and the standard version this run harvests into.
-- `02_FINDINGS.md` — every finding, by category, with full citations, the repo count, and its filter outcome (live / settled-by-date / duplicate-of-open-evolution / below-bar).
+- `02_FINDINGS.md` — every finding, by category, with full citations, the repo count, and its filter outcome (live / settled-by-date / duplicate-of-open-evolution / below-bar). A quirk finding also names the client it was measured on and the catalog it is routed to, Retail or Forever.
 - `03_EVIDENCE.md` — the verbatim excerpts the findings rest on, quoted with their source. When one quirk was written up several times, quote **all** the versions here and mark which one is deepest.
 - `04_PROPOSALS.md` — the proposals that cleared the filters, each with: the target section, the proposed change, the evidence count, the bump classification, and the rollout debt it would create.
 - `05_RIPPLE_PLAN.md` — for each proposal, every file the change must touch (Step 6's checklist, resolved to actual paths).
@@ -146,7 +161,7 @@ Keep the standard's own bar in view: it is a document whose changelog entries ar
 
 For each accepted proposal, touch **every** one of these that applies — resolving each through the Sections list and the repo's own links rather than assuming a path:
 
-1. **The section file** — the normative change itself.
+1. **The section file** — the normative change itself. For a quirk, that is the catalog of each client it was measured on, and both catalogs when it changes an engine behavior both hold (category 3).
 2. **`standards/STANDARDS.md`** — the Sections list blurb for that section, if the change alters what the section covers.
 3. **The anti-patterns range** — adding an anti-pattern changes the `#1–#N` range cited in the Sections list. The number in the blurb and the last entry in the file must agree.
 4. **The changelog entry**, written as the current entry under `STANDARDS.md`'s `## Changelog`, in the house register: what changed, why, the evidence, the bump classification, and the pass it was drawn from. The index carries only the current entry, so in the same change the **previous** current entry moves verbatim to the top of **`standards/CHANGELOG.md`** (newest first), where every earlier entry lives. Moving it is part of the ripple, not a follow-up: an index left holding two entries, or a history file missing the one that was displaced, is the same self-contradiction as a stale blurb.
@@ -169,7 +184,7 @@ For each accepted proposal, touch **every** one of these that applies — resolv
 A rule change that lands with no adoption list is a rule the collection silently fails. Close with, per accepted proposal:
 
 - **Which repos it makes non-compliant**, named — you have just read all of them, so this is knowledge no later run recovers as cheaply.
-- **What each repo needs**: `/dev-copilot:wow-standards-audit` to measure it, `/dev-copilot:wow-revendor-standards` to carry the new text and any new vendored quirks down.
+- **What each repo needs**: `/dev-copilot:wow-standards-audit` to measure it, `/dev-copilot:wow-revendor-standards` to carry the new text and any new vendored quirks down. A quirk lands in a repo through the catalog of each client its Clients value includes, so name the repos per catalog: a Forever catalog change is debt for every `retail+forever` and `forever` addon, a Retail one for every addon but a `forever` one. Add the quirks files found missing or misnamed in category 3.
 - Whether the change requires a **`LibKa0s` change first** — if so, that repo leads and must be pushed before consumers cite it (`/dev-copilot:finalize` enforces that ordering).
 
 Then print the harvest summary: repos read, findings by category, proposals accepted / deferred / rejected, the new standard version, the bundle path.
@@ -181,9 +196,10 @@ Then print the harvest summary: repos read, findings by category, proposals acce
 - **Read-only on every addon repo and on `LibKa0s`.** Your only writes are inside the `WowAddonStandards` repo. Never edit a frozen `docs/audits/` or `docs/reviews/` bundle anywhere.
 - **Never propose a rule without citations.** Two repos, or one plus a stated cost. Below the bar goes to the watch list, not the standard.
 - **Never auto-resolve an ambiguous signal.** Both readings, with counts, and ask.
-- **Never hard-code a section filename.** Discover every one from the `STANDARDS.md` Sections list — including the quirks catalog.
+- **Never hard-code a section filename.** Discover every one from the `STANDARDS.md` Sections list — including both quirks catalogs.
 - **Never edit a prior `harvests/<date>/`.** Frozen, like every other dated bundle.
 - **Never skip the ripple.** A partial ripple is worse than no change.
 - **Don't lower the standard's register.** Its rules carry their reasons, because a rule without its reason is deleted by the next author who finds it inconvenient. Write proposals the same way.
-- **Don't harvest from a single repo and call it a collection finding.** Cross-repo synthesis is the whole point; a one-repo finding is a watch-list item until a second repo agrees.
+- **Don't harvest from a single repo and call it a collection finding.** Cross-repo synthesis is the whole point; a one-repo finding is a watch-list item until a second repo agrees. The one exception is category 3's: a Forever measurement of an engine behavior the Retail catalog already holds enters the Forever catalog from one repo.
+- **Route every quirk to the catalog of the client it was measured on.** Never promote across clients on the assumption that the engine is shared.
 - **Don't commit, don't push, don't bump an addon's version.** Nothing in this run touches an addon.
