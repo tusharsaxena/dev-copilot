@@ -192,6 +192,33 @@ class StrayCountTest(unittest.TestCase):
                          stray_snippet("agents/wow-standards-audit.md"))
 
 
+class QuirksFilesPerClient(unittest.TestCase):
+    """The quirks catalog is split per client (standard v2.107.0, dev-copilot 2.10.0): Retail in
+    docs/midnight-quirks.md, Forever in docs/forever-quirks.md. A spec that names only the Retail
+    file is teaching the retired one-file model, and a Forever addon built from it ships the wrong
+    catalog or none."""
+
+    SPECS = sorted(glob.glob(os.path.join(ROOT, "commands", "*.md"))
+                   + glob.glob(os.path.join(ROOT, "agents", "*.md"))
+                   + glob.glob(os.path.join(ROOT, "profiles", "wow", "*.md")))
+
+    def test_no_spec_names_the_retail_file_alone(self):
+        for path in self.SPECS:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            if "midnight-quirks.md" in text:
+                with self.subTest(spec=os.path.relpath(path, ROOT)):
+                    self.assertIn("forever-quirks.md", text)
+
+    def test_revendor_spells_both_markers(self):
+        with open(os.path.join(ROOT, "commands", "wow-revendor-standards.md"), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("<!-- BEGIN VENDORED: quirks catalog v", text)
+        self.assertIn("<!-- BEGIN VENDORED: forever quirks catalog v", text)
+        self.assertIn("<!-- END VENDORED -->", text)
+        self.assertIn("git mv docs/midnight-quirks.md docs/forever-quirks.md", text)
+
+
 if __name__ == "__main__":
     if not shutil.which("sh"):
         sys.exit("sh not found")

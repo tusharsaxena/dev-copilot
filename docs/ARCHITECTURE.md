@@ -72,6 +72,8 @@ which are **addressed by name or path** and therefore breaking to rename.
   (`$1`, `${2}`, …) in any `commands/*.md`, since Claude Code substitutes them with the user's
   arguments (`$ARGUMENTS` is allowed), and the `ADDONS.md` roster patterns of `wow-revendor-libka0s`
   Step 0 and `profiles/wow/agent-review.md` run against a fixture copy of the roster's table rows,
+  the quirks-file pairing (a spec naming `docs/midnight-quirks.md` must name `docs/forever-quirks.md`;
+  `wow-revendor-standards` spells both vendored markers),
   and the line-ending stray count (`wow-revendor-standards`, and the identical copy in
   `agents/wow-standards-audit.md`) counts each stray once under sh, bash and zsh, whatever its name.
 - `commands/*.md` — **24** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
