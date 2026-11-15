@@ -74,24 +74,24 @@ which are **addressed by name or path** and therefore breaking to rename.
   Step 0 and `profiles/wow/agent-review.md` run against a fixture copy of the roster's table rows,
   and the line-ending stray count (`wow-revendor-standards`, and the identical copy in
   `agents/wow-standards-audit.md`) counts each stray once under sh, bash and zsh, whatever its name.
-- `commands/*.md` — **24** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
+- `commands/*.md` — **25** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill
   of the same name:
-  - **14 shared**: `diff`, `commit`, `sync-docs`, `review`, `run-tests`, `bump-version`, `finalize`,
+  - **15 shared**: `diff`, `commit`, `sync-docs`, `review`, `run-tests`, `bump-version`, `finalize`,
     `execution-status`, `issue-add`, `issue-audit`, `issue-triage`, `issue-details`,
-    `issue-fetch-all`, `issue-summary`. Generic core; WoW behavior in an overlay.
+    `issue-fetch-all`, `issue-summary`, `validate-seeds`. Generic core; WoW behavior in an overlay.
   - **10 WoW-only**: `wow-new-addon`, `wow-bump-interface`, `wow-automated-tests`,
     `wow-perf-analysis`, `wow-revendor-libka0s`, `wow-revendor-standards`, `wow-harvest-standards`,
     `wow-standards-audit`, `wow-curseforge-releases`, `wow-curseforge-comments`. Each opens with a guard step (a refusal, or for
     `wow-new-addon` a nesting check); no overlay.
   - Two are thin **wrappers that dispatch to a subagent**: `review` → `dev-copilot:review`,
-    `wow-standards-audit` → `dev-copilot:wow-standards-audit`. The other twenty-two act directly.
+    `wow-standards-audit` → `dev-copilot:wow-standards-audit`. The other twenty-three act directly.
 - `agents/*.md` — **2** subagent specs: `review` (generic principal-level review → `reviews/<date>/`;
   in a WoW repo, via its overlay, the WoW review → `docs/reviews/<date>/` with `03_SMOKE_TESTS.md`;
   fetches the standard only to keep its own remediation compliant, and does **not** audit) and
   `wow-standards-audit` (read-only compliance audit → `docs/audits/<date>/`, over a three-kind
   rotation rather than addons alone).
-- `profiles/wow/*.md` — **13** WoW overlays: one per shared command that has WoW deltas
-  (`bump-version`, `commit`, `diff`, `finalize`, the six `issue-*`, `run-tests`, `sync-docs`) plus
+- `profiles/wow/*.md` — **14** WoW overlays: one per shared command that has WoW deltas
+  (`bump-version`, `commit`, `diff`, `finalize`, the six `issue-*`, `run-tests`, `sync-docs`, `validate-seeds`) plus
   `agent-review.md` for the review agent. `review` (the wrapper) and `execution-status` have none.
   Read by the matching base's Step 0, only when the profile is `wow`.
 - `hooks/hooks.json` — registers both hooks: `PreToolUse(Bash)` → `scripts/bounded-runs-hook.sh` and
