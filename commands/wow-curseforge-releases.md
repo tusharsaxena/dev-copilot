@@ -85,18 +85,18 @@ is named and written in local time.
 per addon**: its `Total` and its **latest release** (the newest file). Never paste the full table into
 chat; link the report file for it. Take both rows from the script's JSON, which formats them the way the
 report does: per addon, `totalDownloads` and `totalChange`, and `latest` (`version`, `releaseDate`,
-`downloads`, `change`), or `null` when the addon has no files yet, in which case show the `Total` row
+`gameVersions`, `downloads`, `change`), or `null` when the addon has no files yet, in which case show the `Total` row
 alone.
 
 It is one table for the whole run, with the addons in name order (A to Z, ignoring case):
 
 ```
-| Addon | Version | Release Date | Downloads | Changes since <sinceLocal> |
-|---|---|---|---:|---|
-| AbsorbTracker | Total | - | 2025 | +9 |
-|  | 1.12.0 | 2026-10-09 23:00 IST | 72 | +11 |
-| AuraMaster | Total | - | 34 | +0 |
-|  | 1.1.0 | 2026-10-09 23:00 IST | 9 | +0 |
+| Addon | Version | Release Date | Game Versions | Downloads | Changes since <sinceLocal> |
+|---|---|---|---|---:|---|
+| AbsorbTracker | Total | - | - | 2025 | +9 |
+|  | 1.12.0 | 2026-10-09 23:00 IST | 12.0.5, 1.60.1 | 72 | +11 |
+| AuraMaster | Total | - | - | 34 | +0 |
+|  | 1.1.0 | 2026-10-09 23:00 IST | 12.0.5 | 9 | +0 |
 ```
 
 The report file's table has the same columns and order, with every file row under each `Total`, newest
@@ -104,6 +104,8 @@ release first.
 
 - **Version** is the file's display name without a `-release` suffix. A `-beta` or `-alpha` suffix is
   kept, because it says something.
+- **Game Versions** is the file's CurseForge game versions, comma-separated in the API's order (Retail
+  and Forever for a ported addon), or `-` when the file lists none and on a `Total` row.
 - **Changes since** is a signed change (`+3`), or `—` for a file or project with no earlier count.
 - The header names the previous run's time when every addon that has a previous run shares it. An addon
   on its **first run** does not change that: its rows show `—`, and a `First run for:` line under the

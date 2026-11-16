@@ -526,16 +526,18 @@ class LocalTimeReportTest(Collection):
         text = read_text(out["report"])
         self.assertTrue(out["report"].endswith("20261011-053000-releases.md"))
         self.assertIn("# CurseForge releases — run 2026-10-11 05:30 IST", text)
-        self.assertIn("| Addon | Version | Release Date | Downloads | Changes since 2026-10-10 05:30 IST |", text)
+        self.assertIn("| Addon | Version | Release Date | Game Versions | Downloads | Changes since 2026-10-10 05:30 IST |",
+                      text)
+        self.assertIn("|---|---|---|---|---:|---|", text)
         rows = [l for l in text.splitlines() if l.startswith("| ") and "Addon" not in l]
         self.assertEqual(rows, [
             # By addon name, not downloads: Beta has more (71) and still comes second.
-            "| Alpha | Total | - | 60 | +10 |",
-            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
-            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
-            "| Beta | Total | - | 71 | +1 |",
-            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 1 | — |",
-            "|  | 1.0.0 | 2026-10-01 15:30 IST | 9 | +4 |",
+            "| Alpha | Total | - | - | 60 | +10 |",
+            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 12.1.0 | 1 | — |",
+            "|  | 1.0.0 | 2026-10-01 15:30 IST | 12.1.0 | 9 | +4 |",
+            "| Beta | Total | - | - | 71 | +1 |",
+            "|  | 1.1.0-beta | 2026-10-11 01:30 IST | 12.1.0 | 1 | — |",
+            "|  | 1.0.0 | 2026-10-01 15:30 IST | 12.1.0 | 9 | +4 |",
         ])
         self.assertIn("New this run: Alpha 1.1.0-beta; Beta 1.1.0-beta.", text)
         self.assertEqual(out["tsLocal"], "2026-10-11 05:30 IST")
@@ -543,7 +545,18 @@ class LocalTimeReportTest(Collection):
         # The console summary's two rows per addon, preformatted like the report's.
         self.assertEqual(out["addons"][0]["totalChange"], "+10")
         self.assertEqual(out["addons"][0]["latest"], {"version": "1.1.0-beta", "releaseDate": "2026-10-11 01:30 IST",
-                                                     "downloads": 1, "change": "—"})
+                                                     "gameVersions": "12.1.0", "downloads": 1, "change": "—"})
+
+    def test_game_versions_column_lists_every_client_and_dashes_none(self):
+        both = cf_file(1, "1.0.0-release", 5)
+        both["gameVersions"] = ["12.1.5", "1.60.1"]
+        bare = cf_file(2, "0.9.0-release", 2, date="2026-09-01T10:00:00Z")
+        bare["gameVersions"] = []
+        out = self.ctx().releases(["Alpha"], self.http([both, bare]), ts="2026-10-10T00:00:00Z")
+        text = read_text(out["report"])
+        self.assertIn("|  | 1.0.0 | 2026-10-01 15:30 IST | 12.1.5, 1.60.1 | 5 | — |", text)
+        self.assertIn("|  | 0.9.0 | 2026-09-01 15:30 IST | - | 2 | — |", text)
+        self.assertEqual(out["addons"][0]["latest"]["gameVersions"], "12.1.5, 1.60.1")
 
     def test_addon_with_no_files_has_no_latest(self):
         out = self.ctx().releases(["Alpha"], self.http([]), ts="2026-10-10T00:00:00Z")
@@ -556,7 +569,7 @@ class LocalTimeReportTest(Collection):
         out = ctx.releases(["Alpha", "Beta"], self.http([cf_file(1, "1.0.0-release", 6)]), ts="2026-10-11T00:00:00Z")
         text = read_text(out["report"])
         self.assertIn("| Changes since 2026-10-10 05:30 IST |", text)
-        self.assertIn("| Beta | Total | - | 70 | — |", text)
+        self.assertIn("| Beta | Total | - | - | 70 | — |", text)
         self.assertIn("First run for: Beta.", text)
         self.assertNotIn("its own previous run", text)
 
@@ -574,7 +587,7 @@ class LocalTimeReportTest(Collection):
         out = self.ctx().releases(["Alpha"], self.http([cf_file(1, "1.0.0-release", 5)]), ts="2026-10-10T00:00:00Z")
         text = read_text(out["report"])
         self.assertIn("| Changes since last run |", text)
-        self.assertIn("| Alpha | Total | - | 50 | — |", text)
+        self.assertIn("| Alpha | Total | - | - | 50 | — |", text)
 
     def test_report_releases_regenerates_the_same_file(self):
         ctx = self.ctx()

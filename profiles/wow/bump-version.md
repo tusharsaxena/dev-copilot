@@ -74,8 +74,8 @@ and corrosive at the other one.
 
    **Check the Interface line against the Live numbers** for a `retail+forever` addon: the TOC must read
    `## Interface: <retail>, <forever>`, Retail first, and each slot must equal the current Live value
-   (Retail `120105` and Forever `16001` as of 2026-11-07; ask the owner when not certain, never guess). A
-   one-number line is a finding for a `retail+forever` addon, and a stale slot is reported but is not
+   (resolve them as `/dev-copilot:wow-bump-interface` Step 2 does; ask the owner when not certain, never
+   guess). A one-number line is a finding for a `retail+forever` addon, and a stale slot is reported but is not
    this command's to fix: it is `/dev-copilot:wow-bump-interface`'s. A `forever` addon's TOC reads one
    number, the Forever one, equal to the current Live Forever value, with the Forever load-gating lines
    the roster names; a Retail number there is a finding.
