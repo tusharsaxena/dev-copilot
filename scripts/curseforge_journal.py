@@ -449,6 +449,7 @@ class Context:
             newest = max(a["files"], key=lambda f: f["fileDate"] or "", default=None)
             a["latest"] = None if newest is None else {
                 "version": version_label(newest["displayName"]), "releaseDate": fmt_local(newest["fileDate"], self.tz),
+                "gameVersions": fmt_game_versions(newest["gameVersions"]),
                 "downloads": newest["downloads"], "change": fmt_delta(newest["delta"])}
         if not dry_run:
             append_lines(os.path.join(self.journal, "runs.jsonl"), [run_line(ts, "releases", out)])
@@ -642,7 +643,7 @@ class Context:
         for fid, count in counts.items():
             rec = files.get(str(fid), {})
             rows.append({"version": version_label(rec.get("displayName")), "fileDate": rec.get("fileDate"),
-                         "downloads": count, "delta": None if fid not in previous else count - previous[fid],
+                         "gameVersions": rec.get("gameVersions") or [], "downloads": count, "delta": None if fid not in previous else count - previous[fid],
                          "new": rec.get("firstSeen") == run_ts})
         rows.sort(key=lambda r: r["fileDate"] or "", reverse=True)
         total = current[-1]["totalDownloads"]
@@ -702,18 +703,25 @@ def fmt_delta(d):
     return "—" if d is None else "%+d" % d
 
 
+def fmt_game_versions(versions):
+    """A file's CurseForge game versions as one cell, in the API's order, or "-" when it lists none."""
+    return ", ".join(versions) if versions else "-"
+
+
 def render_releases(addons, run, run_ts, tz):
     # An addon on its first run has no "since"; it shows "—" and must not hide the time the rest share.
     sinces = {a["since"] for a in addons} - {None}
     since = fmt_local(next(iter(sinces)), tz) if len(sinces) == 1 else None
     head = "Changes since %s" % since if since else "Changes since last run"
     lines = ["# CurseForge releases — run %s" % fmt_local(run_ts, tz), "",
-             "| Addon | Version | Release Date | Downloads | %s |" % head, "|---|---|---|---:|---|"]
+             "| Addon | Version | Release Date | Game Versions | Downloads | %s |" % head,
+             "|---|---|---|---|---:|---|"]
     for a in addons:
-        lines.append("| %s | Total | - | %d | %s |" % (a["name"], a["total"], fmt_delta(a["delta"])))
+        lines.append("| %s | Total | - | - | %d | %s |" % (a["name"], a["total"], fmt_delta(a["delta"])))
         for f in a["files"]:
-            lines.append("|  | %s | %s | %d | %s |" % (f["version"], fmt_local(f["fileDate"], tz), f["downloads"],
-                                                      fmt_delta(f["delta"])))
+            lines.append("|  | %s | %s | %s | %d | %s |" % (
+                f["version"], fmt_local(f["fileDate"], tz), fmt_game_versions(f.get("gameVersions")),
+                f["downloads"], fmt_delta(f["delta"])))
     lines.append("")
     if len(sinces) > 1:
         lines.append("Each addon's change is since its own previous run: %s." % "; ".join(
