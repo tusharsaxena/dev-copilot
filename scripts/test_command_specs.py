@@ -192,6 +192,49 @@ class StrayCountTest(unittest.TestCase):
                          stray_snippet("agents/wow-standards-audit.md"))
 
 
+class QuirksFilesPerClient(unittest.TestCase):
+    """The quirks catalog is split per client (standard v2.117.0, dev-copilot 2.11.0): Retail in
+    docs/midnight-quirks.md, Forever in docs/forever-quirks.md. A spec that names only the Retail
+    file is teaching the retired one-file model, and a Forever addon built from it ships the wrong
+    catalog or none."""
+
+    SPECS = sorted(glob.glob(os.path.join(ROOT, "commands", "*.md"))
+                   + glob.glob(os.path.join(ROOT, "agents", "*.md"))
+                   + glob.glob(os.path.join(ROOT, "profiles", "wow", "*.md")))
+
+    def test_no_spec_names_the_retail_file_alone(self):
+        for path in self.SPECS:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            if "midnight-quirks.md" in text:
+                with self.subTest(spec=os.path.relpath(path, ROOT)):
+                    self.assertIn("forever-quirks.md", text)
+
+    def test_revendor_spells_both_markers(self):
+        with open(os.path.join(ROOT, "commands", "wow-revendor-standards.md"), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("<!-- BEGIN VENDORED: quirks catalog v", text)
+        self.assertIn("<!-- BEGIN VENDORED: forever quirks catalog v", text)
+        self.assertIn("<!-- END VENDORED -->", text)
+        self.assertIn("git mv docs/midnight-quirks.md docs/forever-quirks.md", text)
+
+
+class RosterHelperCwd(unittest.TestCase):
+    """roster_clients.py finds ADDONS.md from the working directory's repo (dev-copilot 2.11.0).
+    A spec that says to run it "from the plugin root" sends the agent to cd into the plugin cache,
+    where no roster sits beside it."""
+
+    def test_no_spec_runs_the_helper_from_the_plugin_root(self):
+        paths = sorted(glob.glob(os.path.join(ROOT, "commands", "*.md"))
+                       + glob.glob(os.path.join(ROOT, "agents", "*.md"))
+                       + glob.glob(os.path.join(ROOT, "profiles", "wow", "*.md")))
+        for path in paths:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(spec=os.path.relpath(path, ROOT)):
+                self.assertNotIn("run from the plugin root", text)
+
+
 if __name__ == "__main__":
     if not shutil.which("sh"):
         sys.exit("sh not found")

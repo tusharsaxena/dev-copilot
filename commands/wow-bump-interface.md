@@ -15,7 +15,7 @@ Run `dev-copilot-profile` (Bash; if not found, `"${CLAUDE_PLUGIN_ROOT}/bin/dev-c
 
 ## Resolve the client set
 
-Resolve the addon's Clients value from the roster with the helper, run from the plugin root (`root=` above): `python3 "<root>/scripts/roster_clients.py" <AddonFolder>`, where `<AddonFolder>` is the basename of the repo. It prints one of `retail+forever`, `retail`, `retail-pending` or `forever`. Exit 2 means the addon is not in the roster and exit 3 means the roster has no Clients column or an unknown value: stop and say so, never guess the value.
+Resolve the addon's Clients value from the roster with the helper at the plugin root (`root=` above): `python3 "<root>/scripts/roster_clients.py" <AddonFolder>`, where `<AddonFolder>` is the basename of the repo. The helper ships in the plugin but finds the roster from the working directory, not from where it is installed: run it with the cwd inside the addon repo (any sibling collection checkout works too) and it reads `../WowAddonStandards/standards/ADDONS.md` beside that repo's git top-level; `KA0S_GIT=<GIT dir>` or `--roster <path>` overrides it. It prints one of `retail+forever`, `retail`, `retail-pending` or `forever`. Exit 2 means the addon is not in the roster and exit 3 means the roster has no Clients column or an unknown value: stop and say so, never guess the value.
 
 - **`retail+forever`**: the TOC line carries two numbers, Retail first: `## Interface: <retail>, <forever>`. Both slots are bumped.
 - **`retail`** and **`retail-pending`**: the TOC line carries one number and only the Retail slot is bumped. Never add a Forever number.

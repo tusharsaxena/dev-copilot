@@ -25,7 +25,7 @@ flavor check passes, cross-check it against the roster:
 python3 "<root>/scripts/roster_clients.py" "<target folder name>"
 ```
 
-`<root>` is the detector's plugin root. The script prints the addon's Clients value from
+`<root>` is the detector's plugin root. The helper ships in the plugin but finds the roster from the working directory, not from where it is installed: run it with the cwd inside the addon repo (any sibling collection checkout works too) and it reads `../WowAddonStandards/standards/ADDONS.md` beside that repo's git top-level; `KA0S_GIT=<GIT dir>` or `--roster <path>` overrides it. The script prints the addon's Clients value from
 `WowAddonStandards/standards/ADDONS.md`:
 
 | Clients value | Flavors that may run |
