@@ -68,7 +68,8 @@ which are **addressed by name or path** and therefore breaking to rename.
 - `scripts/roster_clients.py` — prints an addon's Clients value from the roster (`retail+forever`,
   `retail`, `retail-pending`, `forever`). The roster is `--roster`, else `$KA0S_GIT/WowAddonStandards/…`,
   else `../WowAddonStandards/standards/ADDONS.md` beside the **working directory's** git top-level (so it
-  works from the installed plugin cache), else beside the plugin root; `scripts/test_roster_clients.py` —
+  works from the installed plugin cache), then beside a linked worktree's main checkout, then under the
+  working directory itself (the folder holding the checkouts), else beside the plugin root; `scripts/test_roster_clients.py` —
   its unit test.
   `scripts/bump_interface.py` — rewrites a TOC's `## Interface:` per client slot, Retail first, keeping
   the file's line endings; `scripts/test_bump_interface.py` — its unit test. Both back `wow-bump-interface`.
@@ -77,7 +78,8 @@ which are **addressed by name or path** and therefore breaking to rename.
   arguments (`$ARGUMENTS` is allowed), and the `ADDONS.md` roster patterns of `wow-revendor-libka0s`
   Step 0 and `profiles/wow/agent-review.md` run against a fixture copy of the roster's table rows,
   the quirks-file pairing (a spec naming `docs/midnight-quirks.md` must name `docs/forever-quirks.md`;
-  `wow-revendor-standards` spells both vendored markers),
+  `wow-revendor-standards` spells both vendored markers), no spec telling the agent to run
+  `roster_clients.py` "from the plugin root" (it finds the roster from the working directory),
   and the line-ending stray count (`wow-revendor-standards`, and the identical copy in
   `agents/wow-standards-audit.md`) counts each stray once under sh, bash and zsh, whatever its name.
 - `commands/*.md` — **25** slash-command specs (`/dev-copilot:<name>`), each also invocable as a Skill

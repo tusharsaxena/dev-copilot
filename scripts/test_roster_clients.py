@@ -140,6 +140,25 @@ class DefaultRosterTest(unittest.TestCase):
         r = self.call("Ported", self.addon, "--roster", flag, env=dict(self.env, KA0S_GIT=self.git))
         self.assertEqual(r.returncode, 3)
 
+    def test_from_a_linked_worktree_away_from_the_collection(self):
+        git = ["git", "-C", self.addon, "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(git + ["commit", "-q", "--allow-empty", "-m", "x"], check=True,
+                       capture_output=True)
+        wt = os.path.join(self.tmp.name, "Worktrees", "sm-feature")
+        subprocess.run(git + ["worktree", "add", "-q", wt], check=True, capture_output=True)
+        r = self.call("SkillMaster", wt)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "forever"), r.stderr)
+
+    def test_from_the_folder_holding_the_checkouts(self):
+        r = self.call("SkillMaster", self.git)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "forever"), r.stderr)
+
+    def test_a_ka0s_git_without_a_roster_warns_and_falls_through(self):
+        r = self.call("SkillMaster", self.addon,
+                      env=dict(self.env, KA0S_GIT=os.path.join(self.tmp.name, "nope")))
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "forever"), r.stderr)
+        self.assertIn("warning: KA0S_GIT=", r.stderr)
+
     def test_no_roster_anywhere_names_where_it_looked(self):
         lone = os.path.join(self.tmp.name, "elsewhere", "Lone")
         git_init(lone)

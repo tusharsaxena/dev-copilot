@@ -3,11 +3,14 @@
 
 Usage: roster_clients.py <AddonFolder> [--roster <path>]
 Prints retail+forever | retail | retail-pending | forever and exits 0; exits 2 when the
-addon is not in the roster, 3 when the roster table has no Clients column.
+addon is not in the roster or no roster can be read (stderr says which), 3 when the roster
+table has no Clients column.
 Roster lookup, first hit wins: --roster <path>; $KA0S_GIT/WowAddonStandards/standards/ADDONS.md;
 ../WowAddonStandards/standards/ADDONS.md beside the git top-level of the working directory (the
 addon repo the command runs in, or any sibling checkout; standards/ADDONS.md when that top-level is
-WowAddonStandards itself); last, ../WowAddonStandards/standards/ADDONS.md beside this plugin's own
+WowAddonStandards itself), then beside a linked worktree's main checkout, then
+WowAddonStandards/standards/ADDONS.md under the working directory (the folder holding the
+checkouts); last, ../WowAddonStandards/standards/ADDONS.md beside this plugin's own
 root, which only a development checkout has (the installed plugin cache does not).
 """
 
@@ -28,15 +31,18 @@ VALUES = {
 }
 
 
-def _toplevel(cwd):
-    """The git top-level of cwd, or cwd itself outside git (or without git)."""
+def _git(cwd, *args):
+    """Stripped stdout of a git command in cwd, or None (not a repo, or no git)."""
     try:
-        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-                           capture_output=True, text=True, timeout=10)
+        r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
-        return cwd
-    top = r.stdout.strip()
-    return top if r.returncode == 0 and top else cwd
+        return None
+    out = r.stdout.strip()
+    return out if r.returncode == 0 and out else None
+
+
+def _beside(top):
+    return os.path.normpath(os.path.join(top, "..", "WowAddonStandards", "standards", "ADDONS.md"))
 
 
 def roster_candidates(cwd=None):
@@ -45,11 +51,19 @@ def roster_candidates(cwd=None):
     git = os.environ.get("KA0S_GIT")
     if git:
         out.append(os.path.join(git, "WowAddonStandards", "standards", "ADDONS.md"))
-    top = _toplevel(os.path.abspath(cwd or os.getcwd()))
+    here = os.path.abspath(cwd or os.getcwd())
+    top = _git(here, "rev-parse", "--show-toplevel") or here
     if os.path.basename(top) == "WowAddonStandards":
         out.append(os.path.join(top, "standards", "ADDONS.md"))
-    out.append(os.path.normpath(os.path.join(top, "..", "WowAddonStandards", "standards", "ADDONS.md")))
-    out.append(os.path.normpath(os.path.join(ROOT, "..", "WowAddonStandards", "standards", "ADDONS.md")))
+    out.append(_beside(top))
+    # A linked worktree (../#Worktrees/<x>, /tmp/...) sits away from the collection; its main
+    # checkout, the parent of the common git dir, does not.
+    common = _git(here, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common:
+        out.append(_beside(os.path.dirname(common.rstrip("/"))))
+    # Run from the folder that holds the checkouts (GIT/ itself, not a repo).
+    out.append(os.path.join(here, "WowAddonStandards", "standards", "ADDONS.md"))
+    out.append(_beside(ROOT))
     seen = []
     for p in out:
         if p not in seen:
@@ -103,6 +117,11 @@ def main(argv=None):
     ap.add_argument("addon")
     ap.add_argument("--roster")
     a = ap.parse_args(argv)
+    git = os.environ.get("KA0S_GIT")
+    if not a.roster and git and not os.path.isfile(
+            os.path.join(git, "WowAddonStandards", "standards", "ADDONS.md")):
+        print("warning: KA0S_GIT=%s holds no WowAddonStandards/standards/ADDONS.md; "
+              "looking beside the working directory's repo" % git, file=sys.stderr)
     path = a.roster or default_roster()
     if path is None:
         print("cannot read roster: no ADDONS.md at any of %s; run from inside a collection "
