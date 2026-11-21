@@ -4,13 +4,17 @@
 Usage: roster_clients.py <AddonFolder> [--roster <path>]
 Prints retail+forever | retail | retail-pending | forever and exits 0; exits 2 when the
 addon is not in the roster, 3 when the roster table has no Clients column.
-Default roster: $KA0S_GIT/WowAddonStandards/standards/ADDONS.md, else
-../WowAddonStandards/standards/ADDONS.md from the repo root.
+Roster lookup, first hit wins: --roster <path>; $KA0S_GIT/WowAddonStandards/standards/ADDONS.md;
+../WowAddonStandards/standards/ADDONS.md beside the git top-level of the working directory (the
+addon repo the command runs in, or any sibling checkout; standards/ADDONS.md when that top-level is
+WowAddonStandards itself); last, ../WowAddonStandards/standards/ADDONS.md beside this plugin's own
+root, which only a development checkout has (the installed plugin cache does not).
 """
 
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.realpath(__file__))
@@ -24,13 +28,41 @@ VALUES = {
 }
 
 
-def default_roster():
+def _toplevel(cwd):
+    """The git top-level of cwd, or cwd itself outside git (or without git)."""
+    try:
+        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return cwd
+    top = r.stdout.strip()
+    return top if r.returncode == 0 and top else cwd
+
+
+def roster_candidates(cwd=None):
+    """Where the roster is looked for, in order (the --roster flag is handled by main)."""
+    out = []
     git = os.environ.get("KA0S_GIT")
     if git:
-        p = os.path.join(git, "WowAddonStandards", "standards", "ADDONS.md")
+        out.append(os.path.join(git, "WowAddonStandards", "standards", "ADDONS.md"))
+    top = _toplevel(os.path.abspath(cwd or os.getcwd()))
+    if os.path.basename(top) == "WowAddonStandards":
+        out.append(os.path.join(top, "standards", "ADDONS.md"))
+    out.append(os.path.normpath(os.path.join(top, "..", "WowAddonStandards", "standards", "ADDONS.md")))
+    out.append(os.path.normpath(os.path.join(ROOT, "..", "WowAddonStandards", "standards", "ADDONS.md")))
+    seen = []
+    for p in out:
+        if p not in seen:
+            seen.append(p)
+    return seen
+
+
+def default_roster(cwd=None):
+    """The first candidate that exists, else None."""
+    for p in roster_candidates(cwd):
         if os.path.isfile(p):
             return p
-    return os.path.join(ROOT, "..", "WowAddonStandards", "standards", "ADDONS.md")
+    return None
 
 
 def cells(line):
@@ -72,6 +104,11 @@ def main(argv=None):
     ap.add_argument("--roster")
     a = ap.parse_args(argv)
     path = a.roster or default_roster()
+    if path is None:
+        print("cannot read roster: no ADDONS.md at any of %s; run from inside a collection "
+              "checkout, set KA0S_GIT or pass --roster" % ", ".join(roster_candidates()),
+              file=sys.stderr)
+        return 2
     try:
         with open(path, encoding="utf-8") as f:
             text = f.read()

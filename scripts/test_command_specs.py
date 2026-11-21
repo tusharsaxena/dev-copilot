@@ -219,6 +219,22 @@ class QuirksFilesPerClient(unittest.TestCase):
         self.assertIn("git mv docs/midnight-quirks.md docs/forever-quirks.md", text)
 
 
+class RosterHelperCwd(unittest.TestCase):
+    """roster_clients.py finds ADDONS.md from the working directory's repo (dev-copilot 2.11.0).
+    A spec that says to run it "from the plugin root" sends the agent to cd into the plugin cache,
+    where no roster sits beside it."""
+
+    def test_no_spec_runs_the_helper_from_the_plugin_root(self):
+        paths = sorted(glob.glob(os.path.join(ROOT, "commands", "*.md"))
+                       + glob.glob(os.path.join(ROOT, "agents", "*.md"))
+                       + glob.glob(os.path.join(ROOT, "profiles", "wow", "*.md")))
+        for path in paths:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(spec=os.path.relpath(path, ROOT)):
+                self.assertNotIn("run from the plugin root", text)
+
+
 if __name__ == "__main__":
     if not shutil.which("sh"):
         sys.exit("sh not found")
