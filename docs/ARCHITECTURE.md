@@ -14,7 +14,8 @@ Engineer context for **this** repository, and the hub of its doc set (`documenta
 ## Overview
 
 A **Claude Code plugin**: Markdown command, agent and overlay specs, a stdlib-only Python profile
-detector, overlay checker and CurseForge journal fetcher, two hooks (line endings and bounded runs) with the bounded runner they
+detector, overlay checker, CurseForge journal fetcher, roster Clients reader and per-slot Interface
+rewriter, two hooks (line endings and bounded runs) with the bounded runner they
 point at, and two JSON manifests. There is no compiled code and no package manifest. The root
 `CLAUDE.md` is the full agent brief (purpose, repo profiles, the overlay contract, conventions and
 footguns); `README.md` is the user-facing description of every command; `DEPENDENCIES.md` is the
@@ -199,9 +200,9 @@ tree of executable specs, or a single row for a frozen store.
 | `DEPENDENCIES.md` | The toolchain contract (`documentation-§7`, read per `documentation-§8`) |
 | `docs/ARCHITECTURE.md` | This file, the hub |
 | `LICENSE` | MIT |
-| `commands/*.md` (24 files) | Slash-command specs: executable instructions Claude Code runs, not documentation |
+| `commands/*.md` (25 files) | Slash-command specs: executable instructions Claude Code runs, not documentation |
 | `agents/*.md` (2 files) | Subagent specs: executable, not documentation |
-| `profiles/wow/*.md` (13 files) | WoW overlays read by the bases' Step 0: executable, not documentation |
+| `profiles/wow/*.md` (14 files) | WoW overlays read by the bases' Step 0: executable, not documentation |
 | `docs/superpowers/` | Frozen design specs and plans with their execution ledgers, named once here rather than per file |
 | `docs/audits/<date>/` | Frozen bundles of this repo's own documentation-lane audits (audit-review-history), named once here rather than per file |
 | `docs/reviews/<date>/` | Frozen bundles of this repo's own reviews (audit-review-history), named once here rather than per file |
