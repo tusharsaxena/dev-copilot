@@ -73,6 +73,13 @@ which are **addressed by name or path** and therefore breaking to rename.
   its unit test.
   `scripts/bump_interface.py` — rewrites a TOC's `## Interface:` per client slot, Retail first, keeping
   the file's line endings; `scripts/test_bump_interface.py` — its unit test. Both back `wow-bump-interface`.
+- `scripts/foreverdb.py` — the ForeverDB evidence helper a WoW `forever` seed contract runs (the
+  validate-seeds overlay's `Evidence: ForeverDB`): `status` (the newest `vYYYY.MM.DD.N` tag of
+  `foreverfraddons/forever-db`, GitHub tags API then `git ls-remote`), `fetch` (the tag's TOC and Lua
+  files from raw GitHub, or read-only from an install; the TOC Version check; its own reader for the
+  generated Lua; the row-count check against `meta.counts`) and `get`. It writes only to
+  `${XDG_CACHE_HOME:-~/.cache}/ka0s-seeds/foreverdb/<tag>/`, never into a repo, because the data is
+  GPL-3.0. `scripts/test_foreverdb.py` — its unit test, over an invented fixture, with no network.
 - `scripts/test_command_specs.py` — the command specs' own regression test: no positional parameter
   (`$1`, `${2}`, …) in any `commands/*.md`, since Claude Code substitutes them with the user's
   arguments (`$ARGUMENTS` is allowed), and the `ADDONS.md` roster patterns of `wow-revendor-libka0s`
@@ -163,6 +170,9 @@ a breaking change (a major version bump), not a refactor:
   owner put the CurseForge key and where the journal lives. `scripts/curseforge_journal.py` reads the
   file by that fixed path and the two names from the environment; renaming any of them strands a
   configured machine with a missing-key or no-journal error.
+- **`scripts/foreverdb.py`, its subcommands and its cache path** — other repos' seed contracts call it as
+  `python3 "<root>/scripts/foreverdb.py" status|fetch`, and their tools read
+  `${XDG_CACHE_HOME:-~/.cache}/ka0s-seeds/foreverdb/<tag>/foreverdb.json` from the path `fetch` prints.
 - **`commands/<name>.md` and `agents/<name>.md` filenames** — the filename **is** the public name:
   `/dev-copilot:<name>`, the Skill `dev-copilot:<name>`, and the subagent `dev-copilot:<name>`. Every
   other repo's docs, plans and memory cite these names.
