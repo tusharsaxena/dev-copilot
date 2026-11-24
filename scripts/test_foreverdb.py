@@ -131,6 +131,17 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(lua_value("[==[raw ]] text]==]"), "raw ]] text")
         self.assertEqual(lua_value("[[\nfirst newline dropped]]"), "first newline dropped")
 
+    def test_byte_escapes_are_bytes_and_must_be_utf8(self):
+        # Lua strings are bytes: \195\186 is the UTF-8 of one character, not two.
+        self.assertEqual(lua_value(r'"Z\195\186l"'), "Z\u00fal")
+        self.assertEqual(lua_value(r'"Z\xC3\xBAl"'), "Z\u00fal")
+        self.assertEqual(lua_value(r'"\u{FA}\u{1F600}"'), "\u00fa\U0001F600")
+        self.assertEqual(lua_value('"Z\u00fal \\065"'), "Z\u00fal A")  # raw UTF-8 beside an escape
+        with self.assertRaisesRegex(F.FdbError, r"^<lua>:1: string escapes do not form valid UTF-8"):
+            F.parse_lua(r'x = "Z\195l"')
+        with self.assertRaisesRegex(F.FdbError, r"^<lua>:1: decimal escape too large"):
+            F.parse_lua(r'x = "\256"')
+
     def test_bad_escape_and_unfinished_string_name_the_line(self):
         with self.assertRaisesRegex(F.FdbError, r"^<lua>:2: invalid escape"):
             F.parse_lua('a = 1\nx = "bad \\q"')
@@ -144,6 +155,13 @@ class ParserTest(unittest.TestCase):
     def test_positional_nil_and_trailing_nil(self):
         self.assertEqual(lua_value("{100,6,nil,0}"), [100, 6, None, 0])
         self.assertEqual(lua_value("{1,nil}"), [1])
+
+    def test_an_empty_table_is_an_object(self):
+        # Lua cannot tell an empty list from an empty map; the reader answers {} for both, so a
+        # later t[k] = v store into it works (documented in the module docstring and CLAUDE.md).
+        self.assertEqual(lua_value("{}"), {})
+        self.assertEqual(lua_value("{nil,nil}"), {})
+        self.assertEqual(F.parse_lua("t = {}\nt[5] = 1")["t"], {5: 1})
 
     def test_keyed_tables(self):
         self.assertEqual(lua_value('{name="x",[5]=2,["c1"]={}}'), {"name": "x", 5: 2, "c1": {}})
@@ -328,7 +346,7 @@ class FetchInstallTest(CacheTestBase):
 class FetchGithubTest(CacheTestBase):
     def serve(self, files):
         def get(url, accept=None):
-            prefix = "https://raw.githubusercontent.com/foreverfraddons/forever-db/%s/ForeverDB/" % TAG
+            prefix = "https://raw.githubusercontent.com/foreverfraddons/forever-db/%s/ForeverDB/" % SHA
             self.assertTrue(url.startswith(prefix), url)
             return files[url[len(prefix):]].encode()
         return get
@@ -346,7 +364,8 @@ class FetchGithubTest(CacheTestBase):
         self.assertEqual(gets, 3)
         src = self.sources()
         self.assertEqual((src["origin"], src["commit"], len(src["urls"])), (["github"], SHA, 3))
-        self.assertTrue(src["urls"][0].endswith("/%s/ForeverDB/ForeverDB.toc" % TAG))
+        # The URLs name the resolved commit, so the bytes are bound to the commit recorded.
+        self.assertTrue(src["urls"][0].endswith("/%s/ForeverDB/ForeverDB.toc" % SHA))
         self.assertEqual(self.db(), EXPECTED)
         rc, _, err, gets = self.fetch()
         self.assertEqual((rc, gets), (0, 0))
@@ -378,6 +397,47 @@ class FetchGithubTest(CacheTestBase):
         rc, _, err, _ = self.fetch()
         self.assertEqual(rc, 1)
         self.assertIn("is not that build", err)
+        # The install-derived cache is cleared, so it is no longer served under the tag's name,
+        # and a GitHub fetch then caches the tag itself.
+        self.assertIn("Cleared the cache at " + self.cache(), err)
+        self.assertFalse(os.path.exists(self.cache("SOURCES.json")))
+        self.assertEqual(call("get", "--tag", TAG, "npc")[0], 1)
+        rc, _, err, gets = self.fetch()
+        self.assertEqual((rc, gets), (0, 3), err)
+        self.assertEqual(self.sources()["origin"], ["github"])
+        self.assertEqual(self.db(), EXPECTED)
+
+    def install_fetch(self):
+        return call("fetch", "--tag", TAG, "--date", "2099-01-04", "--from-install", self.install)
+
+    def test_a_matching_install_after_github_is_recorded(self):
+        self.assertEqual(self.fetch()[0], 0)
+        json_sha = self.sources()["json"]["sha256"]
+        write_install(self.install, crlf=True)
+        rc, out, err = self.install_fetch()
+        self.assertEqual(rc, 0, err)
+        self.assertIn("cache re-used", err)
+        self.assertEqual(out.strip(), self.cache())
+        src = self.sources()
+        self.assertEqual(src["origin"], ["github", "install"])
+        self.assertEqual(src["install"]["version"], "2099.01.02.7")
+        self.assertEqual(src["install"]["path"], os.path.abspath(self.install))
+        self.assertEqual(sorted(src["install"]["sha256"]),
+                         ["ForeverDB/ForeverDB.lua", "ForeverDB/ForeverDB.toc", "ForeverDB/ForeverDB_2.lua"])
+        self.assertEqual((src["commit"], src["date"], src["json"]["sha256"]), (SHA, "2099-01-03", json_sha))
+        self.assertEqual(F.read_sources(TAG), src)  # still a valid cache
+        self.assertEqual(self.install_fetch()[0], 0)  # a second read changes nothing
+        self.assertEqual(self.sources(), src)
+
+    def test_a_differing_install_after_github_is_refused_and_keeps_the_cache(self):
+        self.assertEqual(self.fetch()[0], 0)
+        before = self.sources()
+        write_install(self.install, lua1=LUA_1.replace("Testa Fixture", "Other Fixture"))
+        rc, _, err = self.install_fetch()
+        self.assertEqual(rc, 1)
+        self.assertIn("is not that build", err)
+        self.assertEqual(self.sources(), before)
+        self.assertEqual(self.db(), EXPECTED)
 
     def test_user_agent(self):
         seen = []

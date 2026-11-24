@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ForeverDB as seed-validation evidence: the newest build tag, and a parsed, cached copy of one tag.
+r"""ForeverDB as seed-validation evidence: the newest build tag, and a parsed, cached copy of one tag.
 
 ForeverDB (github.com/foreverfraddons/forever-db, GPL-3.0 data) is the WoW Forever database of
 creatures, spawns, vendors, quest givers, trainers and objects: the server-side facts DB2 does not
@@ -13,18 +13,24 @@ Usage:
       back to `git ls-remote --tags`; plus whether that tag is cached.
   foreverdb.py fetch --tag <tag> --date <YYYY-MM-DD> [--from-install <AddOns/ForeverDB dir>]
       Read ForeverDB/ForeverDB.toc and every Lua file it lists, from raw.githubusercontent.com at
-      the tag or, read-only, from an installed copy; refuse when the TOC's ## Version is not the
+      the tag's resolved commit or, read-only, from an installed copy; refuse when the TOC's ## Version is not the
       tag without its `v`; parse the generated Lua; check the npc, item, quest and vend row counts
       against meta.counts; write foreverdb.json and SOURCES.json to
       ${XDG_CACHE_HOME:-~/.cache}/ka0s-seeds/foreverdb/<tag>/ and print that path. A cache whose
-      sha256s still match is re-used.
+      sha256s still match is re-used. An install read and a GitHub fetch of the same tag confirm
+      each other in either order (SOURCES.json then records both); a GitHub fetch that finds a
+      cached install read is not the tag clears that cache and refuses.
   foreverdb.py get --tag <tag> <table> [<key> ...]
       Print rows of a cached tag as JSON (the whole table when no key is given), for a contract's
       own tools to read. Prints to stdout only; never redirect it into a repo.
 
 foreverdb.json is the ForeverDB global itself: {"meta": {...}, "npc": {...}, ...}. Lua keys become
 JSON object keys (a number key 1001 is "1001"); a table whose keys are exactly 1..n is a JSON array,
-with a positional nil as null. Exit codes: 0 ok, 1 refused or failed (stderr says why), 2 usage.
+with a positional nil as null. An empty table, `{}` or one whose every slot is nil, is the JSON object
+{}: Lua cannot tell an empty list from an empty map, so a consumer reads a dict-or-list row as
+"positional or empty" and never indexes row[0] before checking its length. A string's escapes are
+Lua's byte escapes (\ddd and \xHH are single bytes, \u{XXX} its UTF-8 bytes) and the result must be
+valid UTF-8, else the read is refused. Exit codes: 0 ok, 1 refused or failed (stderr says why), 2 usage.
 """
 
 import argparse
@@ -41,7 +47,9 @@ import urllib.request
 REPO = "foreverfraddons/forever-db"
 API_TAGS = "https://api.github.com/repos/" + REPO + "/tags?per_page=100"
 GIT_URL = "https://github.com/" + REPO + ".git"
-RAW = "https://raw.githubusercontent.com/" + REPO + "/{tag}/ForeverDB/{name}"
+# Built from the tag's resolved commit, not the tag name, so the bytes read are bound to the commit
+# that SOURCES.json records even if the tag were ever moved.
+RAW = "https://raw.githubusercontent.com/" + REPO + "/{commit}/ForeverDB/{name}"
 USER_AGENT = "ka0s-seed-check"
 TAG_RE = re.compile(r"^v(\d{4})\.(\d{2})\.(\d{2})\.(\d+)$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -80,23 +88,39 @@ _KEYWORDS = {"nil", "true", "false", "and", "or", "not", "function", "local", "e
 
 
 def _unescape(body):
+    """A quoted string's body with Lua's escapes applied. Lua strings are bytes: \\ddd and \\xHH are
+    one byte each and \\u{XXX} is its UTF-8 bytes, so the result is built as bytes and must decode
+    as UTF-8 (a misread name would otherwise pass silently as mojibake)."""
     if "\\" not in body:
         return body
-
-    def one(m):
+    out, pos = bytearray(), 0
+    for m in _ESC_RE.finditer(body):
+        out += body[pos:m.start()].encode("utf-8")
+        pos = m.end()
         dec, hx, uni, other = m.groups()
         if dec is not None:
-            return chr(int(dec))
-        if hx is not None:
-            return chr(int(hx, 16))
-        if uni is not None:
-            return chr(int(uni, 16))
-        if other is None:  # \z skips the whitespace after it
-            return ""
-        if other in _ESC:
-            return _ESC[other]
-        raise ValueError("invalid escape \\" + other)
-    return _ESC_RE.sub(one, body)
+            n = int(dec)
+            if n > 255:
+                raise ValueError("decimal escape too large \\" + dec)
+            out.append(n)
+        elif hx is not None:
+            out.append(int(hx, 16))
+        elif uni is not None:
+            n = int(uni, 16)
+            if n > 0x10FFFF:
+                raise ValueError("UTF-8 escape too large \\u{" + uni + "}")
+            out += chr(n).encode("utf-8", "surrogatepass")
+        elif other is None:  # \z skips the whitespace after it
+            pass
+        elif other in _ESC:
+            out += _ESC[other].encode("utf-8")
+        else:
+            raise ValueError("invalid escape \\" + other)
+    out += body[pos:].encode("utf-8")
+    try:
+        return out.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("string escapes do not form valid UTF-8")
 
 
 class _Lexer:
@@ -159,7 +183,8 @@ class _Lexer:
 
 
 def _finish_table(arr, hsh):
-    """A constructor's result: a list when its keys are exactly 1..n, else a dict."""
+    """A constructor's result: a list when its keys are exactly 1..n, else a dict. An empty
+    constructor (or one of nils only) is a dict, so later `t[k] = v` stores into it work."""
     if not hsh:
         if not arr:
             return {}
@@ -650,14 +675,20 @@ def fetch_install(tag, date, install_dir):
                 blobs[name] = f.read()
         except OSError as e:
             raise FdbError("cannot read %s: %s" % (os.path.join(install_dir, name), e))
+    install = {"path": os.path.abspath(install_dir), "version": version,
+               "sha256": {"ForeverDB/" + n: sha256(b) for n, b in blobs.items()}}
     src = read_sources(tag)
     if src and _same_files(src, blobs):
+        if "install" not in src.get("origin", []):
+            # A GitHub cache confirmed by this install: record it, so a bundle can name the
+            # install's version (the parsed data is unchanged, so foreverdb.json stays).
+            src["origin"] = list(src.get("origin", [])) + ["install"]
+            src["install"] = install
+            _write_json(os.path.join(cache_dir(tag), "SOURCES.json"), src)
         return cache_dir(tag), src, True
     if src and "github" in src.get("origin", []):
         raise FdbError("the install at %s differs from tag %s (CRLF-insensitive sha256): "
                        "it is not that build" % (install_dir, tag))
-    install = {"path": os.path.abspath(install_dir), "version": version,
-               "sha256": {"ForeverDB/" + n: sha256(b) for n, b in blobs.items()}}
     d, src = build(tag, date, blobs, toc_name, ["install"], _commit_for(tag), [], install)
     return d, src, False
 
@@ -671,19 +702,27 @@ def fetch_github(tag, date):
     if src and "github" in src.get("origin", []) and src.get("commit") == commit:
         return cache_dir(tag), src, True
     toc_name = "ForeverDB.toc"
-    urls = [RAW.format(tag=tag, name=toc_name)]
+    urls = [RAW.format(commit=commit, name=toc_name)]
     blobs = {toc_name: _http_get(urls[0])}
     version, lua_files = parse_toc(blobs[toc_name], urls[0])
     _check_version(version, tag, urls[0])
     for name in lua_files:
-        url = RAW.format(tag=tag, name=name)
+        url = RAW.format(commit=commit, name=name)
         urls.append(url)
         blobs[name] = _http_get(url)
     origin, install = ["github"], None
     if src and "install" in src.get("origin", []):
         if not _same_files(src, blobs):
+            # The cached data is not the tag's: stop serving it under the tag's name.
+            d = cache_dir(tag)
+            for name in ("SOURCES.json", "foreverdb.json"):
+                try:
+                    os.remove(os.path.join(d, name))
+                except OSError:
+                    pass
             raise FdbError("the cached install read differs from tag %s (CRLF-insensitive "
-                           "sha256): the install is not that build" % tag)
+                           "sha256): the install is not that build. Cleared the cache at %s; "
+                           "fetch again without --from-install to cache the tag" % (tag, d))
         origin, install = ["github", "install"], src.get("install")
     d, src = build(tag, date, blobs, toc_name, origin, commit, urls, install)
     return d, src, False

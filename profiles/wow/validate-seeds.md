@@ -61,7 +61,8 @@ When the row names it:
   whose `## Version` is not the tag, parses the files, checks the row counts against `meta.counts`,
   and prints the cache folder that holds `foreverdb.json` and `SOURCES.json`.
   `--from-install <AddOns/ForeverDB folder>` reads an installed copy read-only instead, under the
-  same checks. A later fetch from GitHub confirms that install against the tag.
+  same checks. An install read and a fetch from GitHub confirm each other in either order, and
+  `SOURCES.json` then records the install's version.
 - **ForeverDB is evidence, not truth.** It never overrides a DB2 answer, and where the two disagree
   the result is a flag. Every ForeverDB mismatch is a candidate that needs a ruling. None is applied
   automatically.
@@ -70,6 +71,8 @@ When the row names it:
   install's version if one was read, plus the per-id verdicts and `ANALYSIS.md`. It keeps no raw
   rows. A replay re-fetches the pinned tag, which is immutable.
 - **A `retail` row that names ForeverDB is a stop.** The Retail flavor never reads ForeverDB.
+- **`--foreverdb <tag>` on a run whose flavor row does not name ForeverDB is a stop**, with the
+  usage line. That covers every `retail` run and a `forever` row without `Evidence: ForeverDB`.
 
 ## gate — adds
 
