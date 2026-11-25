@@ -1,0 +1,9 @@
+Independent review, Ka0sAddonsCommonTasks docs/2026-11-25-SEEDS_AND_FOREVERDB (workflows wf_df07c1ab-8d1, wf_219c4c4a-92a)
+SF-DC-01: 6 findings (minor, minor, minor, minor, minor, minor); fix pass: ab560b3 SF-DC-01: review fixes: byte escapes as UTF-8, raw URLs at the commit, install/tag confirmation both ways; fix gate green=True
+  - [minor] scripts/foreverdb.py:88 `_unescape` turns `\ddd` and `\xHH` into Unicode code points (chr(n)), but in Lua they are bytes. A UTF-8 name written with byte escapes comes out as mojibake instead of being refused: `"Z\195\186l"`
+  - [minor] scripts/foreverdb.py:674 The commit sha is read from the tags API at one moment (line 666), but the files are downloaded from a URL built from the tag name (RAW uses `{tag}`, line 44). SOURCES.json therefore records a commit
+  - [minor] scripts/foreverdb.py:683 Suppose a cached install read is later found not to match the tag. fetch_github raises, but the install-derived foreverdb.json and SOURCES.json stay in the tag's cache folder. `read_sources`, `load` a
+  - [minor] scripts/foreverdb.py:653 When the cache already came from GitHub and a later `--from-install` read matches it, the function returns early with the cached src unchanged: origin stays ['github'] and install stays null. The inst
+  - [minor] scripts/foreverdb.py:163 An empty or all-nil row (`{}`, `{nil,nil}`) becomes the JSON object `{}`, while every other positional row becomes an array. The real build has 245 item, 91 obj, 18 quest and 1 npc rows that come out
+  - [minor] profiles/wow/validate-seeds.md:56 `--foreverdb <tag>` is defined only under 'When the row names it'. The overlay does not say what happens when the pin is passed for a `retail` flavor, or for a `forever` row without `Evidence: Forever
+Lead gate re-run 2026-11-25 at this head: green (see EXECUTION_RECORD.md).
