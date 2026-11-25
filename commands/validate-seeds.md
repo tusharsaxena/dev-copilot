@@ -31,7 +31,9 @@ the cwd's, apply (or drop) the overlay by the target's profile.
 
 Parse `$ARGUMENTS` as words: the first is the **repo name**, the second the **flavor**. `commit`
 anywhere turns on the commit in Step 8. `--build <version>` pins a source build instead of the
-newest one. Missing either of the first two words means stop: print the usage line
+newest one. An overlay applied in Step 0 may define more pins of the same `--<name> <value>` form
+for its own sources; pass each one through as that overlay says. A pin that no applied overlay
+defines means stop, with the usage line. Missing either of the first two words means stop: print the usage line
 (`/dev-copilot:validate-seeds <repo name> <flavor> [commit] [--build <version>]`). Then list the
 repos that offer validation and their flavors, read from each contract's `## Flavors` table, using
 the search below.
@@ -96,8 +98,8 @@ These hold whatever the contract says. Where a contract is stricter, the stricte
 ## Step 3 — Status
 
 Run the flavor's `### Status` commands. If they report the newest bundle **current** for the source's
-newest build, and no `--build` was given, say so and **stop**: there is nothing to do. Otherwise note
-the build this run is for, either the new one or the pinned one.
+newest build, and no `--build` (or overlay pin) was given, say so and **stop**: there is nothing
+to do. Otherwise note the build this run is for, either the new one or the pinned one.
 
 ## Step 4 — Freeze and derive
 

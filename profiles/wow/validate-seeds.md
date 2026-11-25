@@ -45,6 +45,35 @@ python3 "<root>/scripts/roster_clients.py" "<target folder name>"
 and say so. A list derived from another client's data is a filtered list in disguise, which
 `clients-§5` forbids.
 
+**A `forever` row may add `Evidence: ForeverDB`** beside product `wowf` (`clients-§10`).
+[ForeverDB](https://github.com/foreverfraddons/forever-db) is the second evidence source for the
+facts DB2 cannot hold because the server supplies them: creatures, their spawns, trainers, vendors,
+quest givers and objects. The product rule above still holds, since DB2 stays the primary source.
+When the row names it:
+
+- **Resolve the tag once**, at Step 3, with `python3 "<root>/scripts/foreverdb.py" status`. It
+  prints the newest `vYYYY.MM.DD.N` tag and its commit, from the GitHub tags API or, failing that,
+  `git ls-remote`. Beside `--build <version>`, which pins the wago.tools build, **`--foreverdb <tag>`
+  pins the tag**. Fill the contract's `<foreverdb>` placeholder with it. The newest bundle is
+  current only when its build **and** its tag are both the newest. Either one moving means a run.
+- **The contract's tools read ForeverDB only through the helper:**
+  `python3 "<root>/scripts/foreverdb.py" fetch --tag <foreverdb> --date <date>`. It refuses a TOC
+  whose `## Version` is not the tag, parses the files, checks the row counts against `meta.counts`,
+  and prints the cache folder that holds `foreverdb.json` and `SOURCES.json`.
+  `--from-install <AddOns/ForeverDB folder>` reads an installed copy read-only instead, under the
+  same checks. An install read and a fetch from GitHub confirm each other in either order, and
+  `SOURCES.json` then records the install's version.
+- **ForeverDB is evidence, not truth.** It never overrides a DB2 answer, and where the two disagree
+  the result is a flag. Every ForeverDB mismatch is a candidate that needs a ruling. None is applied
+  automatically.
+- **Its data is GPL-3.0.** Never copy its rows into the repo, test fixtures included. The bundle
+  keeps the tag, its commit, every file's sha256 and the URLs from `SOURCES.json`, the date and the
+  install's version if one was read, plus the per-id verdicts and `ANALYSIS.md`. It keeps no raw
+  rows. A replay re-fetches the pinned tag, which is immutable.
+- **A `retail` row that names ForeverDB is a stop.** The Retail flavor never reads ForeverDB.
+- **`--foreverdb <tag>` on a run whose flavor row does not name ForeverDB is a stop**, with the
+  usage line. That covers every `retail` run and a `forever` row without `Evidence: ForeverDB`.
+
 ## gate — adds
 
 **Every Lua and lint run goes through the bounded runner**, `~/.claude/dev-copilot/bin/ka0s-bounded`,
